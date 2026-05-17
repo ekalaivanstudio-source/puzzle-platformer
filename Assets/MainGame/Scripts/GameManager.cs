@@ -43,6 +43,8 @@ public class GameManager : MonoBehaviour
     /// <see cref="DeviceInputProvider"/> when Submit (Enter/Start) is pressed.
     /// Prepares the sequence, updates UI, then starts the execution turn.
     /// </summary>
+    /// 
+    [ContextMenu("Start Play")]
     public void OnPlayClicked()
     {
         if (m_SequenceSourceRouter != null && !m_SequenceSourceRouter.CanExecute)

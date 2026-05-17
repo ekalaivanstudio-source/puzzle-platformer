@@ -54,5 +54,6 @@ public class InputModeManager : MonoBehaviour
     public void SetMouseMode() => SetMode(InputMode.Mouse);
 
     /// <summary>Switches to keyboard and gamepad mode.</summary>
+    [ContextMenu("Set Device Mode")]
     public void SetDeviceMode() => SetMode(InputMode.Device);
 }

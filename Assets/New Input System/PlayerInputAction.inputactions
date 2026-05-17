@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "name": "Player Action",
+    "name": "PlayerInputAction",
     "maps": [
         {
             "name": "Player",
@@ -28,6 +28,15 @@
                     "name": "Right",
                     "type": "Button",
                     "id": "03bcf393-24b5-4170-abb6-0127b0b5f8da",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Submit",
+                    "type": "Button",
+                    "id": "a761b704-0973-4bba-918d-39466c4c1828",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -65,6 +74,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Right",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b29c1a64-d7b2-4601-ba7a-7242778edcd3",
+                    "path": "<Keyboard>/enter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Submit",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
