@@ -50,14 +50,16 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
         if (m_InputActionAsset == null) { Debug.LogError("[DeviceInputProvider] InputActionAsset not assigned.", this); return; }
         if (m_SequenceManager == null) { Debug.LogError("[DeviceInputProvider] SequenceManager not assigned.", this); return; }
 
-        InputActionMap map = m_InputActionAsset.FindActionMap("Player", throwIfNotFound: true);
-        m_LeftAction = map.FindAction("Left", throwIfNotFound: true);
-        m_RightAction = map.FindAction("Right", throwIfNotFound: true);
-        m_JumpAction = map.FindAction("Jump", throwIfNotFound: true);
-        m_InteractAction = map.FindAction("Interact", throwIfNotFound: true);
-        m_SubmitAction = map.FindAction("Submit", throwIfNotFound: true);
-        m_UndoAction = map.FindAction("Undo", throwIfNotFound: true);
-        m_ClearAction = map.FindAction("Clear", throwIfNotFound: true);
+        InputActionMap map = m_InputActionAsset.FindActionMap("Player", throwIfNotFound: false);
+        if (map == null) { Debug.LogError("[DeviceInputProvider] 'Player' action map not found in asset.", this); return; }
+
+        m_LeftAction = map.FindAction("Left", throwIfNotFound: false);
+        m_RightAction = map.FindAction("Right", throwIfNotFound: false);
+        m_JumpAction = map.FindAction("Jump", throwIfNotFound: false);
+        m_InteractAction = map.FindAction("Interact", throwIfNotFound: false);
+        m_SubmitAction = map.FindAction("Submit", throwIfNotFound: false);
+        m_UndoAction = map.FindAction("Undo", throwIfNotFound: false);
+        m_ClearAction = map.FindAction("Clear", throwIfNotFound: false);
     }
 
     private void OnEnable() => RegisterListeners(true);
@@ -69,23 +71,23 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
 
         if (register)
         {
-            m_LeftAction.performed += OnLeft;
-            m_RightAction.performed += OnRight;
-            m_JumpAction.performed += OnJump;
-            m_InteractAction.performed += OnInteract;
-            m_SubmitAction.performed += OnSubmit;
-            m_UndoAction.performed += OnUndo;
-            m_ClearAction.performed += OnClear;
+            if (m_LeftAction != null) m_LeftAction.performed += OnLeft;
+            if (m_RightAction != null) m_RightAction.performed += OnRight;
+            if (m_JumpAction != null) m_JumpAction.performed += OnJump;
+            if (m_InteractAction != null) m_InteractAction.performed += OnInteract;
+            if (m_SubmitAction != null) m_SubmitAction.performed += OnSubmit;
+            if (m_UndoAction != null) m_UndoAction.performed += OnUndo;
+            if (m_ClearAction != null) m_ClearAction.performed += OnClear;
         }
         else
         {
-            m_LeftAction.performed -= OnLeft;
-            m_RightAction.performed -= OnRight;
-            m_JumpAction.performed -= OnJump;
-            m_InteractAction.performed -= OnInteract;
-            m_SubmitAction.performed -= OnSubmit;
-            m_UndoAction.performed -= OnUndo;
-            m_ClearAction.performed -= OnClear;
+            if (m_LeftAction != null) m_LeftAction.performed -= OnLeft;
+            if (m_RightAction != null) m_RightAction.performed -= OnRight;
+            if (m_JumpAction != null) m_JumpAction.performed -= OnJump;
+            if (m_InteractAction != null) m_InteractAction.performed -= OnInteract;
+            if (m_SubmitAction != null) m_SubmitAction.performed -= OnSubmit;
+            if (m_UndoAction != null) m_UndoAction.performed -= OnUndo;
+            if (m_ClearAction != null) m_ClearAction.performed -= OnClear;
         }
     }
 

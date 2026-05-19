@@ -20,6 +20,9 @@ public class GameManager : MonoBehaviour
     /// <summary>True once the player has collected the key this turn.</summary>
     public bool IsKeyCollected { get; private set; }
 
+    /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
+    public static event System.Action OnTurnReset;
+
     // Prevents duplicate GameWin/GameOver calls within the same execution turn
     private bool m_IsGameOver;
 
@@ -43,6 +46,8 @@ public class GameManager : MonoBehaviour
     /// <see cref="DeviceInputProvider"/> when Submit (Enter/Start) is pressed.
     /// Prepares the sequence, updates UI, then starts the execution turn.
     /// </summary>
+    /// 
+    [ContextMenu("Start Play")]
     public void OnPlayClicked()
     {
         if (m_SequenceSourceRouter != null && !m_SequenceSourceRouter.CanExecute)
@@ -73,6 +78,7 @@ public class GameManager : MonoBehaviour
         m_DeviceInputProvider?.SetEnabled(true); // restore keyboard/gamepad input
         m_UIManager?.UnlockUI();
         m_UIManager?.PopUp();
+        OnTurnReset?.Invoke();
     }
 
     /// <summary>Marks the key as collected. Called by <see cref="Key"/> on interaction.</summary>
