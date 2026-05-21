@@ -122,12 +122,19 @@ public class GameManager : MonoBehaviour
     {
         int nextIndex = SceneManager.GetActiveScene().buildIndex + 1;
 
+        // Loop back to scene 0 when the last level is complete.
         if (nextIndex >= SceneManager.sceneCountInBuildSettings)
-        {
-            Debug.LogWarning("[GameManager] No next level available — already at the last scene.");
-            return;
-        }
+            nextIndex = 0;
 
         SceneManager.LoadScene(nextIndex);
+    }
+
+    public void QuitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 }

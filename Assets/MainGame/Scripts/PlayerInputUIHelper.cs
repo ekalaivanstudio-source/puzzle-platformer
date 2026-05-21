@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -22,10 +23,36 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private InputAction m_SubmitAction;
     private int m_PreviousSequenceCount;
+    private bool m_IsRejecting;
+
+    // Blink state — tracked so a mid-blink slot can be force-restored
+    private Coroutine m_BlinkCoroutine;
+    private Image m_BlinkingSlot;
+    private Color m_BlinkOriginalColor;
     [SerializeField] private GameObject buttonIndication;
     private RectTransform m_ButtonIndicationRT;
     [SerializeField] private AudioClip keyPressClip;
     [SerializeField] private AudioSource audioSource;
+
+    [Header("Correct Sequence")]
+    [Tooltip("The exact sequence the player must enter. Leave empty to allow any input.")]
+    [SerializeField] private ActionTypeEnum[] m_CorrectSequence;
+
+    [Header("Action Sprites")]
+    [Tooltip("Sprites assigned to inputsUI slots based on the correct sequence.")]
+    [SerializeField] private Sprite m_LeftSprite;
+    [SerializeField] private Sprite m_RightSprite;
+    [SerializeField] private Sprite m_JumpSprite;
+    [SerializeField] private Sprite m_InteractSprite;
+    [SerializeField] private Sprite m_AnySprite;
+
+    [Header("Wrong Input Feedback")]
+    [SerializeField] private AudioClip m_WrongKeyClip;
+    [SerializeField] private Color m_WrongColor = Color.red;
+    [SerializeField] private float m_BlinkDuration = 0.12f;
+    [SerializeField] private int m_BlinkCount = 2;
+    [SerializeField] private float m_ShakeMagnitude = 0.08f;
+    [SerializeField] private float m_ShakeDuration = 0.25f;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -65,6 +92,14 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void Start()
     {
+        // Drive MaxLength and correct-sequence validation from the configured sequence
+        if (m_SequenceManager != null && m_CorrectSequence != null && m_CorrectSequence.Length > 0)
+        {
+            m_SequenceManager.SetMaxLength(m_CorrectSequence.Length);
+            m_SequenceManager.SetCorrectSequence(m_CorrectSequence);
+        }
+
+        AssignSlotSprites();
         RefreshAll();
     }
 
@@ -72,13 +107,71 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void RefreshSequenceSlots()
     {
+        // Force-stop any running blink UNLESS we're mid-rejection — the rejection
+        // itself just started the blink and the RemoveLastAction callback must not kill it.
+        if (!m_IsRejecting)
+            StopBlinkImmediate();
         int count = m_SequenceManager != null ? m_SequenceManager.Sequence.Count : 0;
         int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
+
+        // Validate the newly added action against the correct sequence.
+        // Slots marked ActionTypeEnum.Any are wildcards — any input is accepted.
+        if (!m_IsRejecting && m_CorrectSequence != null && m_CorrectSequence.Length > 0
+            && count > m_PreviousSequenceCount)
+        {
+            int newIndex = count - 1;
+            if (newIndex < m_CorrectSequence.Length
+                && m_CorrectSequence[newIndex] != ActionTypeEnum.Any
+                && m_SequenceManager.Sequence[newIndex] != m_CorrectSequence[newIndex])
+            {
+                // Visual feedback before removing
+                int slotIndex = Mathf.Clamp(newIndex, 0, inputsUI.Length - 1);
+                if (inputsUI[slotIndex] != null)
+                {
+                    m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex]));
+                }
+                if (audioSource != null && m_WrongKeyClip != null)
+                    audioSource.PlayOneShot(m_WrongKeyClip);
+                StartCoroutine(ShakeCamera());
+
+                m_IsRejecting = true;
+                m_SequenceManager.RemoveLastAction();
+                m_IsRejecting = false;
+                return;
+            }
+        }
 
         for (int i = 0; i < slots && i < inputsUI.Length; i++)
         {
             if (inputsUI[i] == null) continue;
             SetAlpha(inputsUI[i], i < count ? m_ActiveAlpha : m_InactiveAlpha);
+        }
+
+        // When a wildcard (Any) slot is filled, show the sprite of the actual input chosen.
+        if (count > m_PreviousSequenceCount)
+        {
+            int newIndex = count - 1;
+            if (m_CorrectSequence != null && newIndex < m_CorrectSequence.Length
+                && m_CorrectSequence[newIndex] == ActionTypeEnum.Any
+                && newIndex < inputsUI.Length && inputsUI[newIndex] != null)
+            {
+                Sprite actualSprite = GetSpriteForAction(m_SequenceManager.Sequence[newIndex]);
+                if (actualSprite != null)
+                    inputsUI[newIndex].sprite = actualSprite;
+            }
+        }
+
+        // When a wildcard slot is un-filled (undo), restore the Any sprite.
+        if (count < m_PreviousSequenceCount)
+        {
+            int removedIndex = count;
+            if (m_CorrectSequence != null && removedIndex < m_CorrectSequence.Length
+                && m_CorrectSequence[removedIndex] == ActionTypeEnum.Any
+                && removedIndex < inputsUI.Length && inputsUI[removedIndex] != null
+                && m_AnySprite != null)
+            {
+                inputsUI[removedIndex].sprite = m_AnySprite;
+            }
         }
 
         // Play sound only when an action was added (count increased), not on undo or clear
@@ -89,7 +182,10 @@ public class PlayerInputUIHelper : MonoBehaviour
 
         // When the sequence is cleared (turn ended), also dim the Enter hint
         if (count == 0)
+        {
+            AssignSlotSprites(); // restore Any slots back to the Any sprite
             SetSubmitAlpha(m_InactiveAlpha);
+        }
         else if (count >= slots)
             SetSubmitAlpha(m_ActiveAlpha);
 
@@ -103,6 +199,31 @@ public class PlayerInputUIHelper : MonoBehaviour
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private void AssignSlotSprites()
+    {
+        if (m_CorrectSequence == null || inputsUI == null) return;
+        for (int i = 0; i < m_CorrectSequence.Length && i < inputsUI.Length; i++)
+        {
+            if (inputsUI[i] == null) continue;
+            Sprite s = GetSpriteForAction(m_CorrectSequence[i]);
+            if (s != null)
+                inputsUI[i].sprite = s;
+        }
+    }
+
+    private Sprite GetSpriteForAction(ActionTypeEnum action)
+    {
+        return action switch
+        {
+            ActionTypeEnum.Left => m_LeftSprite,
+            ActionTypeEnum.Right => m_RightSprite,
+            ActionTypeEnum.Jump => m_JumpSprite,
+            ActionTypeEnum.Interact => m_InteractSprite,
+            ActionTypeEnum.Any => m_AnySprite,
+            _ => null
+        };
+    }
 
     private void RefreshAll()
     {
@@ -138,15 +259,60 @@ public class PlayerInputUIHelper : MonoBehaviour
         int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
         if (count >= slots)
         {
-            Destroy(m_ButtonIndicationRT.gameObject);
-            m_ButtonIndicationRT = null;
+            m_ButtonIndicationRT.gameObject.SetActive(false);
             return;
         }
 
+        m_ButtonIndicationRT.gameObject.SetActive(true);
         int indicatorIndex = Mathf.Clamp(count, 0, inputsUI.Length - 1);
         Image target = inputsUI[indicatorIndex];
         if (target != null)
             m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
+    }
+
+    private void StopBlinkImmediate()
+    {
+        if (m_BlinkCoroutine == null) return;
+        StopCoroutine(m_BlinkCoroutine);
+        m_BlinkCoroutine = null;
+        if (m_BlinkingSlot != null)
+        {
+            m_BlinkingSlot.color = m_BlinkOriginalColor;
+            m_BlinkingSlot = null;
+        }
+    }
+
+    private IEnumerator BlinkSlot(Image slot)
+    {
+        m_BlinkingSlot = slot;
+        m_BlinkOriginalColor = slot.color;
+        Color wrong = m_WrongColor;
+        wrong.a = m_BlinkOriginalColor.a;
+        for (int i = 0; i < m_BlinkCount; i++)
+        {
+            slot.color = wrong;
+            yield return new WaitForSecondsRealtime(m_BlinkDuration);
+            slot.color = m_BlinkOriginalColor;
+            yield return new WaitForSecondsRealtime(m_BlinkDuration);
+        }
+        m_BlinkCoroutine = null;
+        m_BlinkingSlot = null;
+    }
+
+    private IEnumerator ShakeCamera()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) yield break;
+        Vector3 origin = cam.transform.localPosition;
+        float elapsed = 0f;
+        while (elapsed < m_ShakeDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = 1f - (elapsed / m_ShakeDuration); // fade out shake
+            cam.transform.localPosition = origin + (Vector3)UnityEngine.Random.insideUnitCircle * m_ShakeMagnitude * t;
+            yield return null;
+        }
+        cam.transform.localPosition = origin;
     }
 
     private static void SetAlpha(Image image, float alpha)

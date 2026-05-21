@@ -63,6 +63,7 @@ public class KeyPickupZone : MonoBehaviour
     private SpriteRenderer m_SpriteRenderer;
     private Camera m_Camera;
     private float m_OriginalCameraSize;
+    private Vector3 m_OriginalCameraPosition;
     private Coroutine m_ZoomCoroutine;
     private float m_OriginalLightIntensity;
     private float m_OriginalOuterRadius;
@@ -75,7 +76,10 @@ public class KeyPickupZone : MonoBehaviour
         m_SpriteRenderer = GetComponentInChildren<SpriteRenderer>();
         m_Camera = Camera.main;
         if (m_Camera != null)
+        {
             m_OriginalCameraSize = m_Camera.fieldOfView;
+            m_OriginalCameraPosition = m_Camera.transform.position;
+        }
 
         if (m_SpotLight != null)
         {
@@ -149,7 +153,11 @@ public class KeyPickupZone : MonoBehaviour
 
         // Restore time and camera in case reset happened mid-proximity
         RestoreTime();
-        if (m_Camera != null) m_Camera.fieldOfView = m_OriginalCameraSize;
+        if (m_Camera != null)
+        {
+            m_Camera.fieldOfView = m_OriginalCameraSize;
+            m_Camera.transform.position = m_OriginalCameraPosition;
+        }
 
         UnbindPickup();
 
@@ -177,7 +185,12 @@ public class KeyPickupZone : MonoBehaviour
     {
         m_InProximity = true;
         ApplySlowMo();
-        StartZoom(m_FocusCameraSize, m_ZoomDuration);
+
+        // Zoom in and pan camera to the player's current world position.
+        Vector3 focusPos = m_Camera != null
+            ? new Vector3(m_PlayerTransform.position.x, m_PlayerTransform.position.y, m_Camera.transform.position.z)
+            : m_OriginalCameraPosition;
+        StartZoom(m_FocusCameraSize, m_ZoomDuration, focusPos);
 
         if (m_PickIcon != null)
             m_PickIcon.SetActive(true);
@@ -189,7 +202,7 @@ public class KeyPickupZone : MonoBehaviour
     {
         m_InProximity = false;
         RestoreTime();
-        StartZoom(m_OriginalCameraSize, m_RevertZoomDuration);
+        StartZoom(m_OriginalCameraSize, m_RevertZoomDuration, m_OriginalCameraPosition);
 
         if (m_PickIcon != null)
             m_PickIcon.SetActive(false);
@@ -236,7 +249,7 @@ public class KeyPickupZone : MonoBehaviour
             m_SpotLight.pointLightOuterRadius = m_CollectedOuterRadius;
         }
 
-        StartZoom(m_OriginalCameraSize, m_RevertZoomDuration);
+        StartZoom(m_OriginalCameraSize, m_RevertZoomDuration, m_OriginalCameraPosition);
 
         if (audioSource != null && pickupClip != null)
             audioSource.PlayOneShot(pickupClip);
@@ -258,9 +271,12 @@ public class KeyPickupZone : MonoBehaviour
         // Wait for the zoom-out and any remaining delay to finish
         yield return new WaitForSecondsRealtime(Mathf.Max(m_DisableDelay, m_RevertZoomDuration) - 0.1f);
 
-        // Guarantee FOV is fully restored even if zoom coroutine didn't finish
+        // Guarantee FOV and position are fully restored even if zoom coroutine didn't finish
         if (m_Camera != null)
+        {
             m_Camera.fieldOfView = m_OriginalCameraSize;
+            m_Camera.transform.position = m_OriginalCameraPosition;
+        }
 
         m_Key.Interact(); // notifies GameManager and calls SetActive(false)
     }
@@ -281,26 +297,30 @@ public class KeyPickupZone : MonoBehaviour
 
     // ─── Camera Zoom ─────────────────────────────────────────────────────────
 
-    private void StartZoom(float targetSize, float duration)
+    private void StartZoom(float targetSize, float duration, Vector3 targetPosition)
     {
         if (m_Camera == null) return;
         if (m_ZoomCoroutine != null) StopCoroutine(m_ZoomCoroutine);
-        m_ZoomCoroutine = StartCoroutine(ZoomRoutine(targetSize, duration));
+        m_ZoomCoroutine = StartCoroutine(ZoomRoutine(targetSize, duration, targetPosition));
     }
 
-    private IEnumerator ZoomRoutine(float targetSize, float duration)
+    private IEnumerator ZoomRoutine(float targetSize, float duration, Vector3 targetPosition)
     {
         float startSize = m_Camera.fieldOfView;
+        Vector3 startPos = m_Camera.transform.position;
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-            m_Camera.fieldOfView = Mathf.Lerp(startSize, targetSize, elapsed / duration);
+            float t = elapsed / duration;
+            m_Camera.fieldOfView = Mathf.Lerp(startSize, targetSize, t);
+            m_Camera.transform.position = Vector3.Lerp(startPos, targetPosition, t);
             yield return null;
         }
 
         m_Camera.fieldOfView = targetSize;
+        m_Camera.transform.position = targetPosition;
         m_ZoomCoroutine = null;
     }
 }
