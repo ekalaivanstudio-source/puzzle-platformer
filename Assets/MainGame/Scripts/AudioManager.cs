@@ -43,9 +43,9 @@ public class AudioManager : MonoBehaviour
     private void ValidateSources()
     {
         if (m_BackgroundSource == null) Debug.LogWarning("[AudioManager] BackgroundSource is not assigned.", this);
-        if (m_PlayerSource == null)     Debug.LogWarning("[AudioManager] PlayerSource is not assigned.", this);
-        if (m_UISource == null)         Debug.LogWarning("[AudioManager] UISource is not assigned.", this);
-        if (m_EffectSource == null)     Debug.LogWarning("[AudioManager] EffectSource is not assigned.", this);
+        if (m_PlayerSource == null) Debug.LogWarning("[AudioManager] PlayerSource is not assigned.", this);
+        if (m_UISource == null) Debug.LogWarning("[AudioManager] UISource is not assigned.", this);
+        if (m_EffectSource == null) Debug.LogWarning("[AudioManager] EffectSource is not assigned.", this);
     }
 
     /// <summary>
@@ -78,6 +78,14 @@ public class AudioManager : MonoBehaviour
         m_PlayerSource.PlayOneShot(m_JumpClip);
     }
 
+    /// <summary>Plays a one-shot death sound on the player channel.</summary>
+    public void PlayPlayerDeath(AudioClip clip)
+    {
+        if (m_PlayerSource == null || clip == null) return;
+        m_PlayerSource.Stop();
+        m_PlayerSource.PlayOneShot(clip);
+    }
+
     /// <summary>Plays a one-shot UI button click sound.</summary>
     public void PlayButtonClick()
     {
@@ -96,7 +104,7 @@ public class AudioManager : MonoBehaviour
         if (m_UISource == null || clip == null) return;
 
         m_UISource.Stop();
-        m_UISource.clip  = clip;
+        m_UISource.clip = clip;
         m_UISource.pitch = pitch;
         m_UISource.Play();
     }

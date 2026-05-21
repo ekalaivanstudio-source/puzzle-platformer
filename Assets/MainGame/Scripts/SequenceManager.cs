@@ -13,10 +13,17 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     [Tooltip("Maximum number of actions the player can queue per turn.")]
     [SerializeField] private int m_MaxSequenceLength = 6;
 
+    [Tooltip("When true the player must fill every slot before pressing Enter. " +
+             "Set false to allow submitting a partial sequence.")]
+    [SerializeField] private bool m_RequireFullSequence = true;
+
     [Tooltip("Per-action audio clips played as feedback when each action is added to the queue.")]
     [SerializeField] private ActionAudioEntry[] m_ActionAudioMap;
 
     private readonly List<ActionTypeEnum> m_Sequence = new List<ActionTypeEnum>();
+
+    // Optional correct sequence — when set, CanExecute also requires an exact match.
+    private ActionTypeEnum[] m_CorrectSequence;
 
     /// <summary>Read-only view of the current queued command sequence.</summary>
     public IReadOnlyList<ActionTypeEnum> Sequence => m_Sequence;
@@ -24,7 +31,9 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     // ─── ISequenceSource ─────────────────────────────────────────────────────
 
     public int SequenceLength => m_Sequence.Count;
-    public bool CanExecute => !IsEmpty;
+    public bool CanExecute => m_RequireFullSequence
+        ? (IsFull && IsSequenceCorrect())
+        : !IsEmpty;
 
     public ActionTypeEnum? GetActionAt(int index)
     {
@@ -45,11 +54,35 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     /// <summary>Maximum allowed number of queued actions.</summary>
     public int MaxLength => m_MaxSequenceLength;
 
+    /// <summary>Overrides the maximum sequence length at runtime (e.g. driven by a level's correct sequence).</summary>
+    public void SetMaxLength(int length) { m_MaxSequenceLength = Mathf.Max(1, length); }
+
+    /// <summary>
+    /// Registers the correct sequence for this level. When set, <see cref="CanExecute"/> will
+    /// return false unless the queued sequence exactly matches. Pass null to disable the check.
+    /// </summary>
+    public void SetCorrectSequence(ActionTypeEnum[] sequence) { m_CorrectSequence = sequence; }
+
     /// <summary>True when the queue has reached its maximum length.</summary>
     public bool IsFull => m_Sequence.Count >= m_MaxSequenceLength;
 
     /// <summary>True when no actions have been queued.</summary>
     public bool IsEmpty => m_Sequence.Count == 0;
+
+    // Returns true when no correct sequence is registered, or when the current
+    // sequence exactly matches the registered correct sequence.
+    // Slots set to ActionTypeEnum.Any are wildcards and match any queued action.
+    private bool IsSequenceCorrect()
+    {
+        if (m_CorrectSequence == null || m_CorrectSequence.Length == 0) return true;
+        if (m_Sequence.Count != m_CorrectSequence.Length) return false;
+        for (int i = 0; i < m_CorrectSequence.Length; i++)
+        {
+            if (m_CorrectSequence[i] == ActionTypeEnum.Any) continue;  // wildcard
+            if (m_Sequence[i] != m_CorrectSequence[i]) return false;
+        }
+        return true;
+    }
 
     /// <summary>Fired whenever the sequence is modified (add, remove, or clear).</summary>
     public event Action OnSequenceChanged;
