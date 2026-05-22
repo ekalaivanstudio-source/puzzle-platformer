@@ -63,6 +63,7 @@ public class PlayerController : MonoBehaviour
     private Collider2D m_Collider;
 
     private int m_MaxTimeIndex;        // snapshotted from source at turn start
+    private int m_CurrentCommandIndex; // index of the command currently executing
     private bool m_IsGamePlaying;
     private Coroutine m_ExecutionCoroutine;  // stored so it can be stopped on abort
 
@@ -131,16 +132,73 @@ public class PlayerController : MonoBehaviour
         m_ExecutionCoroutine = StartCoroutine(ExecutionLoop());
     }
 
+    /// <summary>
+    /// Aborts the current execution turn and smoothly moves the player through
+    /// <paramref name="waypoints"/> in order. Input is locked until the movement
+    /// finishes, at which point the normal end-of-turn flow resumes.
+    /// </summary>
+    public void StartWaypointTransport(Transform[] waypoints, float speed)
+    {
+        AbortExecution();
+        StartCoroutine(WaypointTransportRoutine(waypoints, speed));
+    }
+
+    private IEnumerator WaypointTransportRoutine(Transform[] waypoints, float speed)
+    {
+        float savedGravity = m_Rigidbody.gravityScale;
+        m_Rigidbody.gravityScale = 0f;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        if (m_Collider != null) m_Collider.enabled = false;
+
+        foreach (Transform target in waypoints)
+        {
+            if (target == null) continue;
+
+            float xDir = target.position.x - transform.position.x;
+            if (!Mathf.Approximately(xDir, 0f))
+                transform.localScale = new Vector3(xDir > 0f ? 1f : -1f, 1f, 1f);
+
+            m_Animator.SetBool("IsRunning", true);
+
+            while (Vector2.Distance(m_Rigidbody.position, target.position) > 0.01f)
+            {
+                Vector2 next = Vector2.MoveTowards(m_Rigidbody.position, target.position, speed * Time.fixedDeltaTime);
+                m_Rigidbody.MovePosition(next);
+                yield return new WaitForFixedUpdate();
+            }
+
+            m_Rigidbody.MovePosition(target.position);
+        }
+
+        m_Animator.SetBool("IsRunning", false);
+        m_Rigidbody.gravityScale = savedGravity;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        if (m_Collider != null) m_Collider.enabled = true;
+
+        // Resume remaining commands; if none are left, end the turn normally
+        int resumeIndex = m_CurrentCommandIndex + 1;
+        if (resumeIndex < m_MaxTimeIndex)
+        {
+            m_IsGamePlaying = true;
+            m_ExecutionCoroutine = StartCoroutine(ExecutionLoop(resumeIndex));
+        }
+        else
+        {
+            EndTurn();
+        }
+    }
+
     // ─── Execution Loop ─────────────────────────────────────────────────────────
 
     // Iterates through each beat slot, executing one command per beat.
     // A Jump immediately followed by Right or Left is treated as a combined directional jump,
     // consuming both slots as a single command.
-    private IEnumerator ExecutionLoop()
+    private IEnumerator ExecutionLoop(int startIndex = 0)
     {
-        int i = 0;
+        int i = startIndex;
         while (i < m_MaxTimeIndex && m_IsGamePlaying)
         {
+            m_CurrentCommandIndex = i;
             ActionTypeEnum? action = m_SequenceSource.GetActionAt(i);
 
             if (action != null)
@@ -155,11 +213,13 @@ public class PlayerController : MonoBehaviour
                     if (next == ActionTypeEnum.Right)
                     {
                         i++; // consume the Right slot
+                        m_CurrentCommandIndex = i;
                         yield return JumpRightCommand();
                     }
                     else if (next == ActionTypeEnum.Left)
                     {
                         i++; // consume the Left slot
+                        m_CurrentCommandIndex = i;
                         yield return JumpLeftCommand();
                     }
                     else
@@ -215,31 +275,132 @@ public class PlayerController : MonoBehaviour
         float startX = m_Rigidbody.position.x;
         float targetX = startX + distance;
         float speed = distance / m_MoveDuration;
-        float elapsed = 0f;
 
-        // Face movement direction
         transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
         m_Animator.SetBool("IsRunning", true);
         AudioManager.Instance?.PlayPlayerWalk(true);
 
-        while (elapsed < m_MoveDuration)
+        // Position-based loop: keep moving until targetX is reached.
+        // If the platform ends mid-move, stop, fall, land, then resume the remaining distance.
+        while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed))
         {
-            // Override horizontal velocity each physics step; preserve vertical (gravity/jump arc)
             m_Rigidbody.linearVelocity = new Vector2(speed, m_Rigidbody.linearVelocity.y);
-            elapsed += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
+
+            // Case 1 — early detection: front foot is off the edge but centre is still
+            //          over the platform. Walk the remaining unit first, then fall.
+            if (CheckIsGrounded() && !CheckGroundAhead(speed))
+            {
+                float sign = Mathf.Sign(speed);
+
+                // Advance to the end of the current 1-unit segment relative to startX,
+                // then clamp so we never overshoot targetX.
+                // Works correctly whether the total command distance is 1, 2, or 3 units.
+                float fallEdgeX = sign > 0f
+                    ? startX + Mathf.Floor(m_Rigidbody.position.x - startX) + 1f
+                    : startX - Mathf.Floor(startX - m_Rigidbody.position.x) - 1f;
+                fallEdgeX = sign > 0f
+                    ? Mathf.Min(fallEdgeX, targetX)
+                    : Mathf.Max(fallEdgeX, targetX);
+
+                // Disable gravity so the player walks the unit straight (no early fall).
+                float savedGravity = m_Rigidbody.gravityScale;
+                m_Rigidbody.gravityScale = 0f;
+
+                while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
+                {
+                    m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
+                    yield return new WaitForFixedUpdate();
+                }
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                // Direct assignment — bypasses physics integration for an exact snap.
+                m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
+                yield return new WaitForFixedUpdate();
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                m_Rigidbody.gravityScale = savedGravity;
+
+                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
+                if (!CheckIsGrounded())
+                {
+                    float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
+                    m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
+
+                    m_Animator.SetBool("IsRunning", false);
+                    AudioManager.Instance?.PlayPlayerWalk(false);
+
+                    yield return WaitUntilGrounded();
+                    if (!CheckIsGrounded()) yield break;
+
+                    transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
+                    m_Animator.SetBool("IsRunning", true);
+                    AudioManager.Instance?.PlayPlayerWalk(true);
+                }
+            }
+            // Case 2 — late detection: the centre has already crossed the edge in a
+            //          single physics step and CheckIsGrounded() is already false.
+            //          Require a clearly negative y-velocity (several frames of free-fall)
+            //          to avoid false-positives from single-frame ground-check flickers.
+            //          Still complete 1 unit to the next grid boundary before falling.
+            else if (!CheckIsGrounded() && m_Rigidbody.linearVelocity.y < -1f)
+            {
+                float sign = Mathf.Sign(speed);
+
+                // Same boundary logic as Case 1.
+                float fallEdgeX = sign > 0f
+                    ? startX + Mathf.Floor(m_Rigidbody.position.x - startX) + 1f
+                    : startX - Mathf.Floor(startX - m_Rigidbody.position.x) - 1f;
+                fallEdgeX = sign > 0f
+                    ? Mathf.Min(fallEdgeX, targetX)
+                    : Mathf.Max(fallEdgeX, targetX);
+
+                float savedGravity = m_Rigidbody.gravityScale;
+                m_Rigidbody.gravityScale = 0f;
+
+                while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
+                {
+                    m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
+                    yield return new WaitForFixedUpdate();
+                }
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                // Direct assignment — bypasses physics integration for an exact snap.
+                m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
+                yield return new WaitForFixedUpdate();
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                m_Rigidbody.gravityScale = savedGravity;
+
+                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
+                if (!CheckIsGrounded())
+                {
+                    float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
+                    m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
+
+                    m_Animator.SetBool("IsRunning", false);
+                    AudioManager.Instance?.PlayPlayerWalk(false);
+
+                    yield return WaitUntilGrounded();
+                    if (!CheckIsGrounded()) yield break;
+
+                    transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
+                    m_Animator.SetBool("IsRunning", true);
+                    AudioManager.Instance?.PlayPlayerWalk(true);
+                }
+            }
         }
 
-        // Zero horizontal velocity, then snap to exact X via MovePosition (respects colliders).
-        // Zero AGAIN after the FixedUpdate: MovePosition imparts implicit velocity
-        // equal to (targetX - currentX) / fixedDeltaTime which would carry into the next command.
+        // Snap to exact target X using direct assignment — no physics integration error.
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
-        m_Rigidbody.MovePosition(new Vector2(targetX, m_Rigidbody.position.y));
+        m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
         yield return new WaitForFixedUpdate();
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
 
         m_Animator.SetBool("IsRunning", false);
         AudioManager.Instance?.PlayPlayerWalk(false);
+    }
+
+    // Returns true once the player has reached or passed targetX in the direction of travel.
+    private bool HasReachedTarget(float currentX, float targetX, float speed)
+    {
+        return speed > 0f ? currentX >= targetX - 0.01f : currentX <= targetX + 0.01f;
     }
 
     // ─── Jump Logic ──────────────────────────────────────────────────────────────
@@ -384,6 +545,17 @@ public class PlayerController : MonoBehaviour
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         return Physics2D.Raycast(new Vector2(transform.position.x, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
     }
+
+    // Casts downward from the leading edge of the collider (front foot) in the
+    // direction of travel. Returns false when that foot steps off a platform.
+    private bool CheckGroundAhead(float moveDirection)
+    {
+        float sign = Mathf.Sign(moveDirection);
+        float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
+        float frontX = transform.position.x + sign * (m_Collider != null ? m_Collider.bounds.extents.x : 0.5f);
+        return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
+    }
+
 
     private void UpdateFallingAnimation()
     {
