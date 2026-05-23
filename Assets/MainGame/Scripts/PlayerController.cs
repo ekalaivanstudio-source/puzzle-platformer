@@ -12,7 +12,6 @@ using UnityEngine;
 /// sequence is interpreted as a directional jump (JumpRight / JumpLeft).
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
-[RequireComponent(typeof(Animator))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Command Settings")]
@@ -30,6 +29,8 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
+    [Tooltip("Max seconds a single movement command may run. If exceeded the turn ends (safety net for getting stuck).")]
+    [SerializeField] private float m_CommandTimeout = 3f;
 
     [Header("Ground Check")]
     [SerializeField] private LayerMask m_GroundLayer;
@@ -59,7 +60,6 @@ public class PlayerController : MonoBehaviour
 
     private ISequenceSource m_SequenceSource;
     private Rigidbody2D m_Rigidbody;
-    private Animator m_Animator;
     private Collider2D m_Collider;
 
     private int m_MaxTimeIndex;        // snapshotted from source at turn start
@@ -74,7 +74,6 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         m_Rigidbody = GetComponent<Rigidbody2D>();
-        m_Animator = GetComponent<Animator>();
         m_Collider = GetComponent<Collider2D>();
         m_StartPosition = transform.position;
 
@@ -111,6 +110,7 @@ public class PlayerController : MonoBehaviour
         if (!m_IsGamePlaying) return;
         UpdateGroundedAnimation();
         UpdateFallingAnimation();
+        CheckSpikeOverlap();
     }
 
     // ─── Public API ─────────────────────────────────────────────────────────────
@@ -158,7 +158,6 @@ public class PlayerController : MonoBehaviour
             if (!Mathf.Approximately(xDir, 0f))
                 transform.localScale = new Vector3(xDir > 0f ? 1f : -1f, 1f, 1f);
 
-            m_Animator.SetBool("IsRunning", true);
 
             while (Vector2.Distance(m_Rigidbody.position, target.position) > 0.01f)
             {
@@ -170,7 +169,6 @@ public class PlayerController : MonoBehaviour
             m_Rigidbody.MovePosition(target.position);
         }
 
-        m_Animator.SetBool("IsRunning", false);
         m_Rigidbody.gravityScale = savedGravity;
         m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
@@ -186,6 +184,50 @@ public class PlayerController : MonoBehaviour
         {
             EndTurn();
         }
+    }
+
+    /// <summary>
+    /// Moves the player through <paramref name="waypoints"/> with input locked, then ends
+    /// the turn — resetting the player to start just like a wrong-input run.
+    /// Called by InvisibleLockPoint when the player enters a trap zone.
+    /// </summary>
+    public void StartWaypointTransportThenEndTurn(Transform[] waypoints, float speed)
+    {
+        AbortExecution();
+        StartCoroutine(WaypointTransportThenEndTurnRoutine(waypoints, speed));
+    }
+
+    private IEnumerator WaypointTransportThenEndTurnRoutine(Transform[] waypoints, float speed)
+    {
+        float savedGravity = m_Rigidbody.gravityScale;
+        m_Rigidbody.gravityScale = 0f;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        if (m_Collider != null) m_Collider.enabled = false;
+
+        foreach (Transform target in waypoints)
+        {
+            if (target == null) continue;
+
+            float xDir = target.position.x - transform.position.x;
+            if (!Mathf.Approximately(xDir, 0f))
+                transform.localScale = new Vector3(xDir > 0f ? 1f : -1f, 1f, 1f);
+
+            while (Vector2.Distance(m_Rigidbody.position, target.position) > 0.01f)
+            {
+                Vector2 next = Vector2.MoveTowards(m_Rigidbody.position, target.position, speed * Time.fixedDeltaTime);
+                m_Rigidbody.MovePosition(next);
+                yield return new WaitForFixedUpdate();
+            }
+
+            m_Rigidbody.MovePosition(target.position);
+        }
+
+        m_Rigidbody.gravityScale = savedGravity;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        if (m_Collider != null) m_Collider.enabled = true;
+
+        // End the turn — player resets to start position, just like wrong inputs.
+        EndTurn();
     }
 
     // ─── Execution Loop ─────────────────────────────────────────────────────────
@@ -277,15 +319,36 @@ public class PlayerController : MonoBehaviour
         float speed = distance / m_MoveDuration;
 
         transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
-        m_Animator.SetBool("IsRunning", true);
         AudioManager.Instance?.PlayPlayerWalk(true);
 
         // Position-based loop: keep moving until targetX is reached.
         // If the platform ends mid-move, stop, fall, land, then resume the remaining distance.
-        while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed))
+        bool hitWall = false;
+        float commandElapsed = 0f;
+        while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed) && !hitWall)
         {
+            // Wall on the path — stop flush and end this command.
+            if (CheckHorizontalWall(speed))
+            {
+                m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
+                hitWall = true;
+                break;
+            }
+
             m_Rigidbody.linearVelocity = new Vector2(speed, m_Rigidbody.linearVelocity.y);
             yield return new WaitForFixedUpdate();
+            commandElapsed += Time.fixedDeltaTime;
+
+            // Safety net: if the command has been running too long the player is stuck.
+            // Abort execution and end the turn exactly like a wrong-input run.
+            if (commandElapsed >= m_CommandTimeout)
+            {
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                AudioManager.Instance?.PlayPlayerWalk(false);
+                AbortExecution();
+                StartCoroutine(WaitForEndStuff());
+                yield break;
+            }
 
             // Case 1 — early detection: front foot is off the edge but centre is still
             //          over the platform. Walk the remaining unit first, then fall.
@@ -309,9 +372,17 @@ public class PlayerController : MonoBehaviour
 
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
+                    if (CheckHorizontalWall(speed))
+                    {
+                        m_Rigidbody.gravityScale = savedGravity;
+                        m_Rigidbody.linearVelocity = Vector2.zero;
+                        hitWall = true;
+                        break;
+                    }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
                 }
+                if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
                 // Direct assignment — bypasses physics integration for an exact snap.
                 m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
@@ -325,14 +396,12 @@ public class PlayerController : MonoBehaviour
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
                     m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
 
-                    m_Animator.SetBool("IsRunning", false);
                     AudioManager.Instance?.PlayPlayerWalk(false);
 
                     yield return WaitUntilGrounded();
                     if (!CheckIsGrounded()) yield break;
 
                     transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
-                    m_Animator.SetBool("IsRunning", true);
                     AudioManager.Instance?.PlayPlayerWalk(true);
                 }
             }
@@ -358,9 +427,17 @@ public class PlayerController : MonoBehaviour
 
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
+                    if (CheckHorizontalWall(speed))
+                    {
+                        m_Rigidbody.gravityScale = savedGravity;
+                        m_Rigidbody.linearVelocity = Vector2.zero;
+                        hitWall = true;
+                        break;
+                    }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
                 }
+                if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
                 // Direct assignment — bypasses physics integration for an exact snap.
                 m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
@@ -374,26 +451,24 @@ public class PlayerController : MonoBehaviour
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
                     m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
 
-                    m_Animator.SetBool("IsRunning", false);
                     AudioManager.Instance?.PlayPlayerWalk(false);
 
                     yield return WaitUntilGrounded();
                     if (!CheckIsGrounded()) yield break;
 
                     transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
-                    m_Animator.SetBool("IsRunning", true);
                     AudioManager.Instance?.PlayPlayerWalk(true);
                 }
             }
         }
 
-        // Snap to exact target X using direct assignment — no physics integration error.
+        // Snap to exact target X — only when not stopped by a wall.
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
-        m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
+        if (!hitWall)
+            m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
         yield return new WaitForFixedUpdate();
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
 
-        m_Animator.SetBool("IsRunning", false);
         AudioManager.Instance?.PlayPlayerWalk(false);
     }
 
@@ -462,8 +537,6 @@ public class PlayerController : MonoBehaviour
 
         // Apply initial velocity — set once, physics handles the arc naturally
         m_Rigidbody.linearVelocity = new Vector2(vx, v0y);
-        m_Animator.SetTrigger("Jump");
-        m_Animator.SetBool("IsGrounded", false);
 
         // Allow two physics steps before polling for landing
         yield return new WaitForFixedUpdate();
@@ -535,7 +608,38 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateGroundedAnimation()
     {
-        m_Animator.SetBool("IsGrounded", CheckIsGrounded());
+        //        m_Animator.SetBool("IsGrounded", CheckIsGrounded());
+    }
+
+    // Continuous spike check — covers moving spikes that slide into the player via
+    // transform.position, which don’t reliably fire OnTriggerEnter2D without a Rigidbody2D.
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (!m_IsGamePlaying) return;
+
+        if (other.CompareTag("Spike"))
+        {
+            AbortExecution();
+            StartCoroutine(DeathRoutine());
+        }
+    }
+    private void CheckSpikeOverlap()
+    {
+        if (m_Collider == null) return;
+
+        Collider2D[] hits = Physics2D.OverlapBoxAll(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
+
+        foreach (Collider2D hit in hits)
+        {
+            if (hit.gameObject == gameObject) continue;
+            if (!hit.CompareTag("Spike")) continue;
+
+            AbortExecution();
+            StartCoroutine(DeathRoutine());
+            return;
+        }
     }
 
     private bool CheckIsGrounded()
@@ -556,11 +660,26 @@ public class PlayerController : MonoBehaviour
         return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
     }
 
+    // BoxCasts horizontally to detect a wall in the direction of travel.
+    // Returns true if something in m_GroundLayer blocks the next step.
+    private bool CheckHorizontalWall(float signedSpeed)
+    {
+        if (m_Collider == null || Mathf.Approximately(signedSpeed, 0f)) return false;
+
+        float sign = Mathf.Sign(signedSpeed);
+        // OverlapBox on a thin slice just outside the player's side face.
+        // Unlike BoxCast, OverlapBox detects walls the player is already touching.
+        Vector2 sideCenter = new Vector2(
+            m_Collider.bounds.center.x + sign * (m_Collider.bounds.extents.x + 0.04f),
+            m_Collider.bounds.center.y);
+        Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
+
+        return Physics2D.OverlapBox(sideCenter, sideSize, 0f, m_GroundLayer) != null;
+    }
 
     private void UpdateFallingAnimation()
     {
         float falling = m_Rigidbody.linearVelocity.y < 0f ? 1f : 0f;
-        m_Animator.SetFloat("Falling", falling);
     }
 
     // ─── Audio ───────────────────────────────────────────────────────────────────
@@ -593,7 +712,6 @@ public class PlayerController : MonoBehaviour
         }
 
         m_Rigidbody.linearVelocity = Vector2.zero;
-        m_Animator.SetBool("IsRunning", false);
         AudioManager.Instance?.PlayPlayerWalk(false);
     }
 

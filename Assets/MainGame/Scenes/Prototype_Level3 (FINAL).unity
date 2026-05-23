@@ -3311,7 +3311,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &810001448
 Transform:
   m_ObjectHideFlags: 0
@@ -6672,6 +6672,7 @@ MonoBehaviour:
   m_RevertZoomDuration: 0.5
   audioSource: {fileID: 1939585375}
   pickupClip: {fileID: 8300000, guid: d0c516c414c17534d8a24a6c465d6932, type: 3}
+  doorCollider: {fileID: 0}
 --- !u!114 &1939585374
 MonoBehaviour:
   m_ObjectHideFlags: 0

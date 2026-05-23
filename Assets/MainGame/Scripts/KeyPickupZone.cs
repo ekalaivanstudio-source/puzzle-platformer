@@ -54,6 +54,7 @@ public class KeyPickupZone : MonoBehaviour
 
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip pickupClip;
+    [SerializeField] private BoxCollider2D doorCollider; // optional collider to disable when the key is collected
 
     private Key m_Key;
     private Transform m_PlayerTransform;
@@ -255,6 +256,8 @@ public class KeyPickupZone : MonoBehaviour
             audioSource.PlayOneShot(pickupClip);
 
         StartCoroutine(CollectRoutine());
+        if (doorCollider != null)
+            doorCollider.enabled = true;
     }
 
     private IEnumerator CollectRoutine()
