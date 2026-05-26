@@ -6946,6 +6946,7 @@ MonoBehaviour:
   m_JumpHeight: 3.5
   m_JumpForwardDistance: 4
   m_BeatGapTime: 0
+  m_CommandTimeout: 3
   m_GroundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -7131,7 +7132,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.9, y: 1}
   m_EdgeRadius: 0
 --- !u!114 &996023563
 MonoBehaviour:
@@ -10418,6 +10419,7 @@ MonoBehaviour:
   m_RevertZoomDuration: 0.5
   audioSource: {fileID: 1939585375}
   pickupClip: {fileID: 8300000, guid: d0c516c414c17534d8a24a6c465d6932, type: 3}
+  doorCollider: {fileID: 0}
 --- !u!114 &1939585374
 MonoBehaviour:
   m_ObjectHideFlags: 0
