@@ -111,8 +111,18 @@ public class PlayerInputUIHelper : MonoBehaviour
         // itself just started the blink and the RemoveLastAction callback must not kill it.
         if (!m_IsRejecting)
             StopBlinkImmediate();
-        int count = m_SequenceManager != null ? m_SequenceManager.Sequence.Count : 0;
+        // Count only non-Interact actions for UI display
+        int totalCount = m_SequenceManager != null ? m_SequenceManager.Sequence.Count : 0;
         int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
+        // Build a filtered list of non-Interact actions
+        var filteredActions = new System.Collections.Generic.List<ActionTypeEnum>();
+        if (m_SequenceManager != null)
+        {
+            foreach (var act in m_SequenceManager.Sequence)
+                if (act != ActionTypeEnum.Interact)
+                    filteredActions.Add(act);
+        }
+        int count = filteredActions.Count;
 
         // Validate the newly added action against the correct sequence.
         // Slots marked ActionTypeEnum.Any are wildcards — any input is accepted.
@@ -147,7 +157,7 @@ public class PlayerInputUIHelper : MonoBehaviour
             SetAlpha(inputsUI[i], i < count ? m_ActiveAlpha : m_InactiveAlpha);
         }
 
-        // When a wildcard (Any) slot is filled, show the sprite of the actual input chosen.
+        // When a wildcard (Any) slot is filled, show the sprite of the actual input chosen, but not for Interact
         if (count > m_PreviousSequenceCount)
         {
             int newIndex = count - 1;
@@ -155,9 +165,13 @@ public class PlayerInputUIHelper : MonoBehaviour
                 && m_CorrectSequence[newIndex] == ActionTypeEnum.Any
                 && newIndex < inputsUI.Length && inputsUI[newIndex] != null)
             {
-                Sprite actualSprite = GetSpriteForAction(m_SequenceManager.Sequence[newIndex]);
-                if (actualSprite != null)
-                    inputsUI[newIndex].sprite = actualSprite;
+                var actualAction = filteredActions[newIndex];
+                if (actualAction != ActionTypeEnum.Interact)
+                {
+                    Sprite actualSprite = GetSpriteForAction(actualAction);
+                    if (actualSprite != null)
+                        inputsUI[newIndex].sprite = actualSprite;
+                }
             }
         }
 
