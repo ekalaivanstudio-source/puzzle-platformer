@@ -469,6 +469,16 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForFixedUpdate();
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
 
+        // Safety: if the snap placed the player past a platform edge (center raycast
+        // returned true at fallEdgeX but the player is actually beyond the tile),
+        // wait for them to fall and land before the next command begins.
+        if (!hitWall && !CheckIsGrounded())
+        {
+            yield return WaitUntilGrounded();
+            m_Rigidbody.linearVelocity = Vector2.zero;
+        }
+
+        SnapToGrid();
         AudioManager.Instance?.PlayPlayerWalk(false);
     }
 
@@ -557,6 +567,7 @@ public class PlayerController : MonoBehaviour
             yield return new WaitForFixedUpdate();
         }
         m_Rigidbody.linearVelocity = Vector2.zero;
+        SnapToGrid();
     }
 
     // Waits until the player is grounded on the DESCENDING side of the arc.
@@ -648,6 +659,17 @@ public class PlayerController : MonoBehaviour
         // regardless of where the character pivot is placed.
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         return Physics2D.Raycast(new Vector2(transform.position.x, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
+    }
+
+    // Rounds the rigidbody position to the nearest 0.5-unit grid, eliminating the
+    // floating-point drift that causes colliders to slightly intersect surfaces when
+    // Z-rotation is frozen (preventing the physics solver from self-correcting).
+    private void SnapToGrid()
+    {
+        Vector2 pos = m_Rigidbody.position;
+        pos.x = Mathf.Round(pos.x * 2f) / 2f;
+        pos.y = Mathf.Round(pos.y * 2f) / 2f;
+        m_Rigidbody.position = pos;
     }
 
     // Casts downward from the leading edge of the collider (front foot) in the
