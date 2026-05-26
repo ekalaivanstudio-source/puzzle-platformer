@@ -233,8 +233,6 @@ public class PlayerController : MonoBehaviour
     // ─── Execution Loop ─────────────────────────────────────────────────────────
 
     // Iterates through each beat slot, executing one command per beat.
-    // A Jump immediately followed by Right or Left is treated as a combined directional jump,
-    // consuming both slots as a single command.
     private IEnumerator ExecutionLoop(int startIndex = 0)
     {
         int i = startIndex;
@@ -246,37 +244,14 @@ public class PlayerController : MonoBehaviour
             if (action != null)
             {
                 PlayBeatAudio(action.Value);
-
-                if (action.Value == ActionTypeEnum.Jump)
+                switch (action.Value)
                 {
-                    // Peek at the next slot — Jump+Right/Left = directional jump (consumes 2 slots)
-                    ActionTypeEnum? next = m_SequenceSource.GetActionAt(i + 1);
-
-                    if (next == ActionTypeEnum.Right)
-                    {
-                        i++; // consume the Right slot
-                        m_CurrentCommandIndex = i;
-                        yield return JumpRightCommand();
-                    }
-                    else if (next == ActionTypeEnum.Left)
-                    {
-                        i++; // consume the Left slot
-                        m_CurrentCommandIndex = i;
-                        yield return JumpLeftCommand();
-                    }
-                    else
-                    {
-                        yield return JumpCommand();
-                    }
-                }
-                else
-                {
-                    switch (action.Value)
-                    {
-                        case ActionTypeEnum.Left: yield return MoveLeftCommand(); break;
-                        case ActionTypeEnum.Right: yield return MoveRightCommand(); break;
-                        case ActionTypeEnum.Interact: yield return InteractCommand(); break;
-                    }
+                    case ActionTypeEnum.Left: yield return MoveLeftCommand(); break;
+                    case ActionTypeEnum.Right: yield return MoveRightCommand(); break;
+                    case ActionTypeEnum.Jump: yield return JumpCommand(); break;
+                    case ActionTypeEnum.JumpRight: yield return JumpRightCommand(); break;
+                    case ActionTypeEnum.JumpLeft: yield return JumpLeftCommand(); break;
+                    case ActionTypeEnum.Interact: yield return InteractCommand(); break;
                 }
             }
 

@@ -43,6 +43,8 @@ public class PlayerInputUIHelper : MonoBehaviour
     [SerializeField] private Sprite m_LeftSprite;
     [SerializeField] private Sprite m_RightSprite;
     [SerializeField] private Sprite m_JumpSprite;
+    [SerializeField] private Sprite m_JumpRightSprite;
+    [SerializeField] private Sprite m_JumpLeftSprite;
     [SerializeField] private Sprite m_InteractSprite;
     [SerializeField] private Sprite m_AnySprite;
 
@@ -112,7 +114,6 @@ public class PlayerInputUIHelper : MonoBehaviour
         if (!m_IsRejecting)
             StopBlinkImmediate();
         // Count only non-Interact actions for UI display
-        int totalCount = m_SequenceManager != null ? m_SequenceManager.Sequence.Count : 0;
         int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
         // Build a filtered list of non-Interact actions
         var filteredActions = new System.Collections.Generic.List<ActionTypeEnum>();
@@ -132,7 +133,7 @@ public class PlayerInputUIHelper : MonoBehaviour
             int newIndex = count - 1;
             if (newIndex < m_CorrectSequence.Length
                 && m_CorrectSequence[newIndex] != ActionTypeEnum.Any
-                && m_SequenceManager.Sequence[newIndex] != m_CorrectSequence[newIndex])
+                && filteredActions[newIndex] != m_CorrectSequence[newIndex])
             {
                 // Visual feedback before removing
                 int slotIndex = Mathf.Clamp(newIndex, 0, inputsUI.Length - 1);
@@ -233,6 +234,8 @@ public class PlayerInputUIHelper : MonoBehaviour
             ActionTypeEnum.Left => m_LeftSprite,
             ActionTypeEnum.Right => m_RightSprite,
             ActionTypeEnum.Jump => m_JumpSprite,
+            ActionTypeEnum.JumpRight => m_JumpRightSprite != null ? m_JumpRightSprite : m_JumpSprite,
+            ActionTypeEnum.JumpLeft => m_JumpLeftSprite != null ? m_JumpLeftSprite : m_JumpSprite,
             ActionTypeEnum.Interact => m_InteractSprite,
             ActionTypeEnum.Any => m_AnySprite,
             _ => null

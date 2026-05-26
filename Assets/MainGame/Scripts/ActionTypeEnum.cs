@@ -12,5 +12,7 @@ public enum ActionTypeEnum
     /// Wildcard slot in a correct-sequence definition — the player may enter
     /// any action here and it will always be accepted.
     /// </summary>
-    Any
+    Any,
+    JumpRight,
+    JumpLeft
 }
