@@ -25,6 +25,8 @@ public class SequenceDisplay : MonoBehaviour
             { ActionTypeEnum.Left,     "◀" },
             { ActionTypeEnum.Right,    "▶" },
             { ActionTypeEnum.Jump,     "▲" },
+            { ActionTypeEnum.JumpRight,"⤴" },
+            { ActionTypeEnum.JumpLeft, "⤶" },
             { ActionTypeEnum.Interact, "✦" }
         };
 

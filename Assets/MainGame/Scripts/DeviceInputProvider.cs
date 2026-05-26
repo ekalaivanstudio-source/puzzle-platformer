@@ -10,8 +10,9 @@ using UnityEngine.InputSystem;
 /// Actions mapped:
 ///   Left/Right/Jump/Interact → adds to SequenceManager queue
 ///   Submit (Enter / Gamepad Start) → triggers execution via GameManager
-///   Undo (Backspace / Gamepad B)   → removes last queued action
+///   Undo/Back (Backspace / Gamepad B) → removes last queued action
 ///   Clear (Delete / Gamepad Select) → clears entire queue
+///   Restart (R) → reloads the current level
 /// </summary>
 public class DeviceInputProvider : MonoBehaviour, IInputProvider
 {
@@ -27,20 +28,37 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
     private InputAction m_SubmitAction;
     private InputAction m_UndoAction;
     private InputAction m_ClearAction;
+    private InputAction m_RestartAction;
+    private bool m_IsJumpHeld;
+    private bool m_JumpComboQueued;
 
     // ─── IInputProvider ──────────────────────────────────────────────────────
 
     public bool IsEnabled { get; private set; }
 
     /// <summary>
-    /// Enables or disables the entire InputActionAsset.
+    /// Enables or disables gameplay inputs.
+    /// Restart remains enabled so R can reload even during execution.
     /// Called by InputModeManager on mode switch and by GameManager during execution.
     /// </summary>
     public void SetEnabled(bool enabled)
     {
         IsEnabled = enabled;
-        if (enabled) m_InputActionAsset?.Enable();
-        else m_InputActionAsset?.Disable();
+        if (!enabled)
+        {
+            m_IsJumpHeld = false;
+            m_JumpComboQueued = false;
+        }
+
+        if (enabled)
+        {
+            m_InputActionAsset?.Enable();
+        }
+        else
+        {
+            m_InputActionAsset?.Disable();
+            m_RestartAction?.Enable();
+        }
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
@@ -58,8 +76,11 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
         m_JumpAction = map.FindAction("Jump", throwIfNotFound: false);
         m_InteractAction = map.FindAction("Interact", throwIfNotFound: false);
         m_SubmitAction = map.FindAction("Submit", throwIfNotFound: false);
-        m_UndoAction = map.FindAction("Undo", throwIfNotFound: false);
+        // Support both action names used across different input-asset revisions.
+        m_UndoAction = map.FindAction("Undo", throwIfNotFound: false)
+            ?? map.FindAction("Back", throwIfNotFound: false);
         m_ClearAction = map.FindAction("Clear", throwIfNotFound: false);
+        m_RestartAction = map.FindAction("Restart", throwIfNotFound: false);
     }
 
     private void OnEnable() => RegisterListeners(true);
@@ -73,32 +94,94 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
         {
             if (m_LeftAction != null) m_LeftAction.performed += OnLeft;
             if (m_RightAction != null) m_RightAction.performed += OnRight;
-            if (m_JumpAction != null) m_JumpAction.performed += OnJump;
+            if (m_JumpAction != null)
+            {
+                m_JumpAction.started += OnJumpStarted;
+                m_JumpAction.canceled += OnJumpCanceled;
+            }
             if (m_InteractAction != null) m_InteractAction.performed += OnInteract;
             if (m_SubmitAction != null) m_SubmitAction.performed += OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed += OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed += OnClear;
+            if (m_RestartAction != null) m_RestartAction.performed += OnRestart;
         }
         else
         {
             if (m_LeftAction != null) m_LeftAction.performed -= OnLeft;
             if (m_RightAction != null) m_RightAction.performed -= OnRight;
-            if (m_JumpAction != null) m_JumpAction.performed -= OnJump;
+            if (m_JumpAction != null)
+            {
+                m_JumpAction.started -= OnJumpStarted;
+                m_JumpAction.canceled -= OnJumpCanceled;
+            }
             if (m_InteractAction != null) m_InteractAction.performed -= OnInteract;
             if (m_SubmitAction != null) m_SubmitAction.performed -= OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed -= OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed -= OnClear;
+            if (m_RestartAction != null) m_RestartAction.performed -= OnRestart;
         }
     }
 
     // ─── Callbacks ───────────────────────────────────────────────────────────
 
-    private void OnLeft(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.AddAction(ActionTypeEnum.Left); }
-    private void OnRight(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.AddAction(ActionTypeEnum.Right); }
-    private void OnJump(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.AddAction(ActionTypeEnum.Jump); }
+    private void OnLeft(InputAction.CallbackContext c)
+    {
+        if (!IsEnabled) return;
+
+        bool isJumpHeldNow = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
+        if (isJumpHeldNow && !m_JumpComboQueued)
+        {
+            // Up (held) + Left is a single directional jump input.
+            m_JumpComboQueued = true;
+            m_SequenceManager?.AddAction(ActionTypeEnum.JumpLeft);
+            return;
+        }
+
+        m_SequenceManager?.AddAction(ActionTypeEnum.Left);
+    }
+
+    private void OnRight(InputAction.CallbackContext c)
+    {
+        if (!IsEnabled) return;
+
+        bool isJumpHeldNow = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
+        if (isJumpHeldNow && !m_JumpComboQueued)
+        {
+            // Up (held) + Right is a single directional jump input.
+            m_JumpComboQueued = true;
+            m_SequenceManager?.AddAction(ActionTypeEnum.JumpRight);
+            return;
+        }
+
+        m_SequenceManager?.AddAction(ActionTypeEnum.Right);
+    }
+
+    private void OnJumpStarted(InputAction.CallbackContext c)
+    {
+        if (!IsEnabled) return;
+        m_IsJumpHeld = true;
+        m_JumpComboQueued = false;
+    }
+
+    private void OnJumpCanceled(InputAction.CallbackContext c)
+    {
+        if (!IsEnabled)
+        {
+            m_IsJumpHeld = false;
+            m_JumpComboQueued = false;
+            return;
+        }
+
+        if (!m_JumpComboQueued)
+            m_SequenceManager?.AddAction(ActionTypeEnum.Jump);
+
+        m_IsJumpHeld = false;
+        m_JumpComboQueued = false;
+    }
     private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.AddAction(ActionTypeEnum.Interact); }
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.RemoveLastAction(); }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.ClearSequence(); }
+    private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }
 
     // Submit triggers execution through GameManager (same path as the UI Play button)
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) GameManager.Instance?.OnPlayClicked(); }

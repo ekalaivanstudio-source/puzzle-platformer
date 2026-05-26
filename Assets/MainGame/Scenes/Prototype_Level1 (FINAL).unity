@@ -4720,12 +4720,14 @@ MonoBehaviour:
   buttonIndication: {fileID: 2132122760605627373, guid: 46cc7edb32213ab48a2d92dbc096d9ad, type: 3}
   keyPressClip: {fileID: 8300000, guid: a7ffe37fd212ae24d8e871117ca955d8, type: 3}
   audioSource: {fileID: 1012044808}
-  m_CorrectSequence: 010000000100000002000000010000000100000001000000
-  m_LeftSprite: {fileID: 0}
-  m_RightSprite: {fileID: 0}
-  m_JumpSprite: {fileID: 0}
-  m_InteractSprite: {fileID: 0}
-  m_AnySprite: {fileID: 0}
+  m_CorrectSequence: 040000000400000004000000040000000400000004000000
+  m_LeftSprite: {fileID: -1744923327, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_RightSprite: {fileID: 133550677, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_JumpSprite: {fileID: -987663258, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_JumpRightSprite: {fileID: 1796221357, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_JumpLeftSprite: {fileID: 1827241047, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_InteractSprite: {fileID: 1001264660, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
+  m_AnySprite: {fileID: -431508973, guid: abc4291a3508ae34181e37bc0cca3580, type: 3}
   m_WrongKeyClip: {fileID: 8300000, guid: 3da427dfcd2f8774fb93a1b315cfbc72, type: 3}
   m_WrongColor: {r: 1, g: 0, b: 0, a: 1}
   m_BlinkDuration: 0.12
@@ -5111,7 +5113,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SequenceManager
   m_MaxSequenceLength: 6
-  m_RequireFullSequence: 1
+  m_RequireFullSequence: 0
   m_ActionAudioMap: []
 --- !u!114 &1148315905
 MonoBehaviour:
