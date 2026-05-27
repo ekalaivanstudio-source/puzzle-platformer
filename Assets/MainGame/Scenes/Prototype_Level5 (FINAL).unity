@@ -1063,9 +1063,9 @@ CompositeCollider2D:
     m_ColliderPaths:
     - - X: 90000000
         Y: 100000000
-      - X: 10000000
+      - X: 20000000
         Y: 100000000
-      - X: 10000000
+      - X: 20000000
         Y: 90000000
       - X: 90000000
         Y: 90000000
@@ -1185,8 +1185,8 @@ CompositeCollider2D:
     m_Paths:
     - - {x: 8.99997, y: 9}
       - {x: 8.99997, y: 10}
-      - {x: 1, y: 9.99997}
-      - {x: 1.0000293, y: 9}
+      - {x: 2, y: 9.99997}
+      - {x: 2.0000293, y: 9}
     - - {x: -3.0000293, y: 7}
       - {x: -3.0000293, y: 10}
       - {x: -10, y: 9.99997}
@@ -3637,16 +3637,6 @@ Tilemap:
       m_TileObjectToInstantiateIndex: 65535
       dummyAlignment: 0
       m_AllTileFlags: 1073741825
-  - first: {x: 1, y: 9, z: 0}
-    second:
-      serializedVersion: 2
-      m_TileIndex: 4
-      m_TileSpriteIndex: 4
-      m_TileMatrixIndex: 0
-      m_TileColorIndex: 0
-      m_TileObjectToInstantiateIndex: 65535
-      dummyAlignment: 0
-      m_AllTileFlags: 1073741825
   - first: {x: 2, y: 9, z: 0}
     second:
       serializedVersion: 2
@@ -3732,7 +3722,7 @@ Tilemap:
     m_RefCount: 17
     m_Data: {fileID: 11400000, guid: 5be327446504caf4994d081aef3e37fe, type: 2}
   - serializedVersion: 2
-    m_RefCount: 18
+    m_RefCount: 17
     m_Data: {fileID: 11400000, guid: ef6d39b7e09180e489e9ba132cc62125, type: 2}
   - serializedVersion: 2
     m_RefCount: 2
@@ -3757,7 +3747,7 @@ Tilemap:
     m_RefCount: 17
     m_Data: {fileID: 1227525089, guid: b20b64f2cbfcb0540a736571f0d73d74, type: 3}
   - serializedVersion: 2
-    m_RefCount: 18
+    m_RefCount: 17
     m_Data: {fileID: 551606349, guid: b20b64f2cbfcb0540a736571f0d73d74, type: 3}
   - serializedVersion: 2
     m_RefCount: 2
@@ -3770,7 +3760,7 @@ Tilemap:
     m_Data: {fileID: -782644222, guid: b20b64f2cbfcb0540a736571f0d73d74, type: 3}
   m_TileMatrixArray:
   - serializedVersion: 2
-    m_RefCount: 234
+    m_RefCount: 233
     m_Data:
       e00: 1
       e01: 0
@@ -3790,7 +3780,7 @@ Tilemap:
       e33: 1
   m_TileColorArray:
   - serializedVersion: 2
-    m_RefCount: 234
+    m_RefCount: 233
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   m_TileObjectToInstantiateArray: []
   m_AnimationFrameRate: 1
@@ -5109,6 +5099,7 @@ MonoBehaviour:
   m_MoveDuration: 0.45
   m_JumpHeight: 4.5
   m_JumpForwardDistance: 4
+  m_JumpDuration: 1
   m_BeatGapTime: 0
   m_CommandTimeout: 3
   m_GroundLayer:

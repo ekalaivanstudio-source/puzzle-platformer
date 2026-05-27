@@ -27,6 +27,9 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Horizontal distance (units) traveled during a JumpRight or JumpLeft command.")]
     [SerializeField] private float m_JumpForwardDistance = 2f;
 
+    [Tooltip("Duration (seconds) to complete a Jump command.")]
+    [SerializeField] private float m_JumpDuration = 0.6f;
+
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
     [Tooltip("Max seconds a single movement command may run. If exceeded the turn ends (safety net for getting stuck).")]
@@ -99,6 +102,7 @@ public class PlayerController : MonoBehaviour
         if (m_MoveDuration <= 0f) m_MoveDuration = 0.4f;
         if (m_JumpHeight <= 0f) m_JumpHeight = 3f;
         if (m_JumpForwardDistance <= 0f) m_JumpForwardDistance = 2f;
+        if (m_JumpDuration <= 0f) m_JumpDuration = 0.6f;
         if (m_BeatGapTime < 0f) m_BeatGapTime = 0f;
         if (m_GroundCheckDistance <= 0f) m_GroundCheckDistance = 0.1f;
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
@@ -472,8 +476,14 @@ public class PlayerController : MonoBehaviour
     // surface height; kinematics then gives the exact air time to that height.
     private IEnumerator PerformJump(float horizontalDistance)
     {
-        float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
-        float v0y = Mathf.Sqrt(2f * g * m_JumpHeight);          // v = sqrt(2gh)
+        // Derive effective gravity so the arc peaks at m_JumpHeight in exactly half of m_JumpDuration.
+        // g_eff = 2h / t_half^2   →   v0y = g_eff * t_half = 2h / t_half
+        float tHalf = m_JumpDuration * 0.5f;
+        float gEff = 2f * m_JumpHeight / (tHalf * tHalf);
+        float v0y = gEff * tHalf;
+
+        float savedGravityScale = m_Rigidbody.gravityScale;
+        m_Rigidbody.gravityScale = gEff / Mathf.Abs(Physics2D.gravity.y);
 
         float startX = m_Rigidbody.position.x;
         float startY = m_Rigidbody.position.y;
@@ -501,18 +511,18 @@ public class PlayerController : MonoBehaviour
                 ? (hit.point.y + footOffset) - startY   // elevated (+) or lowered (-)
                 : 0f;                                    // no hit → assume flat ground
 
-            // Solve for descending-arc landing time: dY = v0y*t - 0.5*g*t^2
-            //   → t = (v0y + sqrt(v0y^2 - 2*g*dY)) / g
-            float disc = v0y * v0y - 2f * g * dY;
+            // Solve for descending-arc landing time using effective gravity.
+            // dY = v0y*t - 0.5*gEff*t^2  →  t = (v0y + sqrt(v0y^2 - 2*gEff*dY)) / gEff
+            float disc = v0y * v0y - 2f * gEff * dY;
             if (disc >= 0f)
             {
-                float tLand = (v0y + Mathf.Sqrt(disc)) / g;
-                vx = tLand > 0f ? horizontalDistance / tLand : horizontalDistance / (2f * v0y / g);
+                float tLand = (v0y + Mathf.Sqrt(disc)) / gEff;
+                vx = tLand > 0f ? horizontalDistance / tLand : horizontalDistance / m_JumpDuration;
             }
             else
             {
                 // Jump height can't reach dY — fallback to flat-ground vx
-                vx = horizontalDistance / (2f * v0y / g);
+                vx = horizontalDistance / m_JumpDuration;
             }
         }
 
@@ -529,6 +539,7 @@ public class PlayerController : MonoBehaviour
 
         yield return WaitUntilGrounded();
 
+        m_Rigidbody.gravityScale = savedGravityScale;
         m_Rigidbody.linearVelocity = Vector2.zero;
 
         // Only snap to targetX if the player landed close to it (normal arc).
