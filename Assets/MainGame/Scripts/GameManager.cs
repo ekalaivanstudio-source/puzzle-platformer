@@ -23,6 +23,9 @@ public class GameManager : MonoBehaviour
     /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
     public static event System.Action OnTurnReset;
 
+    /// <summary>Fired when execution begins so grid/interactables can activate during a run.</summary>
+    public static event System.Action OnExecutionStarted;
+
     // Prevents duplicate GameWin/GameOver calls within the same execution turn
     private bool m_IsGameOver;
 
@@ -64,6 +67,7 @@ public class GameManager : MonoBehaviour
         m_DeviceInputProvider?.SetEnabled(false); // block keyboard/gamepad during execution
         m_UIManager?.HidePopup();
         m_UIManager?.LockUI();
+        OnExecutionStarted?.Invoke();
         m_PlayerController?.OnGamePlayStart();
     }
 
