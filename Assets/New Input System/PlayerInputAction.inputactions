@@ -79,6 +79,24 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Dash",
+                    "type": "Button",
+                    "id": "415df32c-ec0e-453a-9ee2-945159c938cd",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "GroundPound",
+                    "type": "Button",
+                    "id": "6f1533a6-2a9d-4eef-b507-39dbb507d7b0",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "GridSelection",
                     "type": "Button",
                     "id": "d585aedc-d106-4f4e-adb9-65b50bc589d7",
@@ -174,6 +192,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "Restart",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "9567ad35-e6f8-4c7b-8692-9f077af467c3",
+                    "path": "<Keyboard>/d",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Dash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f50b4601-3036-4bdf-b2d5-af08442a6a8d",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "GroundPound",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

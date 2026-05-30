@@ -32,22 +32,38 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
+
+    [Header("Dash Settings")]
+    [Tooltip("Horizontal distance (units) traveled in one Dash command.")]
+    [SerializeField] private float m_DashDistance = 4f;
+    [Tooltip("Duration (seconds) to complete the Dash command.")]
+    [SerializeField] private float m_DashDuration = 0.2f;
+
+    [Header("Ground Pound Settings")]
+    [Tooltip("Downward speed (units/s) applied when the player ground-pounds from mid-air.")]
+    [SerializeField] private float m_GroundPoundSpeed = 20f;
     [Tooltip("Max seconds a single movement command may run. If exceeded the turn ends (safety net for getting stuck).")]
     [SerializeField] private float m_CommandTimeout = 3f;
 
     [Header("Ground Check")]
     [SerializeField] private LayerMask m_GroundLayer;
-    [Tooltip("Raycast distance below the player used to detect ground contact.")]
-    [SerializeField] private float m_GroundCheckDistance = 0.1f;
+    [Tooltip("Radius of the overlap circle used to detect ground contact. Increase if the player gets stuck when half-inside a surface.")]
+    [SerializeField] private float m_GroundCheckRadius = 0.15f;
+    [Tooltip("How far below the collider bottom the circle centre is placed.")]
+    [SerializeField] private float m_GroundCheckDistance = 0.05f;
 
     [Header("Interaction")]
     [Tooltip("Radius of the overlap circle used to detect interactable objects.")]
     [SerializeField] private float m_InteractRadius = 0.5f;
     [SerializeField] private LayerMask m_InteractLayer;
+    [Tooltip("Layer that patrol enemies live on. Enemies on this layer are destroyed by Dash and GroundPound.")]
+    [SerializeField] private LayerMask m_EnemyLayer;
 
     [Header("References")]
     [Tooltip("Assign the SequenceSourceRouter — routes reads to the active input mode automatically.")]
     [SerializeField] private MonoBehaviour m_SequenceSourceObject;
+    [Tooltip("Assign DeviceInputProvider to enable real-time Dash / GroundPound interrupts during execution.")]
+    [SerializeField] private DeviceInputProvider m_DeviceInputProvider;
     [Tooltip("UI object shown for 2 seconds when the player reaches the door without the key.")]
     [SerializeField] private GameObject m_NoKeyPopup;
     [Tooltip("UI object shown for 2 seconds on win before restarting.")]
@@ -71,6 +87,9 @@ public class PlayerController : MonoBehaviour
     private Coroutine m_ExecutionCoroutine;  // stored so it can be stopped on abort
 
     private Vector3 m_StartPosition;
+    private float m_OriginalGravityScale;
+
+    private enum InterruptAction { Dash, GroundPound }
 
     // ─── Unity Lifecycle ────────────────────────────────────────────────────────
 
@@ -79,11 +98,27 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody = GetComponent<Rigidbody2D>();
         m_Collider = GetComponent<Collider2D>();
         m_StartPosition = transform.position;
+        m_OriginalGravityScale = m_Rigidbody.gravityScale;
 
         m_SequenceSource = m_SequenceSourceObject as ISequenceSource;
 
         if (m_SequenceSource == null)
             Debug.LogError("[PlayerController] SequenceSourceObject must implement ISequenceSource — assign a SequenceSourceRouter.", this);
+
+        if (m_DeviceInputProvider != null)
+        {
+            m_DeviceInputProvider.OnDashPressed += OnDashInterruptRequested;
+            m_DeviceInputProvider.OnGroundPoundPressed += OnGroundPoundInterruptRequested;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (m_DeviceInputProvider != null)
+        {
+            m_DeviceInputProvider.OnDashPressed -= OnDashInterruptRequested;
+            m_DeviceInputProvider.OnGroundPoundPressed -= OnGroundPoundInterruptRequested;
+        }
     }
 
     private void Start()
@@ -104,8 +139,12 @@ public class PlayerController : MonoBehaviour
         if (m_JumpForwardDistance <= 0f) m_JumpForwardDistance = 2f;
         if (m_JumpDuration <= 0f) m_JumpDuration = 0.6f;
         if (m_BeatGapTime < 0f) m_BeatGapTime = 0f;
-        if (m_GroundCheckDistance <= 0f) m_GroundCheckDistance = 0.1f;
+        if (m_GroundCheckDistance < 0f) m_GroundCheckDistance = 0.05f;
+        if (m_GroundCheckRadius <= 0f) m_GroundCheckRadius = 0.15f;
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
+        if (m_DashDistance <= 0f) m_DashDistance = 4f;
+        if (m_DashDuration <= 0f) m_DashDuration = 0.2f;
+        if (m_GroundPoundSpeed <= 0f) m_GroundPoundSpeed = 20f;
     }
 
     // Animation-only update — movement is driven by coroutines, not Update
@@ -256,6 +295,8 @@ public class PlayerController : MonoBehaviour
                     case ActionTypeEnum.JumpRight: yield return JumpRightCommand(); break;
                     case ActionTypeEnum.JumpLeft: yield return JumpLeftCommand(); break;
                     case ActionTypeEnum.Interact: yield return InteractCommand(); break;
+                    case ActionTypeEnum.Dash: yield return DashCommand(); break;
+                    case ActionTypeEnum.GroundPound: yield return GroundPoundCommand(); break;
                 }
             }
 
@@ -285,6 +326,12 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>Jumps left, reaching <see cref="m_JumpHeight"/> height and <see cref="m_JumpForwardDistance"/> horizontal distance.</summary>
     public IEnumerator JumpLeftCommand() => PerformJump(-m_JumpForwardDistance);
+
+    /// <summary>Dashes horizontally in the player's current facing direction by <see cref="m_DashDistance"/> units.</summary>
+    public IEnumerator DashCommand() => PerformDash();
+
+    /// <summary>Slams the player straight down at high speed until grounded.</summary>
+    public IEnumerator GroundPoundCommand() => PerformGroundPound();
 
     // ─── Movement Logic ──────────────────────────────────────────────────────────
 
@@ -585,6 +632,95 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(m_MoveDuration);
     }
 
+    // ─── Dash Command ────────────────────────────────────────────────────────────
+
+    // Bursts horizontally in the player's current facing direction over m_DashDuration seconds.
+    // Gravity is suppressed during the dash so the trajectory stays flat.
+    // Stops early on a wall hit; falls naturally if the dash carries the player off an edge.
+    private IEnumerator PerformDash()
+    {
+        float direction = transform.localScale.x >= 0f ? 1f : -1f;
+        float targetX = m_Rigidbody.position.x + direction * m_DashDistance;
+        float speed = direction * m_DashDistance / m_DashDuration;
+
+        float savedGravity = m_Rigidbody.gravityScale;
+        m_Rigidbody.gravityScale = 0f;
+
+        float elapsed = 0f;
+        bool hitWall = false;
+        bool killedEnemy = false;
+
+        while (elapsed < m_DashDuration)
+        {
+            if (CheckHorizontalWall(speed))
+            {
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                hitWall = true;
+                break;
+            }
+
+            if (KillEnemiesInBounds()) killedEnemy = true;
+
+            m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
+            elapsed += Time.fixedDeltaTime;
+            yield return new WaitForFixedUpdate();
+        }
+
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_Rigidbody.gravityScale = savedGravity;
+
+        if (killedEnemy)
+            StartCoroutine(ShakeCamera(m_DeathShakeMagnitude, m_DeathShakeDuration));
+
+        if (!hitWall)
+        {
+            m_Rigidbody.MovePosition(new Vector2(targetX, m_Rigidbody.position.y));
+            yield return new WaitForFixedUpdate();
+        }
+
+        m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
+
+        if (!CheckIsGrounded())
+        {
+            yield return WaitUntilGrounded();
+            m_Rigidbody.linearVelocity = Vector2.zero;
+        }
+
+        SnapToGrid();
+    }
+
+    // ─── Ground Pound Command ────────────────────────────────────────────────────
+
+    // Slams the player straight down at m_GroundPoundSpeed until they hit the ground.
+    // If already grounded, holds the beat slot duration to keep rhythm consistent.
+    private IEnumerator PerformGroundPound()
+    {
+        if (CheckIsGrounded())
+        {
+            yield return new WaitForSeconds(m_MoveDuration);
+            yield break;
+        }
+
+        float savedGravity = m_Rigidbody.gravityScale;
+        m_Rigidbody.gravityScale = 0f;
+        m_Rigidbody.linearVelocity = new Vector2(0f, -m_GroundPoundSpeed);
+
+        float timeout = 5f;
+        float elapsed = 0f;
+
+        while (!CheckIsGrounded() && elapsed < timeout)
+        {
+            yield return new WaitForFixedUpdate();
+            elapsed += Time.fixedDeltaTime;
+        }
+
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_Rigidbody.gravityScale = savedGravity;
+        if (KillEnemiesInBounds())
+            StartCoroutine(ShakeCamera(m_DeathShakeMagnitude, m_DeathShakeDuration));
+        SnapToGrid();
+    }
+
     // ─── Interaction ─────────────────────────────────────────────────────────────
 
     private void TryInteract()
@@ -601,6 +737,65 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Destroys any EnemyMovement objects whose colliders overlap the player's current bounds.
+    // Called each frame during Dash and once on GroundPound landing.
+    // Works regardless of layer or tag — detects by EnemyMovement component.
+    // Returns true if at least one enemy was killed.
+    private bool KillEnemiesInBounds()
+    {
+        if (m_Collider == null) return false;
+        Collider2D[] hits = Physics2D.OverlapBoxAll(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
+        bool killed = false;
+        foreach (Collider2D hit in hits)
+        {
+            if (hit.gameObject == gameObject) continue;
+            if (hit.TryGetComponent(out EnemyMovement enemy))
+            {
+                enemy.Die();
+                killed = true;
+            }
+        }
+        return killed;
+    }
+
+    // ─── Interrupt Handling ──────────────────────────────────────────────────────
+
+    private void OnDashInterruptRequested() { if (m_IsGamePlaying) TriggerInterrupt(InterruptAction.Dash); }
+    private void OnGroundPoundInterruptRequested() { if (m_IsGamePlaying) TriggerInterrupt(InterruptAction.GroundPound); }
+
+    // Kills the running coroutine immediately, runs the interrupt action, then resumes remaining commands.
+    private void TriggerInterrupt(InterruptAction action)
+    {
+        if (m_ExecutionCoroutine != null)
+        {
+            StopCoroutine(m_ExecutionCoroutine);
+            m_ExecutionCoroutine = null;
+        }
+
+        // Restore any physics state an in-progress command may have left dirty.
+        m_Rigidbody.gravityScale = m_OriginalGravityScale;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        AudioManager.Instance?.PlayPlayerWalk(false);
+        SnapToGrid();
+
+        int resumeFrom = m_CurrentCommandIndex + 1;
+        m_ExecutionCoroutine = StartCoroutine(InterruptAndResumeRoutine(action, resumeFrom));
+    }
+
+    private IEnumerator InterruptAndResumeRoutine(InterruptAction action, int resumeFrom)
+    {
+        if (action == InterruptAction.Dash) yield return PerformDash();
+        else if (action == InterruptAction.GroundPound) yield return PerformGroundPound();
+
+        if (!m_IsGamePlaying) yield break;
+
+        if (resumeFrom < m_MaxTimeIndex)
+            yield return ExecutionLoop(resumeFrom);
+        else
+            EndTurn();
+    }
+
     // ─── Ground Check & Animation ────────────────────────────────────────────────
 
     private void UpdateGroundedAnimation()
@@ -615,7 +810,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!m_IsGamePlaying) return;
 
-        if (other.CompareTag("Spike"))
+        if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
         {
             AbortExecution();
             StartCoroutine(DeathRoutine());
@@ -632,6 +827,7 @@ public class PlayerController : MonoBehaviour
         {
             if (hit.gameObject == gameObject) continue;
             if (!hit.CompareTag("Spike")) continue;
+            if (hit.TryGetComponent(out EnemyMovement _)) continue; // enemy, not a spike
 
             AbortExecution();
             StartCoroutine(DeathRoutine());
@@ -641,10 +837,12 @@ public class PlayerController : MonoBehaviour
 
     private bool CheckIsGrounded()
     {
-        // Cast from the bottom of the collider bounds so the ray reaches the ground
-        // regardless of where the character pivot is placed.
+        // OverlapCircle centred just below the collider bottom.
+        // Wider than a single ray — reliably detects ground even when the
+        // player collider is partially embedded in a surface after snapping.
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
-        return Physics2D.Raycast(new Vector2(transform.position.x, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
+        Vector2 centre = new Vector2(transform.position.x, bottom - m_GroundCheckDistance);
+        return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, m_GroundLayer);
     }
 
     // Rounds the rigidbody position to the nearest 0.5-unit grid, eliminating the
@@ -746,7 +944,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!m_IsGamePlaying || GameManager.Instance == null) return;
 
-        if (other.CompareTag("Spike"))
+        if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
         {
             AbortExecution();
             StartCoroutine(DeathRoutine());

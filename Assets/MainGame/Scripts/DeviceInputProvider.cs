@@ -21,6 +21,11 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
 
     [SerializeField] private SequenceManager m_SequenceManager;
 
+    /// <summary>Fired when Dash (D) is pressed — PlayerController uses this to interrupt current execution.</summary>
+    public event System.Action OnDashPressed;
+    /// <summary>Fired when GroundPound (S) is pressed — PlayerController uses this to interrupt current execution.</summary>
+    public event System.Action OnGroundPoundPressed;
+
     private InputAction m_LeftAction;
     private InputAction m_RightAction;
     private InputAction m_JumpAction;
@@ -29,6 +34,8 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
     private InputAction m_UndoAction;
     private InputAction m_ClearAction;
     private InputAction m_RestartAction;
+    private InputAction m_DashAction;
+    private InputAction m_GroundPoundAction;
     private bool m_IsJumpHeld;
     private bool m_JumpComboQueued;
 
@@ -50,15 +57,12 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
             m_JumpComboQueued = false;
         }
 
+        // Only enable the asset explicitly — never disable it.
+        // Every queuing callback already guards with `if (!IsEnabled) return`,
+        // so nothing gets queued during execution. Dash and GroundPound intentionally
+        // skip that guard so they can interrupt at any time.
         if (enabled)
-        {
             m_InputActionAsset?.Enable();
-        }
-        else
-        {
-            m_InputActionAsset?.Disable();
-            m_RestartAction?.Enable();
-        }
     }
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
@@ -81,6 +85,8 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
             ?? map.FindAction("Back", throwIfNotFound: false);
         m_ClearAction = map.FindAction("Clear", throwIfNotFound: false);
         m_RestartAction = map.FindAction("Restart", throwIfNotFound: false);
+        m_DashAction = map.FindAction("Dash", throwIfNotFound: false);
+        m_GroundPoundAction = map.FindAction("GroundPound", throwIfNotFound: false);
     }
 
     private void OnEnable() => RegisterListeners(true);
@@ -104,6 +110,8 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
             if (m_UndoAction != null) m_UndoAction.performed += OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed += OnClear;
             if (m_RestartAction != null) m_RestartAction.performed += OnRestart;
+            if (m_DashAction != null) m_DashAction.performed += OnDash;
+            if (m_GroundPoundAction != null) m_GroundPoundAction.performed += OnGroundPound;
         }
         else
         {
@@ -119,6 +127,8 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
             if (m_UndoAction != null) m_UndoAction.performed -= OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed -= OnClear;
             if (m_RestartAction != null) m_RestartAction.performed -= OnRestart;
+            if (m_DashAction != null) m_DashAction.performed -= OnDash;
+            if (m_GroundPoundAction != null) m_GroundPoundAction.performed -= OnGroundPound;
         }
     }
 
@@ -179,6 +189,10 @@ public class DeviceInputProvider : MonoBehaviour, IInputProvider
         m_JumpComboQueued = false;
     }
     private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.AddAction(ActionTypeEnum.Interact); }
+    // No IsEnabled guard — these actions remain active during execution to allow interrupts.
+    // PlayerController.OnDashInterruptRequested checks m_IsGamePlaying itself.
+    private void OnDash(InputAction.CallbackContext c) { OnDashPressed?.Invoke(); }
+    private void OnGroundPound(InputAction.CallbackContext c) { OnGroundPoundPressed?.Invoke(); }
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.RemoveLastAction(); }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) m_SequenceManager?.ClearSequence(); }
     private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }

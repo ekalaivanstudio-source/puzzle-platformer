@@ -9,6 +9,9 @@ public class EnemyMovement : MonoBehaviour
     [Header("Movement Settings")]
     public float moveSpeed = 2f;
 
+    [Header("Death Effect")]
+    [SerializeField] private GameObject m_DeathParticle;
+
     private Transform currentTarget;
 
     private void Start()
@@ -42,6 +45,14 @@ public class EnemyMovement : MonoBehaviour
                 currentTarget = pointB;
             }
         }
+    }
+
+    /// <summary>Called by PlayerController when a Dash or GroundPound hits this enemy.</summary>
+    public void Die()
+    {
+        if (m_DeathParticle != null)
+            Instantiate(m_DeathParticle, transform.position, Quaternion.identity);
+        Destroy(gameObject);
     }
 
     private void OnDrawGizmos()
