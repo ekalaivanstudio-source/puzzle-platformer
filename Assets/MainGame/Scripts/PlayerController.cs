@@ -38,6 +38,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_DashDistance = 4f;
     [Tooltip("Duration (seconds) to complete the Dash command.")]
     [SerializeField] private float m_DashDuration = 0.2f;
+    [Tooltip("Cooldown (seconds) before the player can dash again.")]
+    [SerializeField] private float m_DashCooldown = 3f;
 
     [Header("Ground Pound Settings")]
     [Tooltip("Downward speed (units/s) applied when the player ground-pounds from mid-air.")]
@@ -64,18 +66,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private MonoBehaviour m_SequenceSourceObject;
     [Tooltip("Assign DeviceInputProvider to enable real-time Dash / GroundPound interrupts during execution.")]
     [SerializeField] private DeviceInputProvider m_DeviceInputProvider;
-    [Tooltip("UI object shown for 2 seconds when the player reaches the door without the key.")]
-    [SerializeField] private GameObject m_NoKeyPopup;
-    [Tooltip("UI object shown for 2 seconds on win before restarting.")]
-    [SerializeField] private GameObject m_WowObject;
     [Tooltip("Particle prefab instantiated at the player's position on spike death.")]
     [SerializeField] private GameObject m_DeathParticle;
     [SerializeField] private AudioClip m_DeathClip;
     [SerializeField] private float m_DeathShakeMagnitude = 0.2f;
     [SerializeField] private float m_DeathShakeDuration = 0.4f;
-    [Tooltip("Full-screen dark overlay CanvasGroup. Starts at alpha 1, fades to 0 on load; fades back to 1 before any reload.")]
-    [SerializeField] private CanvasGroup m_FadeOverlay;
-    [SerializeField] private float m_FadeDuration = 1f;
+    [Tooltip("TrailRenderer on the player used during Dash and GroundPound. Keep it disabled in the Inspector — the script enables/disables emitting automatically.")]
+    [SerializeField] private TrailRenderer m_DashTrail;
 
     private ISequenceSource m_SequenceSource;
     private Rigidbody2D m_Rigidbody;
@@ -88,6 +85,7 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 m_StartPosition;
     private float m_OriginalGravityScale;
+    private float m_DashCooldownRemaining = 0f;  // 0 = ready
 
     private enum InterruptAction { Dash, GroundPound }
 
@@ -123,12 +121,7 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        // Fade from black to clear when the level loads
-        if (m_FadeOverlay != null)
-        {
-            m_FadeOverlay.alpha = 1f;
-            StartCoroutine(FadeRoutine(1f, 0f));
-        }
+        UIManager.Instance?.StartLevelFadeIn();
     }
 
     private void OnValidate()
@@ -143,17 +136,31 @@ public class PlayerController : MonoBehaviour
         if (m_GroundCheckRadius <= 0f) m_GroundCheckRadius = 0.15f;
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
         if (m_DashDistance <= 0f) m_DashDistance = 4f;
-        if (m_DashDuration <= 0f) m_DashDuration = 0.2f;
+        if (m_DashCooldown <= 0f) m_DashCooldown = 3f;
         if (m_GroundPoundSpeed <= 0f) m_GroundPoundSpeed = 20f;
     }
 
     // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
+        TickDashCooldown(); // always tick — cooldown must update between turns too
         if (!m_IsGamePlaying) return;
         UpdateGroundedAnimation();
         UpdateFallingAnimation();
         CheckSpikeOverlap();
+    }
+
+    private void TickDashCooldown()
+    {
+        if (m_DashCooldownRemaining <= 0f) return;
+        m_DashCooldownRemaining -= Time.deltaTime;
+        if (m_DashCooldownRemaining <= 0f)
+        {
+            m_DashCooldownRemaining = 0f;
+            UIManager.Instance?.SetDashCooldownFill(1f); // snap to full when ready
+            return;
+        }
+        UIManager.Instance?.SetDashCooldownFill(1f - (m_DashCooldownRemaining / m_DashCooldown));
     }
 
     // ─── Public API ─────────────────────────────────────────────────────────────
@@ -636,9 +643,16 @@ public class PlayerController : MonoBehaviour
 
     // Bursts horizontally in the player's current facing direction over m_DashDuration seconds.
     // Gravity is suppressed during the dash so the trajectory stays flat.
-    // Stops early on a wall hit; falls naturally if the dash carries the player off an edge.
     private IEnumerator PerformDash()
     {
+        // Blocked during cooldown
+        if (m_DashCooldownRemaining > 0f)
+            yield break;
+
+        // Start cooldown
+        m_DashCooldownRemaining = m_DashCooldown;
+        UIManager.Instance?.SetDashCooldownFill(0f);
+        SetDashTrail(true);
         float direction = transform.localScale.x >= 0f ? 1f : -1f;
         float targetX = m_Rigidbody.position.x + direction * m_DashDistance;
         float speed = direction * m_DashDistance / m_DashDuration;
@@ -670,7 +684,7 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.gravityScale = savedGravity;
 
         if (killedEnemy)
-            StartCoroutine(ShakeCamera(m_DeathShakeMagnitude, m_DeathShakeDuration));
+            CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
         if (!hitWall)
         {
@@ -686,6 +700,7 @@ public class PlayerController : MonoBehaviour
             m_Rigidbody.linearVelocity = Vector2.zero;
         }
 
+        SetDashTrail(false);
         SnapToGrid();
     }
 
@@ -704,6 +719,7 @@ public class PlayerController : MonoBehaviour
         float savedGravity = m_Rigidbody.gravityScale;
         m_Rigidbody.gravityScale = 0f;
         m_Rigidbody.linearVelocity = new Vector2(0f, -m_GroundPoundSpeed);
+        SetDashTrail(true);
 
         float timeout = 5f;
         float elapsed = 0f;
@@ -716,12 +732,30 @@ public class PlayerController : MonoBehaviour
 
         m_Rigidbody.linearVelocity = Vector2.zero;
         m_Rigidbody.gravityScale = savedGravity;
+        SetDashTrail(false);
         if (KillEnemiesInBounds())
-            StartCoroutine(ShakeCamera(m_DeathShakeMagnitude, m_DeathShakeDuration));
+            CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
         SnapToGrid();
     }
 
     // ─── Interaction ─────────────────────────────────────────────────────────────
+
+    // Enables/disables the dash trail. Uses emitting instead of SetActive so the
+    // existing trail tail fades out naturally rather than disappearing instantly.
+    private void SetDashTrail(bool emitting)
+    {
+        if (m_DashTrail == null) return;
+        if (emitting)
+        {
+            m_DashTrail.gameObject.SetActive(true);
+            m_DashTrail.Clear(); // discard any stale trail from a previous action
+            m_DashTrail.emitting = true;
+        }
+        else
+        {
+            m_DashTrail.emitting = false; // stop adding new trail; existing tail fades on its own
+        }
+    }
 
     private void TryInteract()
     {
@@ -761,7 +795,12 @@ public class PlayerController : MonoBehaviour
 
     // ─── Interrupt Handling ──────────────────────────────────────────────────────
 
-    private void OnDashInterruptRequested() { if (m_IsGamePlaying) TriggerInterrupt(InterruptAction.Dash); }
+    private void OnDashInterruptRequested()
+    {
+        if (!m_IsGamePlaying) return;
+        if (m_DashCooldownRemaining > 0f) return; // still on cooldown — ignore
+        TriggerInterrupt(InterruptAction.Dash);
+    }
     private void OnGroundPoundInterruptRequested() { if (m_IsGamePlaying) TriggerInterrupt(InterruptAction.GroundPound); }
 
     // Kills the running coroutine immediately, runs the interrupt action, then resumes remaining commands.
@@ -935,6 +974,8 @@ public class PlayerController : MonoBehaviour
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
+        m_DashCooldownRemaining = 0f;
+        UIManager.Instance?.SetDashCooldownFill(1f);
         GameManager.Instance?.PlayEnded();
     }
 
@@ -966,10 +1007,11 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator WinRoutine()
     {
-        if (m_WowObject != null) m_WowObject.SetActive(true);
+        UIManager.Instance?.ShowWinEffect(true);
         yield return new WaitForSecondsRealtime(2f);
-        if (m_WowObject != null) m_WowObject.SetActive(false);
-        yield return StartCoroutine(FadeRoutine(0f, 1f));
+        UIManager.Instance?.ShowWinEffect(false);
+        if (UIManager.Instance != null)
+            yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
         GameManager.Instance.LoadNextLevel();
     }
 
@@ -983,51 +1025,20 @@ public class PlayerController : MonoBehaviour
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = false;
 
-        StartCoroutine(ShakeCamera(m_DeathShakeMagnitude, m_DeathShakeDuration));
+        CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
         yield return new WaitForSecondsRealtime(1f);
-        yield return StartCoroutine(FadeRoutine(0f, 1f));
+        if (UIManager.Instance != null)
+            yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
         GameManager.Instance.ReloadLevel();
-    }
-
-    private System.Collections.IEnumerator FadeRoutine(float from, float to)
-    {
-        if (m_FadeOverlay == null) yield break;
-        m_FadeOverlay.gameObject.SetActive(true);
-        float elapsed = 0f;
-        m_FadeOverlay.alpha = from;
-        while (elapsed < m_FadeDuration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            m_FadeOverlay.alpha = Mathf.Lerp(from, to, elapsed / m_FadeDuration);
-            yield return null;
-        }
-        m_FadeOverlay.alpha = to;
-        if (to == 0f) m_FadeOverlay.gameObject.SetActive(false);
-    }
-
-    private System.Collections.IEnumerator ShakeCamera(float magnitude, float duration)
-    {
-        Camera cam = Camera.main;
-        if (cam == null) yield break;
-        Vector3 origin = cam.transform.localPosition;
-        float elapsed = 0f;
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float t = 1f - (elapsed / duration);
-            cam.transform.localPosition = origin + (Vector3)UnityEngine.Random.insideUnitCircle * magnitude * t;
-            yield return null;
-        }
-        cam.transform.localPosition = origin;
     }
 
     private System.Collections.IEnumerator NoKeyRoutine()
     {
         AbortExecution();
-        if (m_NoKeyPopup != null) m_NoKeyPopup.SetActive(true);
+        UIManager.Instance?.ShowNoKeyPopup(true);
         yield return new WaitForSecondsRealtime(2f);
-        if (m_NoKeyPopup != null) m_NoKeyPopup.SetActive(false);
+        UIManager.Instance?.ShowNoKeyPopup(false);
         GameManager.Instance.ReloadLevel();
     }
 }

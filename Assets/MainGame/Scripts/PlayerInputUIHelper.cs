@@ -143,7 +143,7 @@ public class PlayerInputUIHelper : MonoBehaviour
                 }
                 if (audioSource != null && m_WrongKeyClip != null)
                     audioSource.PlayOneShot(m_WrongKeyClip);
-                StartCoroutine(ShakeCamera());
+                CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
 
                 m_IsRejecting = true;
                 m_SequenceManager.RemoveLastAction();
@@ -314,22 +314,6 @@ public class PlayerInputUIHelper : MonoBehaviour
         }
         m_BlinkCoroutine = null;
         m_BlinkingSlot = null;
-    }
-
-    private IEnumerator ShakeCamera()
-    {
-        Camera cam = Camera.main;
-        if (cam == null) yield break;
-        Vector3 origin = cam.transform.localPosition;
-        float elapsed = 0f;
-        while (elapsed < m_ShakeDuration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float t = 1f - (elapsed / m_ShakeDuration); // fade out shake
-            cam.transform.localPosition = origin + (Vector3)UnityEngine.Random.insideUnitCircle * m_ShakeMagnitude * t;
-            yield return null;
-        }
-        cam.transform.localPosition = origin;
     }
 
     private static void SetAlpha(Image image, float alpha)
