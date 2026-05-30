@@ -163,7 +163,11 @@ MonoBehaviour:
   m_MoveDuration: 0.45
   m_JumpHeight: 2
   m_JumpForwardDistance: 6
+  m_JumpDuration: 0.6
   m_BeatGapTime: 0
+  m_DashDistance: 4
+  m_DashDuration: 0.2
+  m_GroundPoundSpeed: 20
   m_CommandTimeout: 3
   m_GroundLayer:
     serializedVersion: 2
@@ -174,6 +178,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   m_SequenceSourceObject: {fileID: 0}
+  m_DeviceInputProvider: {fileID: 0}
   m_NoKeyPopup: {fileID: 0}
   m_WowObject: {fileID: 0}
   m_DeathParticle: {fileID: 7581426562798727453, guid: 5eea17da54003c844baa005560e258db, type: 3}
@@ -226,7 +231,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.8, y: 1}
   m_EdgeRadius: 0
 --- !u!82 &647768112510458530
 AudioSource:

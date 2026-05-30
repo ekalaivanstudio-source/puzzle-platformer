@@ -14,5 +14,9 @@ public enum ActionTypeEnum
     /// </summary>
     Any,
     JumpRight,
-    JumpLeft
+    JumpLeft,
+    /// <summary>Quick horizontal burst in the player's current facing direction.</summary>
+    Dash,
+    /// <summary>Slams the player straight down at high speed until they hit ground.</summary>
+    GroundPound
 }
