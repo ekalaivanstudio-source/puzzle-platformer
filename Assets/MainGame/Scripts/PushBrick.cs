@@ -74,8 +74,9 @@ public class PushBrick : MonoBehaviour
     {
         float targetX = transform.position.x + signDir * m_PushDistance;
 
-        // Check whether the destination is clear before committing to the move.
-        if (m_Collider != null && IsDestinationBlocked(signDir, targetX))
+        // Check whether the path to the destination is clear before committing.
+        // Uses BoxCast so it reliably detects walls the brick is already touching.
+        if (m_Collider != null && IsPathBlocked(signDir))
             yield break; // Blocked — brick doesn't move; player is still stopped.
 
         // Slide smoothly to targetX.
@@ -83,6 +84,17 @@ public class PushBrick : MonoBehaviour
 
         while (Mathf.Abs(transform.position.x - targetX) > 0.01f)
         {
+            // Mid-slide safety: stop immediately if a wall is encountered.
+            if (m_Collider != null && IsPathBlocked(signDir))
+            {
+                // Snap back to the nearest grid position to avoid partial wall overlap.
+                float snappedX = signDir > 0f
+                    ? Mathf.Floor(transform.position.x)
+                    : Mathf.Ceil(transform.position.x);
+                transform.position = new Vector3(snappedX, transform.position.y, transform.position.z);
+                yield break;
+            }
+
             transform.position = Vector3.MoveTowards(
                 transform.position, target, m_PushSpeed * Time.fixedDeltaTime);
             yield return new WaitForFixedUpdate();
@@ -111,16 +123,29 @@ public class PushBrick : MonoBehaviour
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    // Returns true if the brick's future position would overlap something on m_BlockingLayers.
-    private bool IsDestinationBlocked(float signDir, float targetX)
+    // Returns true if the next grid cell in signDir is occupied by the ground layer.
+    // Fires a raycast from the side face of the brick toward the adjacent grid position.
+    private bool IsPathBlocked(float signDir)
     {
-        // Cast the full collider bounds shifted by one push-unit.
-        Vector2 futureCenter = new Vector2(targetX, m_Collider.bounds.center.y);
-        // Slightly shrink the check box to avoid edge-of-tile false positives.
-        Vector2 checkSize = (Vector2)m_Collider.bounds.size * 0.85f;
+        // Start the ray from the side edge of the brick at three vertical heights
+        // (top, centre, bottom) so a wall that only partially overlaps is caught.
+        float sideX = signDir > 0f ? m_Collider.bounds.max.x : m_Collider.bounds.min.x;
+        float centerY = m_Collider.bounds.center.y;
+        float halfH = m_Collider.bounds.extents.y * 0.9f; // slightly inset to avoid edge noise
 
-        Collider2D blocker = Physics2D.OverlapBox(futureCenter, checkSize, 0f, m_BlockingLayers);
-        // Ignore self — only true blockers count.
-        return blocker != null && blocker != m_Collider;
+        // Ray length = one grid unit (m_PushDistance) so only the next cell is checked.
+        float rayLength = m_PushDistance;
+        Vector2 direction = new Vector2(signDir, 0f);
+
+        float[] checkYOffsets = { 0f, halfH, -halfH };
+        foreach (float yOffset in checkYOffsets)
+        {
+            Vector2 origin = new Vector2(sideX, centerY + yOffset);
+            RaycastHit2D hit = Physics2D.Raycast(origin, direction, rayLength, m_BlockingLayers);
+            if (hit.collider != null && hit.collider != m_Collider)
+                return true;
+        }
+
+        return false;
     }
 }
