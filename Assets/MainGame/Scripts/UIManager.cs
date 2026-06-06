@@ -1,22 +1,16 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// Singleton UI manager. Owns every UI reference in the game:
 /// fade overlay and popups.
-/// All other scripts call UIManager.Instance â€” no UI fields live elsewhere.
+/// All other scripts call UIManager.Instance — no UI fields live elsewhere.
 /// </summary>
 public class UIManager : MonoBehaviour
 {
     private static UIManager m_Instance;
     public static UIManager Instance => m_Instance;
-
-    [Header("Popups")]
-    [Tooltip("Shown for 2 seconds when the player reaches the door without the key.")]
-    [SerializeField] private GameObject m_NoKeyPopup;
-    [Tooltip("Shown for 2 seconds on level win before loading next level.")]
-    [SerializeField] private GameObject m_WowObject;
 
     [Header("Fade")]
     [Tooltip("Full-screen dark overlay CanvasGroup. Alpha 1 = black, 0 = clear.")]
@@ -47,22 +41,7 @@ public class UIManager : MonoBehaviour
         SequenceManager.Instance?.ClearSequence();
     }
 
-
-    // â”€â”€â”€ Popup / Win Effect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    /// <summary>Shows or hides the win celebration object.</summary>
-    public void ShowWinEffect(bool show)
-    {
-        if (m_WowObject != null) m_WowObject.SetActive(show);
-    }
-
-    /// <summary>Shows or hides the "no key" popup.</summary>
-    public void ShowNoKeyPopup(bool show)
-    {
-        if (m_NoKeyPopup != null) m_NoKeyPopup.SetActive(show);
-    }
-
-    // â”€â”€â”€ Fade â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Fade ───────────────────────────────────────────────────────────────────────────
 
     /// <summary>Fades from black to clear. Call on scene load.</summary>
     public void StartLevelFadeIn()

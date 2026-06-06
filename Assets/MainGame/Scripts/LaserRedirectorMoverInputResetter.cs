@@ -27,14 +27,14 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     [SerializeField] private float m_MoveStep = 1f;
 
     [Header("Bounds")]
-    [Tooltip("Minimum world X position the redirector may occupy.")]
+    [Tooltip("Minimum X offset from the redirector's starting position.")]
     [SerializeField] private float m_MinX = -10f;
-    [Tooltip("Maximum world X position the redirector may occupy.")]
-    [SerializeField] private float m_MaxX =  10f;
-    [Tooltip("Minimum world Y position the redirector may occupy.")]
+    [Tooltip("Maximum X offset from the redirector's starting position.")]
+    [SerializeField] private float m_MaxX = 10f;
+    [Tooltip("Minimum Y offset from the redirector's starting position.")]
     [SerializeField] private float m_MinY = -10f;
-    [Tooltip("Maximum world Y position the redirector may occupy.")]
-    [SerializeField] private float m_MaxY =  10f;
+    [Tooltip("Maximum Y offset from the redirector's starting position.")]
+    [SerializeField] private float m_MaxY = 10f;
 
     [Header("UI")]
     [Tooltip("Shown when the player is in range ('Press E to control').")]
@@ -48,10 +48,11 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
 
     // ─── Private state ────────────────────────────────────────────────────────
 
-    private Collider2D  m_Collider;
+    private Collider2D m_Collider;
     private InputAction m_InteractAction;
-    private bool        m_PlayerInRange;
-    private bool        m_InControlMode;
+    private bool m_PlayerInRange;
+    private bool m_InControlMode;
+    private Vector3 m_InitialPosition;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -60,6 +61,9 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         if (m_Collider == null)
             Debug.LogError("[LaserRedirectorMoverInputResetter] No Collider2D found.", this);
+
+        if (m_TargetRedirector != null)
+            m_InitialPosition = m_TargetRedirector.transform.position;
     }
 
     private void Start()
@@ -82,11 +86,20 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     private void OnEnable()
     {
         if (m_InteractAction != null) m_InteractAction.performed += OnInteract;
+        GameManager.OnFullReset += OnFullReset;
     }
 
     private void OnDisable()
     {
         if (m_InteractAction != null) m_InteractAction.performed -= OnInteract;
+        if (m_InControlMode) ExitControlMode();
+        GameManager.OnFullReset -= OnFullReset;
+    }
+
+    private void OnFullReset()
+    {
+        if (m_TargetRedirector != null)
+            m_TargetRedirector.transform.position = m_InitialPosition;
         if (m_InControlMode) ExitControlMode();
     }
 
@@ -146,16 +159,16 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         if (keyboard == null) return;
 
         Vector2 delta = Vector2.zero;
-        if (keyboard.leftArrowKey.wasPressedThisFrame)  delta = Vector2.left;
+        if (keyboard.leftArrowKey.wasPressedThisFrame) delta = Vector2.left;
         if (keyboard.rightArrowKey.wasPressedThisFrame) delta = Vector2.right;
-        if (keyboard.upArrowKey.wasPressedThisFrame)    delta = Vector2.up;
-        if (keyboard.downArrowKey.wasPressedThisFrame)  delta = Vector2.down;
+        if (keyboard.upArrowKey.wasPressedThisFrame) delta = Vector2.up;
+        if (keyboard.downArrowKey.wasPressedThisFrame) delta = Vector2.down;
 
         if (delta == Vector2.zero) return;
 
         Vector3 pos = m_TargetRedirector.transform.position;
-        pos.x = Mathf.Clamp(pos.x + delta.x * m_MoveStep, m_MinX, m_MaxX);
-        pos.y = Mathf.Clamp(pos.y + delta.y * m_MoveStep, m_MinY, m_MaxY);
+        pos.x = Mathf.Clamp(pos.x + delta.x * m_MoveStep, m_InitialPosition.x + m_MinX, m_InitialPosition.x + m_MaxX);
+        pos.y = Mathf.Clamp(pos.y + delta.y * m_MoveStep, m_InitialPosition.y + m_MinY, m_InitialPosition.y + m_MaxY);
         m_TargetRedirector.transform.position = pos;
     }
 
@@ -169,7 +182,7 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
 
         // Abort execution at the player's current position, clear sequence, fire OnTurnReset.
         if (PlayerController.Instance != null)
-            PlayerController.Instance.ResetAtCheckpoint(PlayerController.Instance.transform.position);
+            PlayerController.Instance.ResetAtCheckpoint(transform.position);
 
         // Lock normal input — arrow keys now control the redirector.
         DeviceInputProvider.Instance?.SetEnabled(false);
@@ -190,17 +203,66 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     }
 
     // Visualise the movement boundary in the Scene view.
-    private void OnDrawGizmosSelected()
+    // Always visible in Scene view so you can see the boundary while placing objects.
+    private void OnDrawGizmos()
     {
-        Gizmos.color = new Color(0f, 1f, 1f, 0.4f);
-        Vector3 center = new Vector3((m_MinX + m_MaxX) * 0.5f, (m_MinY + m_MaxY) * 0.5f, 0f);
-        Vector3 size   = new Vector3(m_MaxX - m_MinX, m_MaxY - m_MinY, 0.1f);
+        // Use the target's current transform position as origin (works in editor before play).
+        Vector3 origin = m_TargetRedirector != null
+            ? m_TargetRedirector.transform.position
+            : transform.position;
+
+        float worldMinX = origin.x + m_MinX;
+        float worldMaxX = origin.x + m_MaxX;
+        float worldMinY = origin.y + m_MinY;
+        float worldMaxY = origin.y + m_MaxY;
+
+        Vector3 center = new Vector3((worldMinX + worldMaxX) * 0.5f, (worldMinY + worldMaxY) * 0.5f, 0f);
+        Vector3 size = new Vector3(worldMaxX - worldMinX, worldMaxY - worldMinY, 0.01f);
+
+        // Filled semi-transparent interior.
+        Gizmos.color = new Color(0f, 1f, 1f, 0.08f);
+        Gizmos.DrawCube(center, size);
+
+        // Solid outline.
+        Gizmos.color = new Color(0f, 1f, 1f, 0.9f);
         Gizmos.DrawWireCube(center, size);
 
+        // Draw a wire square at each reachable grid position.
+        Gizmos.color = new Color(0f, 1f, 1f, 0.35f);
+        Vector3 cellSize = new Vector3(m_MoveStep, m_MoveStep, 0.01f);
+        for (float x = worldMinX; x <= worldMaxX + 0.001f; x += m_MoveStep)
+        {
+            for (float y = worldMinY; y <= worldMaxY + 0.001f; y += m_MoveStep)
+            {
+                Gizmos.DrawWireCube(new Vector3(x, y, 0f), cellSize);
+            }
+        }
+
+        // Highlight the target redirector's current position inside the boundary.
         if (m_TargetRedirector != null)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(m_TargetRedirector.transform.position, 0.2f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(m_TargetRedirector.transform.position, m_MoveStep * 0.25f);
         }
+    }
+
+    // Richer detail when selected.
+    private void OnDrawGizmosSelected()
+    {
+        Vector3 origin = m_TargetRedirector != null
+            ? m_TargetRedirector.transform.position
+            : transform.position;
+
+        float worldMinX = origin.x + m_MinX;
+        float worldMaxX = origin.x + m_MaxX;
+        float worldMinY = origin.y + m_MinY;
+        float worldMaxY = origin.y + m_MaxY;
+
+        // Draw min/max labels as coloured dots for X and Y bounds.
+        Gizmos.color = Color.green;
+        Gizmos.DrawSphere(new Vector3(worldMinX, (worldMinY + worldMaxY) * 0.5f, 0f), m_MoveStep * 0.12f);
+        Gizmos.DrawSphere(new Vector3(worldMaxX, (worldMinY + worldMaxY) * 0.5f, 0f), m_MoveStep * 0.12f);
+        Gizmos.DrawSphere(new Vector3((worldMinX + worldMaxX) * 0.5f, worldMinY, 0f), m_MoveStep * 0.12f);
+        Gizmos.DrawSphere(new Vector3((worldMinX + worldMaxX) * 0.5f, worldMaxY, 0f), m_MoveStep * 0.12f);
     }
 }

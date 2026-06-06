@@ -112,7 +112,7 @@ public class LaserRedirector : MonoBehaviour
         switch (m_Type)
         {
             case RedirectorType.Cross:
-                FireSegment(RedirectCross(inDir.normalized), beamStart1, dist, bounces, blocks, redir, m_LineRenderer1);
+                FireSegment((Vector2)transform.TransformDirection(Vector2.up), beamStart1, dist, bounces, blocks, redir, m_LineRenderer1);
                 break;
 
             case RedirectorType.StraightThrough:
@@ -161,6 +161,11 @@ public class LaserRedirector : MonoBehaviour
                 float nextRemaining = dist - hit.distance;
                 next.ActivateBeam(outDir, nextRemaining, bounces - 1, blocks, redir);
             }
+            else
+            {
+                // Notify a laser-destructible push brick if the beam terminates on one.
+                hit.collider.GetComponentInParent<PushBrick>()?.OnLaserHit();
+            }
         }
         else
         {
@@ -174,14 +179,6 @@ public class LaserRedirector : MonoBehaviour
     }
 
     // -------------------------------------------------------------------------
-
-    private Vector2 RedirectCross(Vector2 inDir)
-    {
-        Vector2 localIn = transform.InverseTransformDirection(inDir);
-        Vector2 snapped = SnapToCardinal(localIn);
-        Vector2 localOut = new Vector2(-snapped.y, snapped.x); // 90 CCW
-        return ((Vector2)transform.TransformDirection(localOut)).normalized;
-    }
 
     private static Vector2 SnapToCardinal(Vector2 v)
     {

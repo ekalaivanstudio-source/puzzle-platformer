@@ -81,6 +81,11 @@ public class LaserShooter : MonoBehaviour
                 redirector.ActivateBeam(direction, remaining, m_MaxBounces,
                                         m_BlockingLayers, m_RedirectorLayer);
             }
+            else
+            {
+                // Notify a laser-destructible push brick if the beam terminates on one.
+                hit.collider.GetComponentInParent<PushBrick>()?.OnLaserHit();
+            }
         }
         else
         {
@@ -127,8 +132,8 @@ public class LaserShooter : MonoBehaviour
     // Returns true if point p is within radius of the line segment (a, b).
     private static bool PointNearSegment(Vector2 p, Vector2 a, Vector2 b, float radius)
     {
-        Vector2 ab  = b - a;
-        float   len2 = ab.sqrMagnitude;
+        Vector2 ab = b - a;
+        float len2 = ab.sqrMagnitude;
         if (len2 < 0.0001f) return Vector2.Distance(p, a) <= radius;
         float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / len2);
         Vector2 closest = a + t * ab;

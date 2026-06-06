@@ -32,10 +32,11 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
 
     // ─── Private state ────────────────────────────────────────────────────────
 
-    private Collider2D  m_Collider;
+    private Collider2D m_Collider;
     private InputAction m_InteractAction;
-    private bool        m_PlayerInRange;
-    private bool        m_InControlMode;
+    private bool m_PlayerInRange;
+    private bool m_InControlMode;
+    private Quaternion m_InitialRotation;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -44,6 +45,9 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         if (m_Collider == null)
             Debug.LogError("[LaserRedirectorRotatorInputResetter] No Collider2D found.", this);
+
+        if (m_TargetRedirector != null)
+            m_InitialRotation = m_TargetRedirector.transform.rotation;
     }
 
     private void Start()
@@ -66,11 +70,20 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
     private void OnEnable()
     {
         if (m_InteractAction != null) m_InteractAction.performed += OnInteract;
+        GameManager.OnFullReset += OnFullReset;
     }
 
     private void OnDisable()
     {
         if (m_InteractAction != null) m_InteractAction.performed -= OnInteract;
+        if (m_InControlMode) ExitControlMode();
+        GameManager.OnFullReset -= OnFullReset;
+    }
+
+    private void OnFullReset()
+    {
+        if (m_TargetRedirector != null)
+            m_TargetRedirector.transform.rotation = m_InitialRotation;
         if (m_InControlMode) ExitControlMode();
     }
 
@@ -146,7 +159,7 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
 
         // Abort execution at the player's current position, clear sequence, fire OnTurnReset.
         if (PlayerController.Instance != null)
-            PlayerController.Instance.ResetAtCheckpoint(PlayerController.Instance.transform.position);
+            PlayerController.Instance.ResetAtCheckpoint(transform.position);
 
         // Lock normal input — arrow keys now control the redirector.
         DeviceInputProvider.Instance?.SetEnabled(false);
