@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering.Universal;
@@ -12,7 +12,7 @@ using UnityEngine.Rendering.Universal;
 ///   2. The player presses the configured pickup button to collect the key.
 ///   3. Time and the icon restore; <see cref="Key.Interact"/> notifies GameManager.
 ///
-/// The <see cref="m_PickupAction"/> is a standalone <see cref="InputAction"/> — configure
+/// The <see cref="m_PickupAction"/> is a standalone <see cref="InputAction"/> â€” configure
 /// its bindings in the Inspector. It is independent of DeviceInputProvider so it
 /// fires correctly during the execution phase.
 /// </summary>
@@ -27,7 +27,7 @@ public class KeyPickupZone : MonoBehaviour
     [SerializeField] private string m_PlayerTag = "Player";
 
     [Header("Slow Motion")]
-    [Tooltip("Time scale applied when the player is within proximity (0–1).")]
+    [Tooltip("Time scale applied when the player is within proximity (0â€“1).")]
     [SerializeField] private float m_SlowTimeScale = 0.25f;
 
     [Header("UI")]
@@ -52,8 +52,6 @@ public class KeyPickupZone : MonoBehaviour
     [Tooltip("Seconds (real time) to revert back to the original FOV.")]
     [SerializeField] private float m_RevertZoomDuration = 0.2f;
 
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip pickupClip;
     [SerializeField] private BoxCollider2D doorCollider; // optional collider to disable when the key is collected
 
     private Key m_Key;
@@ -69,7 +67,7 @@ public class KeyPickupZone : MonoBehaviour
     private float m_OriginalLightIntensity;
     private float m_OriginalOuterRadius;
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Awake()
     {
@@ -91,7 +89,7 @@ public class KeyPickupZone : MonoBehaviour
         GameManager.OnTurnReset += ResetKey;
 
         // Mirrors the Interact bindings from PlayerInputActions (E, Z, Gamepad ButtonWest).
-        // Standalone action — not part of the main asset, so it fires during execution too.
+        // Standalone action â€” not part of the main asset, so it fires during execution too.
         m_PickupAction = new InputAction("KeyPickup", InputActionType.Button);
         m_PickupAction.AddBinding("<Keyboard>/e");
         m_PickupAction.AddBinding("<Keyboard>/z");
@@ -113,7 +111,7 @@ public class KeyPickupZone : MonoBehaviour
     private void OnDisable()
     {
         // Restore time and clean up input if the object is disabled mid-proximity.
-        // Do NOT Dispose here — Key.Interact() calls SetActive(false) which fires OnDisable
+        // Do NOT Dispose here â€” Key.Interact() calls SetActive(false) which fires OnDisable
         // while still inside the InputAction performed callback; Dispose during a callback crashes.
         if (m_InProximity) RestoreTime();
         m_InProximity = false;
@@ -126,13 +124,13 @@ public class KeyPickupZone : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Safe to Dispose here — OnDestroy never fires during an input callback.
+        // Safe to Dispose here â€” OnDestroy never fires during an input callback.
         GameManager.OnTurnReset -= ResetKey;
         UnbindPickup();
         m_PickupAction?.Dispose();
     }
 
-    // ─── Reset ───────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void ResetKey()
     {
@@ -166,7 +164,7 @@ public class KeyPickupZone : MonoBehaviour
         gameObject.SetActive(true);
     }
 
-    // ─── Update ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Update()
     {
@@ -180,7 +178,7 @@ public class KeyPickupZone : MonoBehaviour
             OnExitProximity();
     }
 
-    // ─── Proximity ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Proximity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void OnEnterProximity()
     {
@@ -211,7 +209,7 @@ public class KeyPickupZone : MonoBehaviour
         UnbindPickup();
     }
 
-    // ─── Input ───────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void BindPickup()
     {
@@ -231,7 +229,7 @@ public class KeyPickupZone : MonoBehaviour
         Collect();
     }
 
-    // ─── Collection ──────────────────────────────────────────────────────────
+    // â”€â”€â”€ Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Collect()
     {
@@ -252,8 +250,6 @@ public class KeyPickupZone : MonoBehaviour
 
         StartZoom(m_OriginalCameraSize, m_RevertZoomDuration, m_OriginalCameraPosition);
 
-        if (audioSource != null && pickupClip != null)
-            audioSource.PlayOneShot(pickupClip);
 
         StartCoroutine(CollectRoutine());
         if (doorCollider != null)
@@ -284,7 +280,7 @@ public class KeyPickupZone : MonoBehaviour
         m_Key.Interact(); // notifies GameManager and calls SetActive(false)
     }
 
-    // ─── Time ────────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void ApplySlowMo()
     {
@@ -298,7 +294,7 @@ public class KeyPickupZone : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
     }
 
-    // ─── Camera Zoom ─────────────────────────────────────────────────────────
+    // â”€â”€â”€ Camera Zoom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void StartZoom(float targetSize, float duration, Vector3 targetPosition)
     {

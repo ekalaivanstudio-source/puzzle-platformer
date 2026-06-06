@@ -1,21 +1,14 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Singleton coordinator for all major game systems.
 /// Routes play start, turn end, key collection, win/lose states, and level loading.
+/// All systems are accessed via their own singletons — no serialized references needed.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
-    private static GameManager m_Instance;
-
-    /// <summary>Global singleton access to the GameManager.</summary>
-    public static GameManager Instance => m_Instance;
-
-    [SerializeField] private PlayerController m_PlayerController;
-    [SerializeField] private UIManager m_UIManager;
-    [SerializeField] private SequenceSourceRouter m_SequenceSourceRouter;
-    [SerializeField] private DeviceInputProvider m_DeviceInputProvider;
+    public static GameManager Instance { get; private set; }
 
     /// <summary>True once the player has collected the key this turn.</summary>
     public bool IsKeyCollected { get; private set; }
@@ -23,114 +16,83 @@ public class GameManager : MonoBehaviour
     /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
     public static event System.Action OnTurnReset;
 
-    /// <summary>Fired when execution begins so grid/interactables can activate during a run.</summary>
+    /// <summary>Fired when execution begins so interactables can activate during a run.</summary>
     public static event System.Action OnExecutionStarted;
 
-    // Prevents duplicate GameWin/GameOver calls within the same execution turn
+    // Prevents duplicate GameWin/GameOver calls within the same execution turn.
     private bool m_IsGameOver;
 
     private void Awake()
     {
-        if (m_Instance != null && m_Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        m_Instance = this;
-
-        if (m_PlayerController == null) Debug.LogError("[GameManager] PlayerController is not assigned.", this);
-        if (m_UIManager == null) Debug.LogError("[GameManager] UIManager is not assigned.", this);
-        if (m_SequenceSourceRouter == null) Debug.LogWarning("[GameManager] SequenceSourceRouter is not assigned.", this);
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
     }
+
+    // ─── Turn Flow ────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Called by <see cref="UIManager"/> when the Play button is pressed, or by
     /// <see cref="DeviceInputProvider"/> when Submit (Enter/Start) is pressed.
-    /// Prepares the sequence, updates UI, then starts the execution turn.
+    /// Validates the sequence, blocks input, then starts execution.
     /// </summary>
-    /// 
     [ContextMenu("Start Play")]
     public void OnPlayClicked()
     {
-        if (m_SequenceSourceRouter != null && !m_SequenceSourceRouter.CanExecute)
+        if (SequenceManager.Instance == null || !SequenceManager.Instance.CanExecute)
         {
-            Debug.Log("[GameManager] Cannot start — sequence is empty.");
+            Debug.Log("[GameManager] Cannot start — sequence is empty or not ready.");
             return;
         }
 
-        // Mouse mode: bake toggle grid into a flat sequence.
-        // Device mode: sequence already built via key presses, this is a no-op.
-        m_SequenceSourceRouter?.PrepareForExecution();
-
         m_IsGameOver = false;
-        m_DeviceInputProvider?.SetEnabled(false); // block keyboard/gamepad during execution
-        m_UIManager?.HidePopup();
-        m_UIManager?.LockUI();
+        DeviceInputProvider.Instance?.SetEnabled(false);
         OnExecutionStarted?.Invoke();
-        m_PlayerController?.OnGamePlayStart();
+        PlayerController.Instance?.OnGamePlayStart();
     }
 
     /// <summary>
-    /// Called by <see cref="PlayerController"/> after all beats are executed.
-    /// Clears the sequence, restores input, unlocks the UI, and re-opens the action panel.
+    /// Called by <see cref="PlayerController"/> after all beats finish executing.
+    /// Clears the sequence, restores input, and fires the turn-reset event.
     /// </summary>
     public void PlayEnded()
     {
         IsKeyCollected = false;
-        m_SequenceSourceRouter?.OnTurnEnded();   // clear sequence for next round
-        m_DeviceInputProvider?.SetEnabled(true); // restore keyboard/gamepad input
-        m_UIManager?.UnlockUI();
-        m_UIManager?.PopUp();
+        SequenceManager.Instance?.OnTurnEnded();
+        DeviceInputProvider.Instance?.SetEnabled(true);
         OnTurnReset?.Invoke();
     }
 
-    /// <summary>Marks the key as collected. Called by <see cref="Key"/> on interaction.</summary>
-    public void KeyCollected()
-    {
-        IsKeyCollected = true;
-    }
+    // ─── Game Events ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Triggers the win screen. Ignored if already in a game-over state this turn
-    /// to prevent duplicate calls from multiple trigger overlaps.
-    /// </summary>
+    /// <summary>Marks the key as collected. Called by <see cref="Key"/> on interaction.</summary>
+    public void KeyCollected() { IsKeyCollected = true; }
+
+    /// <summary>Triggers the win state. Ignored if already in a game-over state this turn.</summary>
     public void GameWin()
     {
         if (m_IsGameOver) return;
         m_IsGameOver = true;
-        m_UIManager?.GameOver(true);
     }
 
-    /// <summary>
-    /// Triggers the lose screen. Ignored if already in a game-over state this turn.
-    /// </summary>
+    /// <summary>Triggers the lose state. Ignored if already in a game-over state this turn.</summary>
     public void GameOver()
     {
         if (m_IsGameOver) return;
         m_IsGameOver = true;
-        m_UIManager?.GameOver(false);
     }
+
+    // ─── Scene Management ────────────────────────────────────────────────────
 
     /// <summary>Reloads the currently active scene.</summary>
-    public void ReloadLevel()
-    {
+    public void ReloadLevel() =>
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
 
-    /// <summary>
-    /// Loads the next scene by build index.
-    /// Logs a warning if there is no next scene available.
-    /// </summary>
+    /// <summary>Loads the next scene by build index, looping back to 0 after the last level.</summary>
     public void LoadNextLevel()
     {
-        int nextIndex = SceneManager.GetActiveScene().buildIndex + 1;
-
-        // Loop back to scene 0 when the last level is complete.
-        if (nextIndex >= SceneManager.sceneCountInBuildSettings)
-            nextIndex = 0;
-
-        SceneManager.LoadScene(nextIndex);
+        int next = SceneManager.GetActiveScene().buildIndex + 1;
+        if (next >= SceneManager.sceneCountInBuildSettings) next = 0;
+        SceneManager.LoadScene(next);
     }
 
     public void QuitApplication()

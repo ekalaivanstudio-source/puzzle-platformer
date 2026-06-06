@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -6,16 +6,15 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Drives the input hint UI:
-///   • First <see cref="SequenceManager.MaxLength"/> images light up one-by-one as the player
+///   â€¢ First <see cref="SequenceManager.MaxLength"/> images light up one-by-one as the player
 ///     queues actions (index 0 = first action added, etc.).
-///   • The remaining images (the Enter/Submit hint) light up when the player presses Submit.
+///   â€¢ The remaining images (the Enter/Submit hint) light up when the player presses Submit.
 /// All images dim back when the sequence is cleared at turn end.
 /// </summary>
 public class PlayerInputUIHelper : MonoBehaviour
 {
     [SerializeField] private Image[] inputsUI;
 
-    [SerializeField] private SequenceManager m_SequenceManager;
     [SerializeField] private InputActionAsset m_InputActionAsset;
 
     [SerializeField] private float m_ActiveAlpha = 1f;
@@ -25,14 +24,12 @@ public class PlayerInputUIHelper : MonoBehaviour
     private int m_PreviousSequenceCount;
     private bool m_IsRejecting;
 
-    // Blink state — tracked so a mid-blink slot can be force-restored
+    // Blink state â€” tracked so a mid-blink slot can be force-restored
     private Coroutine m_BlinkCoroutine;
     private Image m_BlinkingSlot;
     private Color m_BlinkOriginalColor;
     [SerializeField] private GameObject buttonIndication;
     private RectTransform m_ButtonIndicationRT;
-    [SerializeField] private AudioClip keyPressClip;
-    [SerializeField] private AudioSource audioSource;
 
     [Header("Correct Sequence")]
     [Tooltip("The exact sequence the player must enter. Leave empty to allow any input.")]
@@ -49,14 +46,13 @@ public class PlayerInputUIHelper : MonoBehaviour
     [SerializeField] private Sprite m_AnySprite;
 
     [Header("Wrong Input Feedback")]
-    [SerializeField] private AudioClip m_WrongKeyClip;
     [SerializeField] private Color m_WrongColor = Color.red;
     [SerializeField] private float m_BlinkDuration = 0.12f;
     [SerializeField] private int m_BlinkCount = 2;
     [SerializeField] private float m_ShakeMagnitude = 0.08f;
     [SerializeField] private float m_ShakeDuration = 0.25f;
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Awake()
     {
@@ -76,8 +72,7 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void OnEnable()
     {
-        if (m_SequenceManager != null)
-            m_SequenceManager.OnSequenceChanged += RefreshSequenceSlots;
+        if (SequenceManager.Instance != null) SequenceManager.Instance.OnSequenceChanged += RefreshSequenceSlots;
 
         if (m_SubmitAction != null)
             m_SubmitAction.performed += OnSubmit;
@@ -85,8 +80,7 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void OnDisable()
     {
-        if (m_SequenceManager != null)
-            m_SequenceManager.OnSequenceChanged -= RefreshSequenceSlots;
+        if (SequenceManager.Instance != null) SequenceManager.Instance.OnSequenceChanged -= RefreshSequenceSlots;
 
         if (m_SubmitAction != null)
             m_SubmitAction.performed -= OnSubmit;
@@ -94,39 +88,48 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void Start()
     {
-        // Drive MaxLength and correct-sequence validation from the configured sequence
-        if (m_SequenceManager != null && m_CorrectSequence != null && m_CorrectSequence.Length > 0)
+        // Guarantee the subscription regardless of OnEnable/Awake execution order.
+        // If OnEnable ran before SequenceManager.Awake, Instance was null and the
+        // subscription was skipped — this ensures it is always in place by Start().
+        if (SequenceManager.Instance != null)
         {
-            m_SequenceManager.SetMaxLength(m_CorrectSequence.Length);
-            m_SequenceManager.SetCorrectSequence(m_CorrectSequence);
+            SequenceManager.Instance.OnSequenceChanged -= RefreshSequenceSlots;
+            SequenceManager.Instance.OnSequenceChanged += RefreshSequenceSlots;
+        }
+
+        // Drive MaxLength and correct-sequence validation from the configured sequence
+        if (SequenceManager.Instance != null && m_CorrectSequence != null && m_CorrectSequence.Length > 0)
+        {
+            SequenceManager.Instance.SetMaxLength(m_CorrectSequence.Length);
+            SequenceManager.Instance.SetCorrectSequence(m_CorrectSequence);
         }
 
         AssignSlotSprites();
         RefreshAll();
     }
 
-    // ─── Callbacks ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Callbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void RefreshSequenceSlots()
     {
-        // Force-stop any running blink UNLESS we're mid-rejection — the rejection
+        // Force-stop any running blink UNLESS we're mid-rejection â€” the rejection
         // itself just started the blink and the RemoveLastAction callback must not kill it.
         if (!m_IsRejecting)
             StopBlinkImmediate();
         // Count only non-Interact actions for UI display
-        int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
+        int slots = SequenceManager.Instance != null ? SequenceManager.Instance.MaxLength : 6;
         // Build a filtered list of non-Interact actions
         var filteredActions = new System.Collections.Generic.List<ActionTypeEnum>();
-        if (m_SequenceManager != null)
+        if (SequenceManager.Instance != null)
         {
-            foreach (var act in m_SequenceManager.Sequence)
+            foreach (var act in SequenceManager.Instance.Sequence)
                 if (act != ActionTypeEnum.Interact)
                     filteredActions.Add(act);
         }
         int count = filteredActions.Count;
 
         // Validate the newly added action against the correct sequence.
-        // Slots marked ActionTypeEnum.Any are wildcards — any input is accepted.
+        // Slots marked ActionTypeEnum.Any are wildcards â€” any input is accepted.
         if (!m_IsRejecting && m_CorrectSequence != null && m_CorrectSequence.Length > 0
             && count > m_PreviousSequenceCount)
         {
@@ -141,12 +144,10 @@ public class PlayerInputUIHelper : MonoBehaviour
                 {
                     m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex]));
                 }
-                if (audioSource != null && m_WrongKeyClip != null)
-                    audioSource.PlayOneShot(m_WrongKeyClip);
                 CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
 
                 m_IsRejecting = true;
-                m_SequenceManager.RemoveLastAction();
+                SequenceManager.Instance.RemoveLastAction();
                 m_IsRejecting = false;
                 return;
             }
@@ -189,12 +190,6 @@ public class PlayerInputUIHelper : MonoBehaviour
             }
         }
 
-        // Play sound only when an action was added (count increased), not on undo or clear
-        if (count > m_PreviousSequenceCount)
-            PlayKeyPress();
-
-        m_PreviousSequenceCount = count;
-
         // When the sequence is cleared (turn ended), also dim the Enter hint
         if (count == 0)
         {
@@ -205,15 +200,15 @@ public class PlayerInputUIHelper : MonoBehaviour
             SetSubmitAlpha(m_ActiveAlpha);
 
         UpdateButtonIndication(count);
+        m_PreviousSequenceCount = count;
     }
 
     private void OnSubmit(InputAction.CallbackContext ctx)
     {
         SetSubmitAlpha(m_ActiveAlpha);
-        PlayKeyPress();
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void AssignSlotSprites()
     {
@@ -251,18 +246,12 @@ public class PlayerInputUIHelper : MonoBehaviour
 
     private void SetSubmitAlpha(float alpha)
     {
-        int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
+        int slots = SequenceManager.Instance != null ? SequenceManager.Instance.MaxLength : 6;
         for (int i = slots; i < inputsUI.Length; i++)
         {
             if (inputsUI[i] == null) continue;
             SetAlpha(inputsUI[i], alpha);
         }
-    }
-
-    private void PlayKeyPress()
-    {
-        if (audioSource != null && keyPressClip != null)
-            audioSource.PlayOneShot(keyPressClip);
     }
 
     // Moves the buttonIndication to sit on top of the next slot to be filled.
@@ -273,7 +262,7 @@ public class PlayerInputUIHelper : MonoBehaviour
     {
         if (m_ButtonIndicationRT == null || inputsUI == null) return;
 
-        int slots = m_SequenceManager != null ? m_SequenceManager.MaxLength : 6;
+        int slots = SequenceManager.Instance != null ? SequenceManager.Instance.MaxLength : 6;
         if (count >= slots)
         {
             m_ButtonIndicationRT.gameObject.SetActive(false);
@@ -284,7 +273,9 @@ public class PlayerInputUIHelper : MonoBehaviour
         int indicatorIndex = Mathf.Clamp(count, 0, inputsUI.Length - 1);
         Image target = inputsUI[indicatorIndex];
         if (target != null)
+        {
             m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
+        }
     }
 
     private void StopBlinkImmediate()
