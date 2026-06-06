@@ -1,34 +1,32 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages the player's command queue for keyboard/gamepad input mode.
+/// Singleton. Manages the player's command queue for keyboard/gamepad input.
 /// The player builds up actions via <see cref="DeviceInputProvider"/> one key press at a time,
 /// then presses Submit (Enter/Start) to execute the full sequence.
-/// Implements <see cref="ISequenceSource"/> so <see cref="PlayerController"/> reads from it directly.
 /// </summary>
 public class SequenceManager : MonoBehaviour, ISequenceSource
 {
+    public static SequenceManager Instance { get; private set; }
     [Tooltip("Maximum number of actions the player can queue per turn.")]
     [SerializeField] private int m_MaxSequenceLength = 6;
 
     [Tooltip("When true the player must fill every slot before pressing Enter. " +
              "Set false to allow submitting a partial sequence.")]
-    [SerializeField] private bool m_RequireFullSequence = true;
+    [SerializeField] private bool m_RequireFullSequence = false;
 
-    [Tooltip("Per-action audio clips played as feedback when each action is added to the queue.")]
-    [SerializeField] private ActionAudioEntry[] m_ActionAudioMap;
 
     private readonly List<ActionTypeEnum> m_Sequence = new List<ActionTypeEnum>();
 
-    // Optional correct sequence — when set, CanExecute also requires an exact match.
+    // Optional correct sequence â€” when set, CanExecute also requires an exact match.
     private ActionTypeEnum[] m_CorrectSequence;
 
     /// <summary>Read-only view of the current queued command sequence.</summary>
     public IReadOnlyList<ActionTypeEnum> Sequence => m_Sequence;
 
-    // ─── ISequenceSource ─────────────────────────────────────────────────────
+    // â”€â”€â”€ ISequenceSource â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public int SequenceLength => m_Sequence.Count;
     public bool CanExecute => m_RequireFullSequence
@@ -41,15 +39,7 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         return m_Sequence[index];
     }
 
-    public AudioClip GetClipForAction(ActionTypeEnum action)
-    {
-        if (m_ActionAudioMap == null) return null;
-        foreach (ActionAudioEntry entry in m_ActionAudioMap)
-            if (entry.actionType == action) return entry.clip;
-        return null;
-    }
-
-    // ─── Properties ──────────────────────────────────────────────────────────
+    // â”€â”€â”€ Properties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>Maximum allowed number of queued actions.</summary>
     public int MaxLength => m_MaxSequenceLength;
@@ -87,14 +77,20 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     /// <summary>Fired whenever the sequence is modified (add, remove, or clear).</summary>
     public event Action OnSequenceChanged;
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
 
     private void OnValidate()
     {
         if (m_MaxSequenceLength <= 0) m_MaxSequenceLength = 1;
     }
 
-    // ─── Public API ──────────────────────────────────────────────────────────
+    // â”€â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>
     /// Appends an action to the end of the queue.
@@ -109,7 +105,6 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         }
 
         m_Sequence.Add(action);
-        PlayAddFeedback(action);
         OnSequenceChanged?.Invoke();
         return true;
     }
@@ -130,31 +125,8 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         OnSequenceChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Clears the queue at turn end, readying it for the next input phase.
-    /// Called by <see cref="SequenceSourceRouter.OnTurnEnded"/>.
-    /// </summary>
+    /// <summary>Clears the queue at turn end. Called by <see cref="GameManager.PlayEnded"/>.</summary>
     public void OnTurnEnded() => ClearSequence();
 
-    // Plays a short audio cue as immediate feedback when an action is added
-    private void PlayAddFeedback(ActionTypeEnum action)
-    {
-        AudioClip clip = GetClipForAction(action);
-        if (clip != null)
-            AudioManager.Instance?.PlayBeatTune(clip, UnityEngine.Random.Range(0.8f, 1.2f));
-    }
 }
 
-/// <summary>
-/// Maps a single <see cref="ActionTypeEnum"/> to an <see cref="AudioClip"/> for beat sound feedback.
-/// Assign one entry per action type in the SequenceManager and MouseInputProvider Inspectors.
-/// </summary>
-[Serializable]
-public struct ActionAudioEntry
-{
-    [Tooltip("The action type this clip is played for.")]
-    public ActionTypeEnum actionType;
-
-    [Tooltip("Clip played when this action is added to the sequence.")]
-    public AudioClip clip;
-}

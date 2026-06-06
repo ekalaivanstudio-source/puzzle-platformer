@@ -8,15 +8,8 @@ public enum ActionTypeEnum
     Right,
     Jump,
     Interact,
-    /// <summary>
-    /// Wildcard slot in a correct-sequence definition — the player may enter
-    /// any action here and it will always be accepted.
-    /// </summary>
+    /// <summary>Wildcard slot — any action entered here is always accepted.</summary>
     Any,
     JumpRight,
-    JumpLeft,
-    /// <summary>Quick horizontal burst in the player's current facing direction.</summary>
-    Dash,
-    /// <summary>Slams the player straight down at high speed until they hit ground.</summary>
-    GroundPound
+    JumpLeft
 }
