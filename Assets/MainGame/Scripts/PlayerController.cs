@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -6,7 +6,7 @@ using UnityEngine;
 /// deterministic, fixed-distance command system. Each command (Left, Right,
 /// Jump, JumpRight, JumpLeft) travels an exact number of units every execution,
 /// independent of frame rate or physics timing. The execution loop is
-/// coroutine-based â€” each command completes fully before the next begins.
+/// coroutine-based — each command completes fully before the next begins.
 ///
 /// Combined commands: a Jump followed immediately by Right or Left in the
 /// sequence is interpreted as a directional jump (JumpRight / JumpLeft).
@@ -38,7 +38,17 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_CommandTimeout = 3f;
 
     [Header("Ground Check")]
-    [SerializeField] private LayerMask m_GroundLayer;
+    [Tooltip("All layers that count as walkable ground / solid walls (Ground, Laser, etc.).")]
+    [SerializeField] private LayerMask[] m_GroundLayers;
+    private LayerMask WalkableMask
+    {
+        get
+        {
+            LayerMask combined = 0;
+            foreach (LayerMask lm in m_GroundLayers) combined |= lm;
+            return combined;
+        }
+    }
     [Tooltip("Radius of the overlap circle used to detect ground contact. Increase if the player gets stuck when half-inside a surface.")]
     [SerializeField] private float m_GroundCheckRadius = 0.15f;
     [Tooltip("How far below the collider bottom the circle centre is placed.")]
@@ -68,7 +78,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 m_StartPosition;
     private float m_OriginalGravityScale;
 
-    // â”€â”€â”€ Unity Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Unity Lifecycle ────────────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -99,7 +109,7 @@ public class PlayerController : MonoBehaviour
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
     }
 
-    // Animation-only update â€” movement is driven by coroutines, not Update
+    // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
         if (!m_IsGamePlaying) return;
@@ -108,7 +118,7 @@ public class PlayerController : MonoBehaviour
         CheckSpikeOverlap();
     }
 
-    // â”€â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Starts the execution turn. Called by <see cref="GameManager.OnPlayClicked"/>.
@@ -118,7 +128,7 @@ public class PlayerController : MonoBehaviour
     {
         if (SequenceManager.Instance == null || !SequenceManager.Instance.CanExecute)
         {
-            Debug.LogError("[PlayerController] Cannot start — no sequence source or sequence is empty.", this);
+            Debug.LogError("[PlayerController] Cannot start � no sequence source or sequence is empty.", this);
             return;
         }
 
@@ -137,7 +147,7 @@ public class PlayerController : MonoBehaviour
         AbortExecution();
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
-        // Do NOT update m_StartPosition — death and turn-end still reset to the
+        // Do NOT update m_StartPosition � death and turn-end still reset to the
         // original spawn. The checkpoint only repositions the player for this turn.
         m_Rigidbody.position = checkpointPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
@@ -200,7 +210,7 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>
     /// Moves the player through <paramref name="waypoints"/> with input locked, then ends
-    /// the turn â€” resetting the player to start just like a wrong-input run.
+    /// the turn — resetting the player to start just like a wrong-input run.
     /// Called by InvisibleLockPoint when the player enters a trap zone.
     /// </summary>
     public void StartWaypointTransportThenEndTurn(Transform[] waypoints, float speed)
@@ -238,11 +248,11 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
 
-        // End the turn â€” player resets to start position, just like wrong inputs.
+        // End the turn — player resets to start position, just like wrong inputs.
         EndTurn();
     }
 
-    // â”€â”€â”€ Execution Loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Execution Loop ─────────────────────────────────────────────────────────
 
     // Iterates through each beat slot, executing one command per beat.
     private IEnumerator ExecutionLoop(int startIndex = 0)
@@ -276,7 +286,7 @@ public class PlayerController : MonoBehaviour
             EndTurn();
     }
 
-    // â”€â”€â”€ Public Command Methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Public Command Methods ──────────────────────────────────────────────────
 
     /// <summary>Moves exactly <see cref="m_MoveDistancePerCommand"/> units to the left.</summary>
     public IEnumerator MoveLeftCommand() => MoveHorizontal(-m_MoveDistancePerCommand);
@@ -294,7 +304,7 @@ public class PlayerController : MonoBehaviour
     public IEnumerator JumpLeftCommand() => PerformJump(-m_JumpForwardDistance);
 
 
-    // â”€â”€â”€ Movement Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Movement Logic ──────────────────────────────────────────────────────────
 
     // Moves the player horizontally by the given signed distance over m_MoveDuration seconds.
     // Velocity is set directly each FixedUpdate (no AddForce, no momentum).
@@ -314,8 +324,17 @@ public class PlayerController : MonoBehaviour
         bool hitWall = false;
         float commandElapsed = 0f;
         while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed) && !hitWall)
-        {
-            // Wall on the path â€” stop flush and end this command.
+        {            // Push-brick check � must come before the regular wall check so the
+            // push fires instead of silently stopping the player.
+            PushBrick pushBrick = CheckPushBrick(speed);
+            if (pushBrick != null)
+            {
+                m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
+                yield return StartCoroutine(pushBrick.Push(Mathf.Sign(speed)));
+                hitWall = true;
+                break;
+            }
+            // Wall on the path — stop flush and end this command.
             if (CheckHorizontalWall(speed))
             {
                 m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
@@ -337,7 +356,7 @@ public class PlayerController : MonoBehaviour
                 yield break;
             }
 
-            // Case 1 â€” early detection: front foot is off the edge but centre is still
+            // Case 1 — early detection: front foot is off the edge but centre is still
             //          over the platform. Walk the remaining unit first, then fall.
             if (CheckIsGrounded() && !CheckGroundAhead(speed))
             {
@@ -371,13 +390,13 @@ public class PlayerController : MonoBehaviour
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
-                // Direct assignment â€” bypasses physics integration for an exact snap.
+                // Direct assignment — bypasses physics integration for an exact snap.
                 m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
                 yield return new WaitForFixedUpdate();
                 m_Rigidbody.linearVelocity = Vector2.zero;
                 m_Rigidbody.gravityScale = savedGravity;
 
-                // Fall if there is no ground at the edge â€” even when fallEdgeX == targetX.
+                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
                 if (!CheckIsGrounded())
                 {
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
@@ -390,7 +409,7 @@ public class PlayerController : MonoBehaviour
                     transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
                 }
             }
-            // Case 2 â€” late detection: the centre has already crossed the edge in a
+            // Case 2 — late detection: the centre has already crossed the edge in a
             //          single physics step and CheckIsGrounded() is already false.
             //          Require a clearly negative y-velocity (several frames of free-fall)
             //          to avoid false-positives from single-frame ground-check flickers.
@@ -424,13 +443,13 @@ public class PlayerController : MonoBehaviour
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
-                // Direct assignment â€” bypasses physics integration for an exact snap.
+                // Direct assignment — bypasses physics integration for an exact snap.
                 m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
                 yield return new WaitForFixedUpdate();
                 m_Rigidbody.linearVelocity = Vector2.zero;
                 m_Rigidbody.gravityScale = savedGravity;
 
-                // Fall if there is no ground at the edge â€” even when fallEdgeX == targetX.
+                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
                 if (!CheckIsGrounded())
                 {
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
@@ -445,7 +464,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Snap to exact target X â€” only when not stopped by a wall.
+        // Snap to exact target X — only when not stopped by a wall.
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
         if (!hitWall)
             m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
@@ -470,11 +489,11 @@ public class PlayerController : MonoBehaviour
         return speed > 0f ? currentX >= targetX - 0.01f : currentX <= targetX + 0.01f;
     }
 
-    // â”€â”€â”€ Jump Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Jump Logic ──────────────────────────────────────────────────────────────
 
     // Performs a jump with deterministic height and optional horizontal distance.
     // Initial vertical velocity is derived from m_JumpHeight using kinematics: v = sqrt(2gh).
-    // Horizontal velocity is derived so the player reaches targetX exactly when they land â€”
+    // Horizontal velocity is derived so the player reaches targetX exactly when they land —
     // including elevated or lowered platforms. A downward raycast at targetX finds the landing
     // surface height; kinematics then gives the exact air time to that height.
     private IEnumerator PerformJump(float horizontalDistance)
@@ -482,7 +501,7 @@ public class PlayerController : MonoBehaviour
         if (!m_IsGamePlaying) yield break;
 
         // Derive effective gravity so the arc peaks at m_JumpHeight in exactly half of m_JumpDuration.
-        // g_eff = 2h / t_half^2   â†’   v0y = g_eff * t_half = 2h / t_half
+        // g_eff = 2h / t_half^2   →   v0y = g_eff * t_half = 2h / t_half
         float tHalf = m_JumpDuration * 0.5f;
         float gEff = 2f * m_JumpHeight / (tHalf * tHalf);
         float v0y = gEff * tHalf;
@@ -509,15 +528,15 @@ public class PlayerController : MonoBehaviour
                 new Vector2(targetX, startY + m_JumpHeight + 1f),
                 Vector2.down,
                 m_JumpHeight + 20f,
-                m_GroundLayer);
+                WalkableMask);
 
             // dY = height difference between landing surface and current surface.
             float dY = hit.collider != null
                 ? (hit.point.y + footOffset) - startY   // elevated (+) or lowered (-)
-                : 0f;                                    // no hit â†’ assume flat ground
+                : 0f;                                    // no hit → assume flat ground
 
             // Solve for descending-arc landing time using effective gravity.
-            // dY = v0y*t - 0.5*gEff*t^2  â†’  t = (v0y + sqrt(v0y^2 - 2*gEff*dY)) / gEff
+            // dY = v0y*t - 0.5*gEff*t^2  →  t = (v0y + sqrt(v0y^2 - 2*gEff*dY)) / gEff
             float disc = v0y * v0y - 2f * gEff * dY;
             if (disc >= 0f)
             {
@@ -526,7 +545,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Jump height can't reach dY â€” fallback to flat-ground vx
+                // Jump height can't reach dY — fallback to flat-ground vx
                 vx = horizontalDistance / m_JumpDuration;
             }
         }
@@ -535,7 +554,7 @@ public class PlayerController : MonoBehaviour
         if (!Mathf.Approximately(horizontalDistance, 0f))
             transform.localScale = new Vector3(horizontalDistance > 0f ? 1f : -1f, 1f, 1f);
 
-        // Apply initial velocity â€” set once, physics handles the arc naturally
+        // Apply initial velocity — set once, physics handles the arc naturally
         m_Rigidbody.linearVelocity = new Vector2(vx, v0y);
 
         // Allow two physics steps before polling for landing
@@ -580,7 +599,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // â”€â”€â”€ Interact Command â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Interact Command ────────────────────────────────────────────────────────
 
     // Triggers interaction and holds for m_MoveDuration so it occupies the same
     // time slot as a movement command, keeping beat rhythm consistent.
@@ -604,15 +623,15 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-    // â”€â”€â”€ Ground Check & Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Ground Check & Animation ────────────────────────────────────────────────
 
     private void UpdateGroundedAnimation()
     {
         //        m_Animator.SetBool("IsGrounded", CheckIsGrounded());
     }
 
-    // Continuous spike check â€” covers moving spikes that slide into the player via
-    // transform.position, which donâ€™t reliably fire OnTriggerEnter2D without a Rigidbody2D.
+    // Continuous spike check — covers moving spikes that slide into the player via
+    // transform.position, which don’t reliably fire OnTriggerEnter2D without a Rigidbody2D.
 
     private void OnTriggerStay2D(Collider2D other)
     {
@@ -646,11 +665,11 @@ public class PlayerController : MonoBehaviour
     private bool CheckIsGrounded()
     {
         // OverlapCircle centred just below the collider bottom.
-        // Wider than a single ray â€” reliably detects ground even when the
+        // Wider than a single ray — reliably detects ground even when the
         // player collider is partially embedded in a surface after snapping.
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         Vector2 centre = new Vector2(transform.position.x, bottom - m_GroundCheckDistance);
-        return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, m_GroundLayer);
+        return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, WalkableMask);
     }
 
     // Rounds the rigidbody position to the nearest 0.5-unit grid, eliminating the
@@ -671,7 +690,7 @@ public class PlayerController : MonoBehaviour
         float sign = Mathf.Sign(moveDirection);
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         float frontX = transform.position.x + sign * (m_Collider != null ? m_Collider.bounds.extents.x : 0.5f);
-        return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, m_GroundLayer);
+        return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, WalkableMask);
     }
 
     // BoxCasts horizontally to detect a wall in the direction of travel.
@@ -688,14 +707,36 @@ public class PlayerController : MonoBehaviour
             m_Collider.bounds.center.y);
         Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
 
-        return Physics2D.OverlapBox(sideCenter, sideSize, 0f, m_GroundLayer) != null;
+        return Physics2D.OverlapBox(sideCenter, sideSize, 0f, WalkableMask) != null;
+    }
+
+    // Returns the PushBrick at the player's side face, or null if none is present.
+    // Uses all layers so the brick does not need to be on the Ground layer.
+    private PushBrick CheckPushBrick(float signedSpeed)
+    {
+        if (m_Collider == null || Mathf.Approximately(signedSpeed, 0f)) return null;
+
+        float sign = Mathf.Sign(signedSpeed);
+        Vector2 sideCenter = new Vector2(
+            m_Collider.bounds.center.x + sign * (m_Collider.bounds.extents.x + 0.04f),
+            m_Collider.bounds.center.y);
+        Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
+
+        Collider2D[] hits = Physics2D.OverlapBoxAll(sideCenter, sideSize, 0f);
+        foreach (Collider2D hit in hits)
+        {
+            if (hit == m_Collider || hit.isTrigger) continue;
+            PushBrick brick = hit.GetComponentInParent<PushBrick>();
+            if (brick != null) return brick;
+        }
+        return null;
     }
 
     private void UpdateFallingAnimation()
     {
         float falling = m_Rigidbody.linearVelocity.y < 0f ? 1f : 0f;
     }
-    // â”€â”€â”€ Turn End / Abort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Turn End / Abort ────────────────────────────────────────────────────────
 
     private void EndTurn()
     {
@@ -727,8 +768,7 @@ public class PlayerController : MonoBehaviour
     // Short delay before resetting position and unlocking UI
     private IEnumerator WaitForEndStuff()
     {
-        // Restore time scale immediately — slow-motion from KeyPickupZone may still be active
-        // if the proximity zone triggered right as the last command finished or was never exited.
+        // Restore time scale in case any slow-motion was still active.
         // WaitForSecondsRealtime is unaffected by Time.timeScale so the reset always fires on time.
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
@@ -742,7 +782,7 @@ public class PlayerController : MonoBehaviour
         GameManager.Instance?.PlayEnded();
     }
 
-    // â”€â”€â”€ Collision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Collision ───────────────────────────────────────────────────────────────
 
     private void OnTriggerEnter2D(Collider2D other)
     {
@@ -760,19 +800,12 @@ public class PlayerController : MonoBehaviour
                 AbortExecution();
                 StartCoroutine(WinRoutine());
             }
-            else
-            {
-                Debug.Log("[PlayerController] Key not found.");
-                StartCoroutine(NoKeyRoutine());
-            }
         }
     }
 
     private System.Collections.IEnumerator WinRoutine()
     {
-        UIManager.Instance?.ShowWinEffect(true);
-        yield return new WaitForSecondsRealtime(2f);
-        UIManager.Instance?.ShowWinEffect(false);
+        yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
         GameManager.Instance.LoadNextLevel();
@@ -801,15 +834,6 @@ public class PlayerController : MonoBehaviour
         if (!m_IsGamePlaying) return;
         AbortExecution();
         StartCoroutine(DeathRoutine());
-    }
-
-    private System.Collections.IEnumerator NoKeyRoutine()
-    {
-        AbortExecution();
-        UIManager.Instance?.ShowNoKeyPopup(true);
-        yield return new WaitForSecondsRealtime(2f);
-        UIManager.Instance?.ShowNoKeyPopup(false);
-        GameManager.Instance.ReloadLevel();
     }
 }
 

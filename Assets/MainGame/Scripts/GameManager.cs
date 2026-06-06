@@ -16,6 +16,12 @@ public class GameManager : MonoBehaviour
     /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
     public static event System.Action OnTurnReset;
 
+    /// <summary>
+    /// Fired only when the player explicitly restarts the level (UI Restart button or R key).
+    /// Bricks, redirectors, and other persistent objects should listen to this — NOT OnTurnReset.
+    /// </summary>
+    public static event System.Action OnFullReset;
+
     /// <summary>Fired when execution begins so interactables can activate during a run.</summary>
     public static event System.Action OnExecutionStarted;
 
@@ -84,8 +90,17 @@ public class GameManager : MonoBehaviour
     // ─── Scene Management ────────────────────────────────────────────────────
 
     /// <summary>Reloads the currently active scene.</summary>
-    public void ReloadLevel() =>
+    public void ReloadLevel()
+    {
+        OnFullReset?.Invoke();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    /// <summary>
+    /// Called by the Restart UI button. Fires <see cref="OnFullReset"/> then reloads
+    /// the scene — use this instead of ReloadLevel() so both paths share the event.
+    /// </summary>
+    public void RestartLevel() => ReloadLevel();
 
     /// <summary>Loads the next scene by build index, looping back to 0 after the last level.</summary>
     public void LoadNextLevel()
