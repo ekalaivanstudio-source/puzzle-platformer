@@ -50,6 +50,7 @@ public class EnemyMovement : MonoBehaviour
     /// <summary>Called by PlayerController when a Dash or GroundPound hits this enemy.</summary>
     public void Die()
     {
+        AudioManager.Instance?.PlayEnemyDeath();
         if (m_DeathParticle != null)
             Instantiate(m_DeathParticle, transform.position, Quaternion.identity);
         Destroy(gameObject);

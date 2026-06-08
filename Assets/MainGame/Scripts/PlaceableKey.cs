@@ -1,11 +1,10 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
-/// A key the player picks up by pressing E while nearby, then carries until
-/// placed into a <see cref="KeySlot"/>. Unlike the original Key, the object
-/// does NOT notify GameManager on collection — the door only opens when the
-/// key is placed in a slot.
+/// A key the player picks up automatically by walking near it, then carries
+/// until placed into a <see cref="KeySlot"/>. Unlike the original Key, the
+/// object does NOT notify GameManager on collection — the door only opens when
+/// the key is placed in a slot.
 ///
 /// State resets on <see cref="GameManager.OnTurnReset"/>:
 ///   • Key reappears at its original position.
@@ -40,8 +39,6 @@ public class PlaceableKey : MonoBehaviour
     // ─── Private state ────────────────────────────────────────────────────────
 
     private Transform m_PlayerTransform;
-    private InputAction m_PickupAction;
-    private bool m_InProximity;
     private bool m_Collected;
     private SpriteRenderer m_SpriteRenderer;
 
@@ -50,11 +47,6 @@ public class PlaceableKey : MonoBehaviour
     private void Awake()
     {
         m_SpriteRenderer = GetComponentInChildren<SpriteRenderer>();
-
-        m_PickupAction = new InputAction("PlaceableKeyPickup", InputActionType.Button);
-        m_PickupAction.AddBinding("<Keyboard>/e");
-        m_PickupAction.AddBinding("<Keyboard>/z");
-        m_PickupAction.AddBinding("<Gamepad>/buttonWest");
 
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, false);
@@ -66,13 +58,12 @@ public class PlaceableKey : MonoBehaviour
         if (player != null) m_PlayerTransform = player.transform;
     }
 
-    private void OnEnable() => GameManager.OnTurnReset += ResetKey;
-    private void OnDisable() => GameManager.OnTurnReset -= ResetKey;
+    private void OnEnable() => GameManager.OnKeyReset += ResetKey;
+    private void OnDisable() => GameManager.OnKeyReset -= ResetKey;
 
     private void OnDestroy()
     {
-        GameManager.OnTurnReset -= ResetKey;
-        m_PickupAction?.Dispose();
+        GameManager.OnKeyReset -= ResetKey;
     }
 
     // ─── Update ───────────────────────────────────────────────────────────────
@@ -83,32 +74,8 @@ public class PlaceableKey : MonoBehaviour
 
         bool inRange = Vector2.Distance(transform.position, m_PlayerTransform.position) <= m_ProximityDistance;
 
-        if (inRange && !m_InProximity) OnEnterProximity();
-        else if (!inRange && m_InProximity) OnExitProximity();
-    }
-
-    // ─── Proximity ────────────────────────────────────────────────────────────
-
-    private void OnEnterProximity()
-    {
-        m_InProximity = true;
-        Show(m_PickIcon, true);
-        m_PickupAction.performed += OnPickup;
-        m_PickupAction.Enable();
-    }
-
-    private void OnExitProximity()
-    {
-        m_InProximity = false;
-        Show(m_PickIcon, false);
-        m_PickupAction.performed -= OnPickup;
-        m_PickupAction.Disable();
-    }
-
-    private void OnPickup(InputAction.CallbackContext ctx)
-    {
-        if (!m_InProximity || m_Collected) return;
-        Collect();
+        // Auto-collect the moment the player walks within range — no button press.
+        if (inRange) Collect();
     }
 
     // ─── Collect ─────────────────────────────────────────────────────────────
@@ -117,13 +84,11 @@ public class PlaceableKey : MonoBehaviour
     {
         m_Collected = true;
         IsCarried = true;
-        m_InProximity = false;
+
+        AudioManager.Instance?.PlayPickup();
 
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, true);
-
-        m_PickupAction.performed -= OnPickup;
-        m_PickupAction.Disable();
 
         // Hide sprite — key is now "in the player's hands".
         if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
@@ -139,7 +104,6 @@ public class PlaceableKey : MonoBehaviour
     {
         m_Collected = false;
         IsCarried = false;
-        m_InProximity = false;
 
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, false);
@@ -148,9 +112,6 @@ public class PlaceableKey : MonoBehaviour
 
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = true;
-
-        m_PickupAction.performed -= OnPickup;
-        m_PickupAction.Disable();
     }
 
     // ─── Public API for KeySlot ───────────────────────────────────────────────

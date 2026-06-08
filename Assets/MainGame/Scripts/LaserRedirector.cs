@@ -63,8 +63,15 @@ public class LaserRedirector : MonoBehaviour
 
     private bool m_Active;
 
+    // Reused every FireSegment call so the per-frame beam cast allocates no garbage.
+    // (RaycastAll previously allocated a fresh array + a sort delegate each call, and
+    //  the whole chain re-casts every frame from LaserShooter.LateUpdate.)
+    private readonly List<RaycastHit2D> m_RaycastResults = new List<RaycastHit2D>();
+    private ContactFilter2D m_RaycastFilter;
+
     private void Awake()
     {
+        m_RaycastFilter = new ContactFilter2D { useTriggers = true, useLayerMask = true };
         InitRenderer(m_LineRenderer1);
         InitRenderer(m_LineRenderer2);
     }
@@ -137,17 +144,24 @@ public class LaserRedirector : MonoBehaviour
         Vector2 origin = beamStart + outDir * 0.05f;
         int combinedMask = blocks | redir;
 
-        // Use RaycastAll and skip this redirector's own colliders to prevent the
-        // outgoing segment from immediately re-hitting the object it originates from.
-        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, outDir, dist, combinedMask);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        // Cast into a reusable buffer and pick the nearest hit that isn't one of this
+        // redirector's own colliders — this prevents the outgoing segment from
+        // immediately re-hitting the object it originates from. Finding the minimum
+        // distance directly avoids sorting the whole result set every frame.
+        m_RaycastFilter.SetLayerMask(combinedMask);
+        int count = Physics2D.Raycast(origin, outDir, m_RaycastFilter, m_RaycastResults, dist);
 
         RaycastHit2D hit = default;
-        foreach (var h in hits)
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
         {
+            RaycastHit2D h = m_RaycastResults[i];
             if (h.collider.GetComponentInParent<LaserRedirector>() == this) continue;
-            hit = h;
-            break;
+            if (h.distance < bestDistance)
+            {
+                bestDistance = h.distance;
+                hit = h;
+            }
         }
 
         Vector2 endPoint;

@@ -92,6 +92,8 @@ public class LevelManager : MonoBehaviour
         if (levelCompleted) return;
         levelCompleted = true;
 
+        AudioManager.Instance?.PlayLevelComplete();
+
         // Disable the button so it can't be clicked again
         if (levelCompleteButton != null)
             levelCompleteButton.interactable = false;

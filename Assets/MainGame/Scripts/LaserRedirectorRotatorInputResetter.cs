@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -38,6 +39,10 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
     private bool m_InControlMode;
     private Quaternion m_InitialRotation;
 
+    // Reused so the per-frame overlap check in UpdatePlayerInRange allocates no garbage.
+    private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
+    private ContactFilter2D m_NoFilter;
+
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     private void Awake()
@@ -45,6 +50,8 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         if (m_Collider == null)
             Debug.LogError("[LaserRedirectorRotatorInputResetter] No Collider2D found.", this);
+
+        m_NoFilter = ContactFilter2D.noFilter;
 
         if (m_TargetRedirector != null)
             m_InitialRotation = m_TargetRedirector.transform.rotation;
@@ -107,10 +114,11 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
         if (m_Collider == null) return;
 
         bool inside = false;
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
-            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
-        foreach (var h in hits)
+        int count = Physics2D.OverlapBox(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f, m_NoFilter, m_OverlapResults);
+        for (int i = 0; i < count; i++)
         {
+            Collider2D h = m_OverlapResults[i];
             if (h.gameObject == gameObject) continue;
             if (h.CompareTag(m_PlayerTag)) { inside = true; break; }
         }
@@ -143,10 +151,16 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
         if (keyboard == null) return;
 
         if (keyboard.leftArrowKey.wasPressedThisFrame)
+        {
             m_TargetRedirector.transform.Rotate(0f, 0f, 90f);   // CCW
+            AudioManager.Instance?.PlayLaserRotate();
+        }
 
         if (keyboard.rightArrowKey.wasPressedThisFrame)
+        {
             m_TargetRedirector.transform.Rotate(0f, 0f, -90f);  // CW
+            AudioManager.Instance?.PlayLaserRotate();
+        }
     }
 
     // ─── Control mode ─────────────────────────────────────────────────────────
@@ -154,6 +168,7 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
     private void EnterControlMode()
     {
         m_InControlMode = true;
+        AudioManager.Instance?.PlayControlEnter();
         Show(m_PromptUI, false);
         Show(m_ControlUI, true);
 
@@ -168,6 +183,7 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
     private void ExitControlMode()
     {
         m_InControlMode = false;
+        AudioManager.Instance?.PlayControlExit();
         Show(m_ControlUI, false);
         DeviceInputProvider.Instance?.SetEnabled(true);
     }

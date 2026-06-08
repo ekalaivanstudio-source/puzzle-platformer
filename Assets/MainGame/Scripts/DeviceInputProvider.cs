@@ -123,6 +123,7 @@ public class DeviceInputProvider : MonoBehaviour
     private void OnLeft(InputAction.CallbackContext c)
     {
         if (!IsEnabled) return;
+        AudioManager.Instance?.PlayQueue();
         bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
         if (jumpHeld && !m_JumpComboQueued)
         {
@@ -136,6 +137,7 @@ public class DeviceInputProvider : MonoBehaviour
     private void OnRight(InputAction.CallbackContext c)
     {
         if (!IsEnabled) return;
+        AudioManager.Instance?.PlayQueue();
         bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
         if (jumpHeld && !m_JumpComboQueued)
         {
@@ -162,14 +164,17 @@ public class DeviceInputProvider : MonoBehaviour
             return;
         }
         if (!m_JumpComboQueued)
+        {
             SequenceManager.Instance?.AddAction(ActionTypeEnum.Jump);
+            AudioManager.Instance?.PlayQueue();
+        }
         m_IsJumpHeld = false;
         m_JumpComboQueued = false;
     }
 
-    private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) SequenceManager.Instance?.AddAction(ActionTypeEnum.Interact); }
-    private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) SequenceManager.Instance?.RemoveLastAction(); }
-    private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) SequenceManager.Instance?.ClearSequence(); }
+    private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.AddAction(ActionTypeEnum.Interact); AudioManager.Instance?.PlayQueue(); } }
+    private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
+    private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
     private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }
-    private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) GameManager.Instance?.OnPlayClicked(); }
+    private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }
 }

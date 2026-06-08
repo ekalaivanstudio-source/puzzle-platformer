@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -40,15 +41,11 @@ public class PlayerController : MonoBehaviour
     [Header("Ground Check")]
     [Tooltip("All layers that count as walkable ground / solid walls (Ground, Laser, etc.).")]
     [SerializeField] private LayerMask[] m_GroundLayers;
-    private LayerMask WalkableMask
-    {
-        get
-        {
-            LayerMask combined = 0;
-            foreach (LayerMask lm in m_GroundLayers) combined |= lm;
-            return combined;
-        }
-    }
+
+    // Cached union of m_GroundLayers, computed once in Awake. The previous
+    // property recomputed this every ground/wall check by looping the array.
+    private int m_WalkableMask;
+    private LayerMask WalkableMask => m_WalkableMask;
     [Tooltip("Radius of the overlap circle used to detect ground contact. Increase if the player gets stuck when half-inside a surface.")]
     [SerializeField] private float m_GroundCheckRadius = 0.15f;
     [Tooltip("How far below the collider bottom the circle centre is placed.")]
@@ -78,6 +75,13 @@ public class PlayerController : MonoBehaviour
     private Vector3 m_StartPosition;
     private float m_OriginalGravityScale;
 
+    // Reusable buffers + filters for physics queries. Reusing these avoids the
+    // per-call array allocation of the Physics2D.*All() overloads, which was
+    // generating continuous GC garbage every frame (CheckSpikeOverlap runs in Update).
+    private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
+    private ContactFilter2D m_NoFilter;       // all layers, includes triggers (matches *All defaults)
+    private ContactFilter2D m_InteractFilter; // m_InteractLayer only
+
     // ─── Unity Lifecycle ────────────────────────────────────────────────────────
 
     private void Awake()
@@ -89,6 +93,16 @@ public class PlayerController : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         m_StartPosition = transform.position;
         m_OriginalGravityScale = m_Rigidbody.gravityScale;
+
+        // Cache the walkable layer union once — m_GroundLayers never changes at runtime.
+        int combined = 0;
+        if (m_GroundLayers != null)
+            foreach (LayerMask lm in m_GroundLayers) combined |= lm.value;
+        m_WalkableMask = combined;
+
+        m_NoFilter = ContactFilter2D.noFilter;
+        m_InteractFilter = new ContactFilter2D { useTriggers = true };
+        m_InteractFilter.SetLayerMask(m_InteractLayer);
     }
 
     private void Start()
@@ -112,10 +126,24 @@ public class PlayerController : MonoBehaviour
     // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
-        if (!m_IsGamePlaying) return;
+        if (!m_IsGamePlaying)
+        {
+            AudioManager.Instance?.SetWalking(false);
+            return;
+        }
         UpdateGroundedAnimation();
         UpdateFallingAnimation();
         CheckSpikeOverlap();
+        UpdateWalkAudio();
+    }
+
+    // Drives the looping footstep sound: on while moving horizontally and roughly
+    // level (so it doesn't trigger during the airborne portion of a jump or a fall).
+    private void UpdateWalkAudio()
+    {
+        Vector2 v = m_Rigidbody.linearVelocity;
+        bool walking = Mathf.Abs(v.x) > 0.1f && Mathf.Abs(v.y) < 0.5f;
+        AudioManager.Instance?.SetWalking(walking);
     }
 
     // ─── Public API ─────────────────────────────────────────────────────────────
@@ -151,7 +179,7 @@ public class PlayerController : MonoBehaviour
         // original spawn. The checkpoint only repositions the player for this turn.
         m_Rigidbody.position = checkpointPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
-        GameManager.Instance?.PlayEnded();
+        GameManager.Instance?.StopExecution();
     }
 
     /// <summary>
@@ -500,6 +528,8 @@ public class PlayerController : MonoBehaviour
     {
         if (!m_IsGamePlaying) yield break;
 
+        AudioManager.Instance?.PlayJump();
+
         // Derive effective gravity so the arc peaks at m_JumpHeight in exactly half of m_JumpDuration.
         // g_eff = 2h / t_half^2   →   v0y = g_eff * t_half = 2h / t_half
         float tHalf = m_JumpDuration * 0.5f;
@@ -613,10 +643,10 @@ public class PlayerController : MonoBehaviour
 
     private void TryInteract()
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, m_InteractRadius, m_InteractLayer);
-        foreach (Collider2D hit in hits)
+        int count = Physics2D.OverlapCircle(transform.position, m_InteractRadius, m_InteractFilter, m_OverlapResults);
+        for (int i = 0; i < count; i++)
         {
-            if (hit.TryGetComponent(out IInteractable interactable))
+            if (m_OverlapResults[i].TryGetComponent(out IInteractable interactable))
             {
                 interactable.Interact();
                 break;
@@ -647,11 +677,12 @@ public class PlayerController : MonoBehaviour
     {
         if (m_Collider == null) return;
 
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
-            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
+        int count = Physics2D.OverlapBox(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f, m_NoFilter, m_OverlapResults);
 
-        foreach (Collider2D hit in hits)
+        for (int i = 0; i < count; i++)
         {
+            Collider2D hit = m_OverlapResults[i];
             if (hit.gameObject == gameObject) continue;
             if (!hit.CompareTag("Spike")) continue;
             if (hit.TryGetComponent(out EnemyMovement _)) continue; // enemy, not a spike
@@ -722,9 +753,10 @@ public class PlayerController : MonoBehaviour
             m_Collider.bounds.center.y);
         Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
 
-        Collider2D[] hits = Physics2D.OverlapBoxAll(sideCenter, sideSize, 0f);
-        foreach (Collider2D hit in hits)
+        int count = Physics2D.OverlapBox(sideCenter, sideSize, 0f, m_NoFilter, m_OverlapResults);
+        for (int i = 0; i < count; i++)
         {
+            Collider2D hit = m_OverlapResults[i];
             if (hit == m_Collider || hit.isTrigger) continue;
             PushBrick brick = hit.GetComponentInParent<PushBrick>();
             if (brick != null) return brick;
@@ -805,6 +837,9 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator WinRoutine()
     {
+        AudioManager.Instance?.SetWalking(false);
+        AudioManager.Instance?.PlayWin();
+
         yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
@@ -813,6 +848,9 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator DeathRoutine()
     {
+        AudioManager.Instance?.SetWalking(false);
+        AudioManager.Instance?.PlayDeath();
+
         if (m_DeathParticle != null)
             Instantiate(m_DeathParticle, transform.position, Quaternion.identity);
 

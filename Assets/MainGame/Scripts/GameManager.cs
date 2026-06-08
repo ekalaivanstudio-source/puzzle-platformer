@@ -15,6 +15,7 @@ public class GameManager : MonoBehaviour
 
     /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
     public static event System.Action OnTurnReset;
+    public static event System.Action OnKeyReset;
 
     /// <summary>
     /// Fired only when the player explicitly restarts the level (UI Restart button or R key).
@@ -63,6 +64,12 @@ public class GameManager : MonoBehaviour
     public void PlayEnded()
     {
         IsKeyCollected = false;
+        StopExecution();
+        OnKeyReset?.Invoke();
+    }
+
+    public void StopExecution()
+    {
         SequenceManager.Instance?.OnTurnEnded();
         DeviceInputProvider.Instance?.SetEnabled(true);
         OnTurnReset?.Invoke();
