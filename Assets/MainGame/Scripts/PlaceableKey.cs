@@ -66,12 +66,12 @@ public class PlaceableKey : MonoBehaviour
         if (player != null) m_PlayerTransform = player.transform;
     }
 
-    private void OnEnable() => GameManager.OnTurnReset += ResetKey;
-    private void OnDisable() => GameManager.OnTurnReset -= ResetKey;
+    private void OnEnable() => GameManager.OnKeyReset += ResetKey;
+    private void OnDisable() => GameManager.OnKeyReset -= ResetKey;
 
     private void OnDestroy()
     {
-        GameManager.OnTurnReset -= ResetKey;
+        GameManager.OnKeyReset -= ResetKey;
         m_PickupAction?.Dispose();
     }
 

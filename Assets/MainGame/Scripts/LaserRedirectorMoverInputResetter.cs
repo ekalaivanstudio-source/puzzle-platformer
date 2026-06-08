@@ -184,6 +184,7 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         if (PlayerController.Instance != null)
             PlayerController.Instance.ResetAtCheckpoint(transform.position);
 
+
         // Lock normal input — arrow keys now control the redirector.
         DeviceInputProvider.Instance?.SetEnabled(false);
     }

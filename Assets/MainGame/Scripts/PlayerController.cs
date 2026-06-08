@@ -151,7 +151,7 @@ public class PlayerController : MonoBehaviour
         // original spawn. The checkpoint only repositions the player for this turn.
         m_Rigidbody.position = checkpointPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
-        GameManager.Instance?.PlayEnded();
+        GameManager.Instance?.StopExecution();
     }
 
     /// <summary>
