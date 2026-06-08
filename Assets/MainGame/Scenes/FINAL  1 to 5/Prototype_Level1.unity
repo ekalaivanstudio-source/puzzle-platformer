@@ -223,7 +223,10 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 2949579538328395620, guid: 3805ee73bd2fa664aade349d60c57893, type: 3}
     - {fileID: 6058095078370746499, guid: 3805ee73bd2fa664aade349d60c57893, type: 3}
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 1151499323912156404, guid: 3805ee73bd2fa664aade349d60c57893, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 582126693}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3805ee73bd2fa664aade349d60c57893, type: 3}
 --- !u!61 &171173201 stripped
@@ -1229,6 +1232,76 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1 &582126692
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 582126693}
+  - component: {fileID: 582126694}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &582126693
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582126692}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1820759910}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &582126694
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582126692}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afcff9910c0f6dc48b8b07547e4f2003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  m_MasterVolume: 1
+  m_MusicVolume: 0.6
+  m_SfxVolume: 1
+  m_MusicTrack: {fileID: 0}
+  m_PlayMusicOnStart: 1
+  m_JumpClip: {fileID: 0}
+  m_WalkLoopClip: {fileID: 0}
+  m_DeathClip: {fileID: 0}
+  m_WinClip: {fileID: 0}
+  m_PickupClip: {fileID: 8300000, guid: 0bf45aa8a54a7024980f30e4c6520ecf, type: 3}
+  m_KeyPlacedClip: {fileID: 0}
+  m_DoorOpenClip: {fileID: 0}
+  m_BrickPushClip: {fileID: 0}
+  m_BrickDestroyClip: {fileID: 0}
+  m_EnemyDeathClip: {fileID: 0}
+  m_LaserLoopClip: {fileID: 0}
+  m_LaserMoveClip: {fileID: 0}
+  m_LaserRotateClip: {fileID: 0}
+  m_QueueClip: {fileID: 0}
+  m_SubmitClip: {fileID: 0}
+  m_UndoClip: {fileID: 0}
+  m_ClearClip: {fileID: 0}
+  m_ButtonClip: {fileID: 0}
+  m_ControlEnterClip: {fileID: 0}
+  m_ControlExitClip: {fileID: 0}
+  m_LevelCompleteClip: {fileID: 0}
 --- !u!1 &584418434
 GameObject:
   m_ObjectHideFlags: 0
@@ -2082,6 +2155,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1820759910 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1151499323912156404, guid: 3805ee73bd2fa664aade349d60c57893, type: 3}
+  m_PrefabInstance: {fileID: 21583069}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1833621569
 PrefabInstance:
   m_ObjectHideFlags: 0
