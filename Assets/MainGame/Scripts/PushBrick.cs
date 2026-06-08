@@ -72,28 +72,29 @@ public class PushBrick : MonoBehaviour
     /// </summary>
     public IEnumerator Push(float signDir)
     {
-        float targetX = transform.position.x + signDir * m_PushDistance;
+        if (m_Collider == null) yield break;
 
-        // Check whether the destination cell is clear before committing.
-        if (m_Collider != null && IsPathBlocked(targetX))
-            yield break; // Blocked — brick doesn't move; player is still stopped.
+        Vector2 dir = new Vector2(Mathf.Sign(signDir), 0f);
 
-        // Slide smoothly to targetX.
+        // Sweep the brick's footprint across the FULL push distance to find the
+        // first blocker. This catches ground/walls in any cell along the path —
+        // not just the final destination — which matters whenever m_PushDistance
+        // spans more than one grid unit.
+        float allowed = GetAllowedDistance(dir);
+        if (allowed <= 0.01f)
+            yield break; // Blocked immediately — brick doesn't move; player is still stopped.
+
+        float rawTargetX = transform.position.x + dir.x * allowed;
+
+        // Snap the landing spot to the grid, biased toward the start so the brick
+        // never overshoots into the obstacle that stopped it. When the path is
+        // clear this is a no-op (start + integer distance is already on-grid).
+        float targetX = dir.x > 0f ? Mathf.Floor(rawTargetX) : Mathf.Ceil(rawTargetX);
+
         Vector3 target = new Vector3(targetX, transform.position.y, transform.position.z);
 
         while (Mathf.Abs(transform.position.x - targetX) > 0.01f)
         {
-            // Mid-slide safety: stop immediately if a wall is encountered.
-            if (m_Collider != null && IsPathBlocked(targetX))
-            {
-                // Snap back to the nearest grid position to avoid partial wall overlap.
-                float snappedX = signDir > 0f
-                    ? Mathf.Floor(transform.position.x)
-                    : Mathf.Ceil(transform.position.x);
-                transform.position = new Vector3(snappedX, transform.position.y, transform.position.z);
-                yield break;
-            }
-
             transform.position = Vector3.MoveTowards(
                 transform.position, target, m_PushSpeed * Time.fixedDeltaTime);
             yield return new WaitForFixedUpdate();
@@ -122,24 +123,26 @@ public class PushBrick : MonoBehaviour
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    // Returns true if the brick's destination footprint is occupied.
-    private bool IsPathBlocked(float targetX)
+    // Returns how far (≤ m_PushDistance) the brick can travel in dir before its
+    // footprint would overlap a blocker. Returns m_PushDistance when the path is clear.
+    private float GetAllowedDistance(Vector2 dir)
     {
-        Vector2 destinationCenter = new Vector2(targetX, m_Collider.bounds.center.y);
-        Vector2 destinationSize = m_Collider.bounds.size * 0.95f;
+        Bounds b = m_Collider.bounds;
 
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
-            destinationCenter,
-            destinationSize,
-            0f,
-            m_BlockingLayers);
+        // Shrink the footprint slightly so the ground the brick rests on (directly
+        // below) and colliders merely touching its sides aren't treated as blockers.
+        Vector2 size = b.size * 0.95f;
 
-        foreach (Collider2D hit in hits)
+        RaycastHit2D[] hits = Physics2D.BoxCastAll(
+            b.center, size, 0f, dir, m_PushDistance, m_BlockingLayers);
+
+        float allowed = m_PushDistance;
+        foreach (RaycastHit2D hit in hits)
         {
-            if (hit != null && hit != m_Collider)
-                return true;
+            if (hit.collider == null || hit.collider == m_Collider) continue;
+            allowed = Mathf.Min(allowed, hit.distance);
         }
 
-        return false;
+        return allowed;
     }
 }
