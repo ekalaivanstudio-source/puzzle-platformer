@@ -58,9 +58,13 @@ public class KeySlot : MonoBehaviour
             m_FilledVisual.SetActive(true);
 
         m_LinkedKey?.Place();
+        AudioManager.Instance?.PlayKeyPlaced();
 
         if (m_DoorCollider != null)
+        {
             m_DoorCollider.enabled = true;
+            AudioManager.Instance?.PlayDoorOpen();
+        }
 
         GameManager.Instance?.KeyCollected();
     }

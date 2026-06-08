@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -46,12 +47,18 @@ public class PushBrick : MonoBehaviour
     private Vector3 m_StartPosition;
     private Collider2D m_Collider;
 
+    // Reused by GetAllowedDistance so the sweep allocates no garbage.
+    private readonly List<RaycastHit2D> m_CastResults = new List<RaycastHit2D>();
+    private ContactFilter2D m_BlockingFilter;
+
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         m_StartPosition = transform.position;
         m_Collider = GetComponent<Collider2D>();
+        m_BlockingFilter = new ContactFilter2D { useTriggers = true, useLayerMask = true };
+        m_BlockingFilter.SetLayerMask(m_BlockingLayers);
     }
 
     private void OnEnable() => GameManager.OnFullReset += ResetBrick;
@@ -84,6 +91,8 @@ public class PushBrick : MonoBehaviour
         if (allowed <= 0.01f)
             yield break; // Blocked immediately — brick doesn't move; player is still stopped.
 
+        AudioManager.Instance?.PlayBrickPush();
+
         float rawTargetX = transform.position.x + dir.x * allowed;
 
         // Snap the landing spot to the grid, biased toward the start so the brick
@@ -113,6 +122,8 @@ public class PushBrick : MonoBehaviour
     {
         if (!m_IsLaserDestructible) return;
 
+        AudioManager.Instance?.PlayBrickDestroy();
+
         if (m_DestroyParticle != null)
             Instantiate(m_DestroyParticle, transform.position, Quaternion.identity);
 
@@ -133,12 +144,13 @@ public class PushBrick : MonoBehaviour
         // below) and colliders merely touching its sides aren't treated as blockers.
         Vector2 size = b.size * 0.95f;
 
-        RaycastHit2D[] hits = Physics2D.BoxCastAll(
-            b.center, size, 0f, dir, m_PushDistance, m_BlockingLayers);
+        int count = Physics2D.BoxCast(
+            b.center, size, 0f, dir, m_BlockingFilter, m_CastResults, m_PushDistance);
 
         float allowed = m_PushDistance;
-        foreach (RaycastHit2D hit in hits)
+        for (int i = 0; i < count; i++)
         {
+            RaycastHit2D hit = m_CastResults[i];
             if (hit.collider == null || hit.collider == m_Collider) continue;
             allowed = Mathf.Min(allowed, hit.distance);
         }

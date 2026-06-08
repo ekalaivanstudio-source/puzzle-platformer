@@ -9,40 +9,42 @@ This repository is publicly visible for portfolio and showcase purposes only.
 
 ## Overview
 
-The player is given a set of beat slots per turn. They program a sequence of actions (Left, Right, Jump, Interact) and press Play to watch the character execute them. The game supports a rhythmic, turn-based movement style where timing and planning determine success.
+Each turn the player programs a sequence of actions (Left, Right, Jump, Interact) using the keyboard or a gamepad, then presses Submit to watch the character execute the whole sequence deterministically. Movement is fixed-distance and frame-rate independent — every command travels an exact number of units — so success comes down to planning the right sequence to navigate hazards and puzzles to the exit.
 
 ---
 
 ## Features
 
-- Turn-based beat execution system
-- Mouse/toggle UI grid for programming actions (original mode)
-- Keyboard and gamepad input support (device mode)
-- Runtime-switchable input mode — designed for a settings menu
-- Collect keys and reach the door to advance levels
-- Avoid spikes and hazards during execution
+- Turn-based sequence programming and deterministic execution
+- Keyboard and gamepad input via Unity's New Input System
+- Directional jumps (Jump + Left/Right combine into JumpLeft / JumpRight)
+- Optional per-level "correct sequence" validation and fixed slot count
+- **Key & slot doors** — carry a key and drop it into a slot to open the door
+- **Push bricks** — shove bricks one grid unit at a time; a laser-destructible variant
+- **Laser puzzles** — shooters, and redirectors the player can move or rotate
+- **Patrol enemies** that can be defeated, plus spikes and trap zones
 - Moving platforms (vertical and horizontal)
+- Camera shake feedback and screen fade transitions
+- Main-menu level select with PlayerPrefs-based unlock progression
 
 ---
 
-## Input Modes
+## Controls (keyboard / gamepad)
 
-| Mode | How to use |
-|---|---|
-| **Mouse** | Toggle beat slots on the UI grid, click Play |
-| **Device** | Press arrow keys / gamepad buttons to queue actions, press Enter / Start to execute |
+Bindings are defined in the Input Actions asset and routed through `DeviceInputProvider`. Defaults:
 
-**Device mode keys (keyboard):**
+| Action | Keyboard | Gamepad |
+|---|---|---|
+| Queue Left | Left Arrow | — |
+| Queue Right | Right Arrow | — |
+| Queue Jump | Up Arrow | — |
+| Queue Interact | Interact key | — |
+| Submit / Execute | Enter | Start |
+| Undo last action | Backspace | B |
+| Clear queue | Delete | Select |
+| Restart level | R | — |
 
-| Key | Action |
-|---|---|
-| Left Arrow / A | Queue Left |
-| Right Arrow / D | Queue Right |
-| Up Arrow / W / Space | Queue Jump |
-| Z / E | Queue Interact |
-| Enter | Execute sequence |
-| Backspace | Undo last action |
-| Delete | Clear all |
+> A Jump queued immediately before a Left or Right is interpreted as a directional jump (JumpLeft / JumpRight).
 
 ---
 
@@ -52,61 +54,69 @@ The player is given a set of beat slots per turn. They program a sequence of act
 
 | Script | Role |
 |---|---|
-| `GameManager` | Singleton coordinator — owns turn start/end logic |
-| `PlayerController` | Executes beat sequence; reads from `ISequenceSource` |
-| `UIManager` | UI state — panel, buttons, timer slider, game-over screen |
-| `AudioManager` | Singleton audio — walk, jump, button click, beat tunes |
+| `GameManager` | Singleton coordinator — turn start/end, key state, win/lose, level loading. Broadcasts `OnTurnReset`, `OnKeyReset`, `OnFullReset`, `OnExecutionStarted` |
+| `PlayerController` | Singleton. Coroutine-based deterministic command execution (Left/Right/Jump/JumpLeft/JumpRight/Interact); reads from an `ISequenceSource` |
+| `UIManager` | Singleton UI — fade overlay, popups, Play/Clear hooks |
+| `CameraController` | Singleton camera effects (shake) |
+| `AudioManager` | Singleton that owns every sound — music, footsteps, jump, pickup, bricks, enemy, laser hum/move/rotate, and UI clicks. Other scripts call `AudioManager.Instance.PlayXxx()` |
 
-### Input Architecture
-
-| Script | Role |
-|---|---|
-| `ISequenceSource` | Interface PlayerController reads from — decoupled from input mode |
-| `IInputProvider` | Interface for enabling/disabling an input provider |
-| `SequenceSourceRouter` | Delegates reads to the active provider; assigned to PlayerController |
-| `InputModeManager` | Switches between Mouse and Device mode at runtime |
-| `MouseInputProvider` | Wraps toggle grid; bakes it to a flat sequence on Play |
-| `DeviceInputProvider` | Binds New Input System actions to SequenceManager |
-| `SequenceManager` | Manages the key-press action queue for device mode |
-| `SequenceDisplay` | UI slots showing queued actions with icons |
-
-### Toggle Grid (Mouse Mode)
+### Input & Sequencing
 
 | Script | Role |
 |---|---|
-| `ActionManager` | Aggregates all `ActionTimelineController` rows |
-| `ActionTimelineController` | Manages one action row (e.g. Jump row); auto-attaches ToggleSound |
-| `ToggleSound` | Plays beat audio when a toggle is switched on |
-| `ActionState` | Struct — action type, active flag, clip, pitch |
-| `ActionTypeEnum` | Enum — Left, Right, Jump, Interact |
+| `ISequenceSource` | Abstraction the `PlayerController` executes against |
+| `SequenceManager` | Singleton `ISequenceSource`. Builds the action queue, enforces max length / optional correct sequence; raises `OnSequenceChanged` |
+| `DeviceInputProvider` | Singleton. Binds New Input System actions (queue / submit / undo / clear / restart) to `SequenceManager` and `GameManager` |
+| `SequenceDisplay` | UI row of slots showing the queued actions with Unicode icons |
+| `PlayerInputUIHelper` | On-screen input prompt / button-indication helper |
+| `ActionTypeEnum` | Enum — Left, Right, Jump, Interact, Any, JumpRight, JumpLeft |
+| `IInteractable` | Contract for objects the player can trigger with an Interact action |
 
-### World
+### Puzzles & World
 
 | Script | Role |
 |---|---|
-| `Key` | Interactable that notifies GameManager on collection |
-| `MovingPlatform` | Generic ping-pong platform (vertical or horizontal) |
-| `FloorMovement` | Vertical moving floor |
-| `FloorMovementLvl4` | Horizontal moving floor |
-| `IInteractable` | Interface implemented by interactable world objects |
+| `PlaceableKey` | Key auto-collected on proximity; carried until placed |
+| `KeySlot` | Receives a carried key and opens its linked door |
+| `PushBrick` | Pushable brick; sweeps its path so it stops at obstacles. Optional laser-destructible variant |
+| `MovableBrick` | Brick + player follow waypoints when triggered (scripted set-piece) |
+| `InvisibleLockPoint` | Hidden trigger that locks the player onto a scripted path, then ends the turn |
+| `EnemyMovement` | Two-point patrol enemy; defeatable with a death effect |
+| `MovingPlatform` | Generic ping-pong platform (vertical or horizontal) — preferred for new platforms |
+| `FloorMovement` / `FloorMovementLvl4` | Legacy vertical / horizontal moving platforms |
+| `SpriteSheetAnimator` | Frame-by-frame sprite animation for `SpriteRenderer` or UI `Image` |
+
+### Laser System
+
+| Script | Role |
+|---|---|
+| `LaserShooter` | Casts a beam each frame; terminates on blockers, redirectors, or bricks; kills the player on contact |
+| `LaserRedirector` | Receives a beam and re-emits it (Cross / StraightThrough / LShape) |
+| `LaserRedirectorMoverInputResetter` | Trigger zone letting the player slide a redirector along a grid |
+| `LaserRedirectorRotatorInputResetter` | Trigger zone letting the player rotate a redirector in 90° steps |
+
+### Home Scene / Progression
+
+| Script | Role |
+|---|---|
+| `MainMenuManager` | Level-select menu; unlocks levels from saved `PlayerPrefs` progress |
+| `LevelManager` | Per-level "complete" handling — unlocks the next level and saves progress |
 
 ---
 
 ## Unity Setup
 
-1. Add all input components to one **InputManager** GameObject: `InputModeManager`, `MouseInputProvider`, `DeviceInputProvider`, `SequenceManager`, `SequenceSourceRouter`
-2. Assign `SequenceSourceRouter` to **PlayerController → Sequence Source Object**
-3. Assign `SequenceSourceRouter` and `DeviceInputProvider` to **GameManager**
-4. Assign `SequenceSourceRouter` to **UIManager**
-5. Assign `PlayerInputActions.inputactions` to **DeviceInputProvider → Input Action Asset**
-6. Set **InputModeManager → Default Mode** to switch between Mouse and Device
+1. Create a persistent **GameSystems** GameObject and add the singletons: `GameManager`, `SequenceManager`, `DeviceInputProvider`, `UIManager`, `CameraController`, and the `PlayerController` on the player object.
+2. Assign `PlayerInputActions.inputactions` to **DeviceInputProvider → Input Action Asset** (expects a `Player` action map with Left / Right / Jump / Interact / Submit / Undo / Clear / Restart actions).
+3. Assign the fade `CanvasGroup` to **UIManager → Fade Overlay**, and wire `SequenceDisplay → Sequence Manager`.
+4. Add `LevelManager` to each level scene and `MainMenuManager` to the menu scene; keep the **Main Menu at build index 0** and levels in order after it.
+5. Ensure the EventSystem uses the **Input System UI Input Module** so menu buttons work with the New Input System.
 
 ---
 
 ## Project Info
 
-- **Engine:** Unity 6 (URP)
+- **Engine:** Unity 6 (URP) — `6000.4.x`
 - **Language:** C#
-- **Input:** Unity New Input System
+- **Input:** Unity New Input System (keyboard / gamepad)
 - **Platform:** PC (scalable for console/mobile via input bindings)
-

@@ -42,11 +42,34 @@ public class LaserShooter : MonoBehaviour
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
+    // Tracks whether this shooter is currently contributing to the shared laser hum,
+    // so enable/disable stays balanced and the loop is never double-counted.
+    private bool m_HumOn;
+
     private void Awake()
     {
         m_LineRenderer = GetComponent<LineRenderer>();
         m_LineRenderer.useWorldSpace = true;
         m_LineRenderer.positionCount = 2;
+    }
+
+    // Start as well as OnEnable: on the very first enable AudioManager may not have
+    // run its Awake yet, so Start guarantees the hum begins once everything exists.
+    private void OnEnable() => TryStartHum();
+    private void Start() => TryStartHum();
+
+    private void OnDisable()
+    {
+        if (!m_HumOn) return;
+        AudioManager.Instance?.NotifyLaserActive(false);
+        m_HumOn = false;
+    }
+
+    private void TryStartHum()
+    {
+        if (m_HumOn || AudioManager.Instance == null) return;
+        AudioManager.Instance.NotifyLaserActive(true);
+        m_HumOn = true;
     }
 
     private void LateUpdate()

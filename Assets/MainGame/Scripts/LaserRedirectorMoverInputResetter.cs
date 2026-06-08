@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -54,6 +55,10 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     private bool m_InControlMode;
     private Vector3 m_InitialPosition;
 
+    // Reused so the per-frame overlap check in UpdatePlayerInRange allocates no garbage.
+    private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
+    private ContactFilter2D m_NoFilter;
+
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     private void Awake()
@@ -61,6 +66,8 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         if (m_Collider == null)
             Debug.LogError("[LaserRedirectorMoverInputResetter] No Collider2D found.", this);
+
+        m_NoFilter = ContactFilter2D.noFilter;
 
         if (m_TargetRedirector != null)
             m_InitialPosition = m_TargetRedirector.transform.position;
@@ -123,10 +130,11 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         if (m_Collider == null) return;
 
         bool inside = false;
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
-            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
-        foreach (var h in hits)
+        int count = Physics2D.OverlapBox(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f, m_NoFilter, m_OverlapResults);
+        for (int i = 0; i < count; i++)
         {
+            Collider2D h = m_OverlapResults[i];
             if (h.gameObject == gameObject) continue;
             if (h.CompareTag(m_PlayerTag)) { inside = true; break; }
         }
@@ -169,6 +177,10 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
         Vector3 pos = m_TargetRedirector.transform.position;
         pos.x = Mathf.Clamp(pos.x + delta.x * m_MoveStep, m_InitialPosition.x + m_MinX, m_InitialPosition.x + m_MaxX);
         pos.y = Mathf.Clamp(pos.y + delta.y * m_MoveStep, m_InitialPosition.y + m_MinY, m_InitialPosition.y + m_MaxY);
+
+        if (pos != m_TargetRedirector.transform.position)
+            AudioManager.Instance?.PlayLaserMove();
+
         m_TargetRedirector.transform.position = pos;
     }
 
@@ -177,6 +189,7 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     private void EnterControlMode()
     {
         m_InControlMode = true;
+        AudioManager.Instance?.PlayControlEnter();
         Show(m_PromptUI, false);
         Show(m_ControlUI, true);
 
@@ -192,6 +205,7 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     private void ExitControlMode()
     {
         m_InControlMode = false;
+        AudioManager.Instance?.PlayControlExit();
         Show(m_ControlUI, false);
         DeviceInputProvider.Instance?.SetEnabled(true);
     }

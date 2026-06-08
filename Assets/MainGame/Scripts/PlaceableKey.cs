@@ -85,6 +85,8 @@ public class PlaceableKey : MonoBehaviour
         m_Collected = true;
         IsCarried = true;
 
+        AudioManager.Instance?.PlayPickup();
+
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, true);
 

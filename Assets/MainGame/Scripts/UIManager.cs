@@ -32,12 +32,14 @@ public class UIManager : MonoBehaviour
             return;
         }
 
+        AudioManager.Instance?.PlayButton();
         GameManager.Instance.OnPlayClicked();
     }
 
     /// <summary>Called by the Clear button.</summary>
     public void OnClearClicked()
     {
+        AudioManager.Instance?.PlayClear();
         SequenceManager.Instance?.ClearSequence();
     }
 

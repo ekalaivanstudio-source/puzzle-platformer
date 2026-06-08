@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -15,9 +16,14 @@ public class InvisibleLockPoint : MonoBehaviour
     private Collider2D m_Collider;
     private bool m_Triggered = false;
 
+    // Reused across frames so the per-frame overlap check allocates no garbage.
+    private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
+    private ContactFilter2D m_NoFilter;
+
     private void Awake()
     {
         m_Collider = GetComponent<Collider2D>();
+        m_NoFilter = ContactFilter2D.noFilter;
     }
 
     // Reset triggered flag whenever this object is re-enabled (e.g. after turn reset).
@@ -43,11 +49,12 @@ public class InvisibleLockPoint : MonoBehaviour
     {
         if (m_Triggered || m_Collider == null) return;
 
-        Collider2D[] hits = Physics2D.OverlapBoxAll(
-            m_Collider.bounds.center, m_Collider.bounds.size, 0f);
+        int count = Physics2D.OverlapBox(
+            m_Collider.bounds.center, m_Collider.bounds.size, 0f, m_NoFilter, m_OverlapResults);
 
-        foreach (Collider2D hit in hits)
+        for (int i = 0; i < count; i++)
         {
+            Collider2D hit = m_OverlapResults[i];
             if (hit.gameObject == gameObject) continue;
             if (!hit.CompareTag("Player")) continue;
 
