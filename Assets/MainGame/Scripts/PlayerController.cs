@@ -51,6 +51,13 @@ public class PlayerController : MonoBehaviour
     [Tooltip("How far below the collider bottom the circle centre is placed.")]
     [SerializeField] private float m_GroundCheckDistance = 0.05f;
 
+    [Tooltip("Left foot origin. A ray is cast straight down from here to detect ground under the player's left corner.")]
+    [SerializeField] private Transform m_LeftGroundCheck;
+    [Tooltip("Right foot origin. A ray is cast straight down from here to detect ground under the player's right corner.")]
+    [SerializeField] private Transform m_RightGroundCheck;
+    [Tooltip("Length of the downward rays cast from the left/right foot origins.")]
+    [SerializeField] private float m_GroundRayLength = 0.15f;
+
     [Header("Interaction")]
     [Tooltip("Radius of the overlap circle used to detect interactable objects.")]
     [SerializeField] private float m_InteractRadius = 0.5f;
@@ -695,13 +702,43 @@ public class PlayerController : MonoBehaviour
 
     private bool CheckIsGrounded()
     {
-        // OverlapCircle centred just below the collider bottom.
-        // Wider than a single ray — reliably detects ground even when the
-        // player collider is partially embedded in a surface after snapping.
+        // Two downward rays — one from the left foot, one from the right foot.
+        // Grounded if EITHER ray hits, so the player stays grounded when only one
+        // corner rests on a platform (the center-based check used to read empty
+        // space in that case, since Z-rotation is frozen and the body stays level).
+        if (m_LeftGroundCheck != null || m_RightGroundCheck != null)
+        {
+            bool leftHit = m_LeftGroundCheck != null &&
+                Physics2D.Raycast(m_LeftGroundCheck.position, Vector2.down, m_GroundRayLength, WalkableMask);
+            if (leftHit) return true;
+
+            bool rightHit = m_RightGroundCheck != null &&
+                Physics2D.Raycast(m_RightGroundCheck.position, Vector2.down, m_GroundRayLength, WalkableMask);
+            return rightHit;
+        }
+
+        // Fallback (foot transforms not assigned): OverlapCircle centred just
+        // below the collider bottom — wider than a single ray, still detects
+        // ground when the collider is partially embedded after snapping.
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         Vector2 centre = new Vector2(transform.position.x, bottom - m_GroundCheckDistance);
         return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, WalkableMask);
     }
+
+#if UNITY_EDITOR
+    // Visualises the two ground-check rays in the Scene view so the foot
+    // transforms can be positioned at the player's left/right corners.
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.green;
+        if (m_LeftGroundCheck != null)
+            Gizmos.DrawLine(m_LeftGroundCheck.position,
+                m_LeftGroundCheck.position + Vector3.down * m_GroundRayLength);
+        if (m_RightGroundCheck != null)
+            Gizmos.DrawLine(m_RightGroundCheck.position,
+                m_RightGroundCheck.position + Vector3.down * m_GroundRayLength);
+    }
+#endif
 
     // Rounds the rigidbody position to the nearest 0.5-unit grid, eliminating the
     // floating-point drift that causes colliders to slightly intersect surfaces when
