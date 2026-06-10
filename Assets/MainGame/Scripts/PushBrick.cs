@@ -46,6 +46,7 @@ public class PushBrick : MonoBehaviour
 
     private Vector3 m_StartPosition;
     private Collider2D m_Collider;
+    private Rigidbody2D m_Rigidbody;
 
     // Reused by GetAllowedDistance so the sweep allocates no garbage.
     private readonly List<RaycastHit2D> m_CastResults = new List<RaycastHit2D>();
@@ -59,6 +60,18 @@ public class PushBrick : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         m_BlockingFilter = new ContactFilter2D { useTriggers = true, useLayerMask = true };
         m_BlockingFilter.SetLayerMask(m_BlockingLayers);
+
+        // Force the body to be physics-immovable: the brick must move ONLY via the
+        // scripted unit Push() (left/right player movement). Kinematic bodies ignore
+        // all contact forces, so jumping onto the brick or lightly touching it can no
+        // longer nudge it — yet it stays a solid obstacle the player collides with.
+        m_Rigidbody = GetComponent<Rigidbody2D>();
+        if (m_Rigidbody != null)
+        {
+            m_Rigidbody.bodyType = RigidbodyType2D.Kinematic;
+            m_Rigidbody.linearVelocity = Vector2.zero;
+            m_Rigidbody.angularVelocity = 0f;
+        }
     }
 
     private void OnEnable() => GameManager.OnFullReset += ResetBrick;
