@@ -13,7 +13,12 @@ using UnityEngine.UI;
 /// </summary>
 public class PlayerInputUIHelper : MonoBehaviour
 {
-    [SerializeField] private Image[] inputsUI;
+    // Built at runtime by instantiating inputUI_GO into inputContainer,
+    // one slot per entry in m_CorrectSequence.
+    private Image[] inputsUI;
+
+    [SerializeField] private GameObject inputUI_GO;
+    [SerializeField] private Transform inputContainer;
 
     [SerializeField] private InputActionAsset m_InputActionAsset;
 
@@ -67,6 +72,28 @@ public class PlayerInputUIHelper : MonoBehaviour
             // Instantiate the prefab into this object's canvas hierarchy
             GameObject instance = Instantiate(buttonIndication, transform);
             m_ButtonIndicationRT = instance.GetComponent<RectTransform>();
+        }
+
+        BuildInputSlots();
+    }
+
+    // Instantiates one inputUI_GO prefab per entry in m_CorrectSequence inside
+    // inputContainer, replacing the previously hand-assigned inputsUI array.
+    private void BuildInputSlots()
+    {
+        int count = m_CorrectSequence != null ? m_CorrectSequence.Length : 0;
+        inputsUI = new Image[count];
+
+        if (inputUI_GO == null || inputContainer == null || count == 0)
+            return;
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject instance = Instantiate(inputUI_GO, inputContainer);
+            instance.SetActive(true);
+            Image img = instance.GetComponent<Image>();
+            if (img == null) img = instance.GetComponentInChildren<Image>(true);
+            inputsUI[i] = img;
         }
     }
 
@@ -274,6 +301,12 @@ public class PlayerInputUIHelper : MonoBehaviour
         Image target = inputsUI[indicatorIndex];
         if (target != null)
         {
+            // The slots are instantiated into a layout-driven container; on the first
+            // frame their positions aren't computed yet, so force the layout to settle
+            // before reading the target's world position.
+            if (inputContainer is RectTransform containerRT)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(containerRT);
+
             m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
         }
     }
