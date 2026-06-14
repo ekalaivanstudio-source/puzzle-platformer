@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
+using TutorialSystem;
 
 /// <summary>
 /// Singleton input provider for keyboard and gamepad using Unity's New Input System.
@@ -32,7 +33,11 @@ public class DeviceInputProvider : MonoBehaviour
     private bool m_IsJumpHeld;
     private bool m_JumpComboQueued;
 
-    public bool IsEnabled { get; private set; }
+    // Gameplay input is allowed only when this provider is locally enabled AND no tutorial is
+    // currently blocking input. The tutorial gate is global (TutorialManager.GameplayInputBlocked)
+    // so it composes with the GameManager's existing enable/disable without conflicting.
+    private bool m_LocallyEnabled;
+    public bool IsEnabled => m_LocallyEnabled && !TutorialManager.GameplayInputBlocked;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -65,7 +70,7 @@ public class DeviceInputProvider : MonoBehaviour
         m_RestartAction = map.FindAction("Restart", throwIfNotFound: false);
 
         m_InputActionAsset.Enable();
-        IsEnabled = true;
+        m_LocallyEnabled = true;
     }
 
     private void OnEnable() => RegisterListeners(true);
@@ -108,7 +113,7 @@ public class DeviceInputProvider : MonoBehaviour
     /// </summary>
     public void SetEnabled(bool enabled)
     {
-        IsEnabled = enabled;
+        m_LocallyEnabled = enabled;
         if (!enabled)
         {
             m_IsJumpHeld = false;
@@ -175,6 +180,6 @@ public class DeviceInputProvider : MonoBehaviour
     private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.AddAction(ActionTypeEnum.Interact); AudioManager.Instance?.PlayQueue(); } }
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
-    private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }
+    private void OnRestart(InputAction.CallbackContext c) { if (TutorialManager.GameplayInputBlocked) return; GameManager.Instance?.ReloadLevel(); }
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }
 }
