@@ -1,0 +1,149 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7153098187460510935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12d91936ddd9f8144a1fd1f379993cf2, type: 3}
+  m_Name: Step 1
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialStepData
+  m_StepName: First, collect the key
+  m_TargetId: key_9da4
+  m_ActionType: 0
+  m_CustomEventId: 
+  m_Message: First, collect the key
+  m_CharacterSprite: {fileID: -2120737883, guid: 62a66e04f3681be42b74fd83adbf81f4, type: 3}
+  m_DimBackground: 1
+  m_ShowHighlight: 1
+  m_ShowArrow: 1
+  m_HighlightPadding: 24
+  m_PopupAnchor: 0
+  m_AllowTapToContinue: 1
+  m_AutoAdvanceDelay: 0
+--- !u!114 &-4474160630582692132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12d91936ddd9f8144a1fd1f379993cf2, type: 3}
+  m_Name: Step 5
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialStepData
+  m_StepName: After giving inputs, press "Enter" to start player movement
+  m_TargetId: inputcontainer_44b1
+  m_ActionType: 0
+  m_CustomEventId: 
+  m_Message: After giving inputs, press "Enter" to start player movement
+  m_CharacterSprite: {fileID: 0}
+  m_DimBackground: 1
+  m_ShowHighlight: 1
+  m_ShowArrow: 1
+  m_HighlightPadding: 24
+  m_PopupAnchor: 0
+  m_AllowTapToContinue: 1
+  m_AutoAdvanceDelay: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e7263e764e5a234ab929d525b151c0b, type: 3}
+  m_Name: Level1
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialSequenceData
+  m_SequenceId: Level1
+  m_Description: Level 1 tutorial, introduce key, keyholder, door
+  m_PlayOnce: 0
+  m_Resumable: 1
+  m_Steps:
+  - {fileID: -7153098187460510935}
+  - {fileID: 1787299511297423144}
+  - {fileID: 1720862502159896214}
+  - {fileID: 3361616879338721095}
+  - {fileID: -4474160630582692132}
+--- !u!114 &1720862502159896214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12d91936ddd9f8144a1fd1f379993cf2, type: 3}
+  m_Name: Step 3
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialStepData
+  m_StepName: After placing key in slot the door will unlock
+  m_TargetId: door_840f
+  m_ActionType: 0
+  m_CustomEventId: 
+  m_Message: After placing key in slot the door will unlock
+  m_CharacterSprite: {fileID: 0}
+  m_DimBackground: 1
+  m_ShowHighlight: 1
+  m_ShowArrow: 1
+  m_HighlightPadding: 24
+  m_PopupAnchor: 0
+  m_AllowTapToContinue: 1
+  m_AutoAdvanceDelay: 0
+--- !u!114 &1787299511297423144
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12d91936ddd9f8144a1fd1f379993cf2, type: 3}
+  m_Name: Step 2
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialStepData
+  m_StepName: Place the key in slot
+  m_TargetId: keyslot_5ef5
+  m_ActionType: 0
+  m_CustomEventId: 
+  m_Message: Place the key in slot
+  m_CharacterSprite: {fileID: 0}
+  m_DimBackground: 1
+  m_ShowHighlight: 1
+  m_ShowArrow: 1
+  m_HighlightPadding: 24
+  m_PopupAnchor: 0
+  m_AllowTapToContinue: 1
+  m_AutoAdvanceDelay: 0
+--- !u!114 &3361616879338721095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12d91936ddd9f8144a1fd1f379993cf2, type: 3}
+  m_Name: Step 4
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialStepData
+  m_StepName: Use keyboard arrowkeys to give inputs
+  m_TargetId: inputcontainer_44b1
+  m_ActionType: 0
+  m_CustomEventId: 
+  m_Message: Use keyboard arrowkeys to give inputs
+  m_CharacterSprite: {fileID: 0}
+  m_DimBackground: 1
+  m_ShowHighlight: 1
+  m_ShowArrow: 1
+  m_HighlightPadding: 24
+  m_PopupAnchor: 0
+  m_AllowTapToContinue: 1
+  m_AutoAdvanceDelay: 0
