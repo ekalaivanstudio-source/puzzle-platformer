@@ -4,56 +4,24 @@ public class EvilDoctorAnimationController : MonoBehaviour
 {
     public enum DoctorAnimation
     {
-        Idle,
         Happy,
         Sad
     }
 
     [SerializeField] private UIImageAnimator m_Animator;
-
-    [Header("Animation Names In UIImageAnimator")]
-    [SerializeField] private string m_IdleAnimation = "Idle";
-    [SerializeField] private string m_HappyAnimation = "Happy";
-    [SerializeField] private string m_SadAnimation = "Sad";
-
-    [SerializeField]
-    private DoctorAnimation doctor = DoctorAnimation.Idle;
-
-    private void Start()
-    {
-        PlayAnimation(doctor);
-    }
-
-    public void PlayAnimation(DoctorAnimation animation)
-    {
-        switch (animation)
-        {
-            case DoctorAnimation.Idle:
-                m_Animator.PlayAnimation(m_IdleAnimation);
-                break;
-
-            case DoctorAnimation.Happy:
-                m_Animator.PlayAnimation(m_HappyAnimation);
-                break;
-
-            case DoctorAnimation.Sad:
-                m_Animator.PlayAnimation(m_SadAnimation);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Villain reactions:
-    /// Player wins -> Doctor sad
-    /// Player loses -> Doctor happy
-    /// </summary>
+    [SerializeField] private DoctorDialogController m_DialogController;
+    [ContextMenu("OnLevelCompleted")]
     public void OnLevelCompleted()
     {
-        PlayAnimation(DoctorAnimation.Sad);
+        // Player wins -> Doctor sad
+        m_DialogController.ShowDialog(DoctorAnimation.Sad);
+        m_Animator.ShowReaction(DoctorAnimation.Sad);
     }
-
+    [ContextMenu("OnLevelFailed")]
     public void OnLevelFailed()
     {
-        PlayAnimation(DoctorAnimation.Happy);
+        // Player loses -> Doctor happy
+        m_DialogController.ShowDialog(DoctorAnimation.Happy);
+        m_Animator.ShowReaction(DoctorAnimation.Happy);
     }
 }
