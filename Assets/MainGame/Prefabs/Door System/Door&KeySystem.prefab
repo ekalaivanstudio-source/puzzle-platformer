@@ -390,7 +390,7 @@ GameObject:
   - component: {fileID: 4266888258132535399}
   - component: {fileID: 2551674296800355301}
   - component: {fileID: 7508023801700783087}
-  - component: {fileID: 2860517494844540376}
+  - component: {fileID: 8273044911356966461}
   m_Layer: 0
   m_Name: Key
   m_TagString: Untagged
@@ -407,7 +407,7 @@ Transform:
   m_GameObject: {fileID: 3901967678478176673}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5, y: 4, z: 0}
+  m_LocalPosition: {x: -2, y: -3, z: 0}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -632,7 +632,7 @@ MonoBehaviour:
   m_PlayerTag: Player
   m_PickIcon: {fileID: 4071074571878500513}
   m_CarryIndicator: {fileID: 0}
---- !u!114 &2860517494844540376
+--- !u!114 &8273044911356966461
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -783,7 +783,7 @@ GameObject:
   - component: {fileID: 4410234744924566123}
   - component: {fileID: 6065901533649818052}
   - component: {fileID: 8391293304358054658}
-  - component: {fileID: 5276800686666420553}
+  - component: {fileID: 8902479581993256643}
   m_Layer: 0
   m_Name: KeySlot
   m_TagString: Untagged
@@ -800,7 +800,7 @@ Transform:
   m_GameObject: {fileID: 6542570619695586013}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 15, y: 4, z: 0}
+  m_LocalPosition: {x: 2, y: -3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -972,7 +972,7 @@ MonoBehaviour:
   m_DoorRenderer: {fileID: 4010761903008095582}
   m_DoorClosedSprite: {fileID: 21300000, guid: c587d42bb416dc34888f019d276e9403, type: 3}
   m_DoorOpenSprite: {fileID: 21300000, guid: ef92e8c11c3428f49869d85f25ddc89f, type: 3}
---- !u!114 &5276800686666420553
+--- !u!114 &8902479581993256643
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1243,7 +1243,7 @@ GameObject:
   - component: {fileID: 7607514757763344531}
   - component: {fileID: 4010761903008095582}
   - component: {fileID: 1730837836457466484}
-  - component: {fileID: 8973413120045825277}
+  - component: {fileID: 4375037608065610035}
   m_Layer: 0
   m_Name: Door
   m_TagString: Door
@@ -1260,7 +1260,7 @@ Transform:
   m_GameObject: {fileID: 8443479349129819927}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 16, y: 0.44, z: 0}
+  m_LocalPosition: {x: 5, y: -3, z: 0}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1315,15 +1315,15 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 3
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -1764949161, guid: c587d42bb416dc34888f019d276e9403, type: 3}
+  m_Sprite: {fileID: 21300000, guid: c587d42bb416dc34888f019d276e9403, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 0.93, y: 1.15}
+  m_Size: {x: 1.28, y: 1.28}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!61 &1730837836457466484
 BoxCollider2D:
@@ -1363,15 +1363,15 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1.28}
-    newSize: {x: 0.93, y: 1.15}
+    oldSize: {x: 1.28, y: 1.28}
+    newSize: {x: 1.28, y: 1.28}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
   m_Size: {x: 1, y: 2}
   m_EdgeRadius: 0
---- !u!114 &8973413120045825277
+--- !u!114 &4375037608065610035
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
