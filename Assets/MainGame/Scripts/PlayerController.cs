@@ -16,6 +16,13 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     public static PlayerController Instance { get; private set; }
+
+    /// <summary>World-space bounds of the player's collider. Hazards (e.g. lasers)
+    /// use this for hit tests so they measure against the whole body, not the
+    /// foot pivot at <see cref="Transform.position"/>.</summary>
+    public Bounds ColliderBounds =>
+        m_Collider != null ? m_Collider.bounds : new Bounds(transform.position, Vector3.one);
+
     [Header("Command Settings")]
     [Tooltip("Horizontal distance (units) the player travels per Left or Right command.")]
     [SerializeField] private float m_MoveDistancePerCommand = 2f;
@@ -796,7 +803,16 @@ public class PlayerController : MonoBehaviour
             Collider2D hit = m_OverlapResults[i];
             if (hit == m_Collider || hit.isTrigger) continue;
             PushBrick brick = hit.GetComponentInParent<PushBrick>();
-            if (brick != null) return brick;
+            if (brick == null) continue;
+
+            // Ignore a brick the player is standing ON: its top sits at (or below)
+            // the player's feet, so it's a floor — not a wall to push. This stops
+            // the brick being shoved sideways out from under the player when they
+            // land on top of it mid-move (walk/fall off an edge onto the brick).
+            // A genuinely pushable brick rises beside the body, presenting a side face.
+            if (hit.bounds.max.y <= m_Collider.bounds.min.y + 0.1f) continue;
+
+            return brick;
         }
         return null;
     }
