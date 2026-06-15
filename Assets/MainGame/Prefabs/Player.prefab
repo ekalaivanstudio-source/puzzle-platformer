@@ -235,7 +235,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: e058be86c227f3a4e8b6cbb23dc995b6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d47716621090d7b49978d83822e384b4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -319,7 +319,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 0.72, y: 0.72}
+    oldSize: {x: 1.0285715, y: 1.0285715}
     newSize: {x: 0.9, y: 1.1533333}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -340,18 +340,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: -240220898, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -1384970026, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -1959969878, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: 383041408, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -1342889192, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -329952838, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: 1164140357, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: 1842915144, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -543161821, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: 689851194, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -990521183, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
-  - {fileID: -1095534443, guid: 4966608b3ee46ab4687635e5687ce258, type: 3}
+  - {fileID: 21300000, guid: e058be86c227f3a4e8b6cbb23dc995b6, type: 3}
+  - {fileID: 21300000, guid: d47716621090d7b49978d83822e384b4, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!50 &7558299849532869897
