@@ -15,7 +15,7 @@ public class UIFloatEffect : MonoBehaviour
     [SerializeField] private float m_StayDuration = 2f;
     [SerializeField] private float m_MoveDownDuration = 0.5f;
 
-    [SerializeField] private Vector2 m_StartPosition;
+    private Vector2 m_StartPosition;
     private Coroutine m_Routine;
 
     [SerializeField]
