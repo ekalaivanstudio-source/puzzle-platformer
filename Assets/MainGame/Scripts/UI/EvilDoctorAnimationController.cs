@@ -4,56 +4,52 @@ public class EvilDoctorAnimationController : MonoBehaviour
 {
     public enum DoctorAnimation
     {
-        Idle,
         Happy,
         Sad
     }
+    public static EvilDoctorAnimationController Instance { get; private set; }
 
     [SerializeField] private UIImageAnimator m_Animator;
+    [SerializeField] private DoctorDialogController m_DialogController;
 
-    [Header("Animation Names In UIImageAnimator")]
-    [SerializeField] private string m_IdleAnimation = "Idle";
-    [SerializeField] private string m_HappyAnimation = "Happy";
-    [SerializeField] private string m_SadAnimation = "Sad";
+    [SerializeField] private int m_DeathCount = 0;
 
-    [SerializeField]
-    private DoctorAnimation doctor = DoctorAnimation.Idle;
-
-    private void Start()
+    private void Awake()
     {
-        PlayAnimation(doctor);
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
     }
 
-    public void PlayAnimation(DoctorAnimation animation)
-    {
-        switch (animation)
-        {
-            case DoctorAnimation.Idle:
-                m_Animator.PlayAnimation(m_IdleAnimation);
-                break;
-
-            case DoctorAnimation.Happy:
-                m_Animator.PlayAnimation(m_HappyAnimation);
-                break;
-
-            case DoctorAnimation.Sad:
-                m_Animator.PlayAnimation(m_SadAnimation);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Villain reactions:
-    /// Player wins -> Doctor sad
-    /// Player loses -> Doctor happy
-    /// </summary>
+    [ContextMenu("OnLevelCompleted")]
     public void OnLevelCompleted()
     {
-        PlayAnimation(DoctorAnimation.Sad);
+        // Player wins -> Doctor sad
+        m_DialogController.ShowDialog(DoctorAnimation.Sad);
+        m_Animator.ShowReaction(DoctorAnimation.Sad);
     }
-
+    [ContextMenu("OnLevelFailed")]
     public void OnLevelFailed()
     {
-        PlayAnimation(DoctorAnimation.Happy);
+        m_DeathCount++;
+        if (m_DeathCount > 2)
+        {
+            // Player loses -> Doctor happy
+            OnPlayerdead();
+            m_DeathCount = 0;
+        }
+
+
+    }
+    public void OnPlayerdead()
+    {
+        // Player loses -> Doctor happy
+        m_DialogController.ShowDialog(DoctorAnimation.Happy);
+        m_Animator.ShowReaction(DoctorAnimation.Happy);
+
+    }
+
+    public int DeathCount()
+    {
+        return m_DeathCount;
     }
 }

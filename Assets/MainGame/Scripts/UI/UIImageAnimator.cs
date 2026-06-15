@@ -1,12 +1,18 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-[System.Serializable]
+[Serializable]
 public class SpriteAnimation
 {
-    public string AnimationName;
-    public List<Sprite> Frames;
+    public EvilDoctorAnimationController.DoctorAnimation AnimationType;
+
+    public List<Sprite> Frames = new();
+
+    [Min(1)]
+    public float FPS = 12f;
 }
 
 public class UIImageAnimator : MonoBehaviour
@@ -18,81 +24,88 @@ public class UIImageAnimator : MonoBehaviour
     [Header("Animations")]
     [SerializeField] private List<SpriteAnimation> m_Animations = new();
 
-    [Header("Settings")]
-    [SerializeField] private float m_FramesPerSecond = 10f;
-    [SerializeField] private bool m_Loop = true;
+    private readonly Dictionary<EvilDoctorAnimationController.DoctorAnimation, SpriteAnimation>
+        m_AnimationMap = new();
 
-    private SpriteAnimation m_CurrentAnimation;
-    private int m_CurrentFrame;
-    private float m_Timer;
-    private bool m_IsPlaying;
+    private Coroutine m_PlayRoutine;
 
-    private void Update()
+    private EvilDoctorAnimationController.DoctorAnimation m_PendingAnimation;
+
+    private void Awake()
     {
-        if (!m_IsPlaying || m_CurrentAnimation == null)
-            return;
-
-        if (m_CurrentAnimation.Frames == null || m_CurrentAnimation.Frames.Count <= 1)
-            return;
-
-        m_Timer += Time.unscaledDeltaTime;
-
-        float frameDuration = 1f / Mathf.Max(m_FramesPerSecond, 0.01f);
-
-        if (m_Timer < frameDuration)
-            return;
-
-        m_Timer %= frameDuration;
-        m_CurrentFrame++;
-
-        if (m_CurrentFrame >= m_CurrentAnimation.Frames.Count)
+        foreach (var animation in m_Animations)
         {
-            if (m_Loop)
+            if (!m_AnimationMap.ContainsKey(animation.AnimationType))
             {
-                m_CurrentFrame = 0;
-            }
-            else
-            {
-                m_CurrentFrame = m_CurrentAnimation.Frames.Count - 1;
-                m_IsPlaying = false;
-                return;
+                m_AnimationMap.Add(animation.AnimationType, animation);
             }
         }
 
-        ApplyFrame();
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.OnReachedTop += PlayPendingAnimation;
+            m_UIFloatEffect.OnBeforeMoveDown += StopAnimation;
+        }
     }
 
-    public void PlayAnimation(string animationName)
+    private void OnDestroy()
     {
-        SpriteAnimation animation = m_Animations.Find(a => a.AnimationName == animationName);
-
-        if (animation == null)
+        if (m_UIFloatEffect != null)
         {
-            Debug.LogWarning($"Animation '{animationName}' not found.");
+            m_UIFloatEffect.OnReachedTop -= PlayPendingAnimation;
+            m_UIFloatEffect.OnBeforeMoveDown -= StopAnimation;
+        }
+    }
+
+    public void ShowReaction(EvilDoctorAnimationController.DoctorAnimation animation)
+    {
+        m_PendingAnimation = animation;
+        m_UIFloatEffect.Play();
+    }
+
+    private void PlayPendingAnimation()
+    {
+        PlayAnimation(m_PendingAnimation);
+    }
+
+    private void PlayAnimation(EvilDoctorAnimationController.DoctorAnimation animationType)
+    {
+        if (!m_AnimationMap.TryGetValue(animationType, out SpriteAnimation animation))
+        {
+            Debug.LogWarning($"Animation {animationType} not found.");
             return;
         }
 
-        m_CurrentAnimation = animation;
-        m_CurrentFrame = 0;
-        m_Timer = 0f;
-        m_IsPlaying = true;
+        if (m_PlayRoutine != null)
+            StopCoroutine(m_PlayRoutine);
 
-        ApplyFrame();
-        m_UIFloatEffect?.Play();
+        m_PlayRoutine = StartCoroutine(PlayRoutine(animation));
+    }
+
+    private IEnumerator PlayRoutine(SpriteAnimation animation)
+    {
+        if (animation.Frames == null || animation.Frames.Count == 0)
+            yield break;
+
+        float frameDuration = 1f / animation.FPS;
+
+        while (true)
+        {
+            for (int i = 0; i < animation.Frames.Count; i++)
+            {
+                m_Image.sprite = animation.Frames[i];
+
+                yield return new WaitForSecondsRealtime(frameDuration);
+            }
+        }
     }
 
     public void StopAnimation()
     {
-        m_IsPlaying = false;
-    }
-
-    private void ApplyFrame()
-    {
-        if (m_Image == null ||
-            m_CurrentAnimation == null ||
-            m_CurrentAnimation.Frames.Count == 0)
-            return;
-
-        m_Image.sprite = m_CurrentAnimation.Frames[m_CurrentFrame];
+        if (m_PlayRoutine != null)
+        {
+            StopCoroutine(m_PlayRoutine);
+            m_PlayRoutine = null;
+        }
     }
 }
