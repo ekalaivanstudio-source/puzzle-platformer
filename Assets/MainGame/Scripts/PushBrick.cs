@@ -36,6 +36,13 @@ public class PushBrick : MonoBehaviour
     [Tooltip("Layers that block the brick's movement (Ground, walls, other bricks, etc.).")]
     [SerializeField] private LayerMask m_BlockingLayers;
 
+    [Header("Falling")]
+    [Tooltip("Speed at which the brick drops when unsupported (units / sec).")]
+    [SerializeField] private float m_FallSpeed = 12f;
+
+    [Tooltip("If the brick falls more than this many units without landing, it shatters.")]
+    [SerializeField] private int m_MaxFallUnits = 6;
+
     [Header("Destroy FX")]
     [Tooltip("Particle prefab spawned at the brick's position when destroyed by a laser.")]
     [SerializeField] private GameObject m_DestroyParticle;
@@ -50,7 +57,12 @@ public class PushBrick : MonoBehaviour
 
     // Reused by GetAllowedDistance so the sweep allocates no garbage.
     private readonly List<RaycastHit2D> m_CastResults = new List<RaycastHit2D>();
+    // Reused by the ground probe so IsSupported allocates no garbage.
+    private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
     private ContactFilter2D m_BlockingFilter;
+
+    // Thickness of the probe used to detect ground directly under the brick.
+    private const float k_GroundProbeThickness = 0.05f;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -123,6 +135,43 @@ public class PushBrick : MonoBehaviour
         }
 
         transform.position = target;
+
+        // The push may have left the brick hanging over a gap — drop it if so.
+        yield return Fall();
+    }
+
+    // ─── Fall ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Drops the brick one grid unit at a time while nothing supports it from below.
+    /// If it falls more than <see cref="m_MaxFallUnits"/> units without landing
+    /// (e.g. pushed into a bottomless pit), it shatters instead of falling forever.
+    /// </summary>
+    private IEnumerator Fall()
+    {
+        int unitsFallen = 0;
+
+        while (!IsSupported())
+        {
+            if (unitsFallen >= m_MaxFallUnits)
+            {
+                Shatter();
+                yield break;
+            }
+
+            // Step down exactly one grid unit, preserving any grid offset.
+            Vector3 target = transform.position + Vector3.down * m_PushDistance;
+
+            while (Mathf.Abs(transform.position.y - target.y) > 0.01f)
+            {
+                transform.position = Vector3.MoveTowards(
+                    transform.position, target, m_FallSpeed * Time.fixedDeltaTime);
+                yield return new WaitForFixedUpdate();
+            }
+
+            transform.position = target;
+            unitsFallen++;
+        }
     }
 
     // ─── Laser ────────────────────────────────────────────────────────────────
@@ -134,7 +183,15 @@ public class PushBrick : MonoBehaviour
     public void OnLaserHit()
     {
         if (!m_IsLaserDestructible) return;
+        Shatter();
+    }
 
+    /// <summary>
+    /// Plays the destroy FX and deactivates the brick. Restored on the next
+    /// full reset by <see cref="ResetBrick"/>. Shared by laser hits and falls.
+    /// </summary>
+    private void Shatter()
+    {
         AudioManager.Instance?.PlayBrickDestroy();
 
         if (m_DestroyParticle != null)
@@ -169,5 +226,28 @@ public class PushBrick : MonoBehaviour
         }
 
         return allowed;
+    }
+
+    // True when a blocker sits directly beneath the brick (i.e. it's resting on
+    // ground or another brick). A thin probe just below the bottom edge is used so
+    // colliders the brick is merely touching on its sides aren't mistaken for ground.
+    private bool IsSupported()
+    {
+        Bounds b = m_Collider.bounds;
+
+        // Shrink the width slightly so flush side walls don't read as support,
+        // and place a thin probe centred just under the brick's bottom edge.
+        Vector2 size = new Vector2(b.size.x * 0.9f, k_GroundProbeThickness);
+        Vector2 center = new Vector2(b.center.x, b.min.y - k_GroundProbeThickness * 0.5f);
+
+        int count = Physics2D.OverlapBox(center, size, 0f, m_BlockingFilter, m_OverlapResults);
+        for (int i = 0; i < count; i++)
+        {
+            Collider2D hit = m_OverlapResults[i];
+            if (hit == null || hit == m_Collider) continue;
+            return true;
+        }
+
+        return false;
     }
 }
