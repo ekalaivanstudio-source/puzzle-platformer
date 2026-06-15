@@ -317,6 +317,13 @@ public class PlayerInputUIHelper : MonoBehaviour
         Image target = inputsUI[indicatorIndex];
         if (target != null)
         {
+            // The slots are instantiated into a layout group, which doesn't position
+            // them until the next layout pass (after Start). Force the rebuild now so
+            // the very first placement reads each slot's final position, not its
+            // pre-layout origin — otherwise the indicator starts in the wrong spot.
+            if (inputContainer is RectTransform containerRT)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(containerRT);
+
             m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
         }
     }
