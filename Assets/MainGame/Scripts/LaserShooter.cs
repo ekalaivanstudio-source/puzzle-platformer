@@ -126,10 +126,10 @@ public class LaserShooter : MonoBehaviour
     private void CheckPlayerKill(Vector2 shooterStart, Vector2 shooterEnd)
     {
         if (PlayerController.Instance == null) return;
-        Vector2 playerPos = PlayerController.Instance.transform.position;
+        Bounds playerBounds = PlayerController.Instance.ColliderBounds;
 
         // Check shooter's own segment.
-        if (PointNearSegment(playerPos, shooterStart, shooterEnd, m_PlayerCheckRadius))
+        if (SegmentHitsBounds(shooterStart, shooterEnd, playerBounds))
         {
             KillPlayer();
             return;
@@ -138,7 +138,7 @@ public class LaserShooter : MonoBehaviour
         // Check all redirector segments accumulated this frame.
         foreach (var seg in LaserRedirector.ActiveSegments)
         {
-            if (PointNearSegment(playerPos, seg.start, seg.end, m_PlayerCheckRadius))
+            if (SegmentHitsBounds(seg.start, seg.end, playerBounds))
             {
                 KillPlayer();
                 return;
@@ -152,14 +152,62 @@ public class LaserShooter : MonoBehaviour
             PlayerController.Instance.OnLaserHit();
     }
 
-    // Returns true if point p is within radius of the line segment (a, b).
-    private static bool PointNearSegment(Vector2 p, Vector2 a, Vector2 b, float radius)
+    // Returns true if the beam segment (a, b) passes within m_PlayerCheckRadius of
+    // the player's collider bounds. Testing against the whole body — not the foot
+    // pivot — means a beam that grazes the top of a brick the player stands on no
+    // longer registers as a hit. And because each segment already stops at its first
+    // blocker, a player standing on (or shielded behind) that blocker sits beyond
+    // the segment's end, so the closest point falls outside their bounds.
+    private bool SegmentHitsBounds(Vector2 a, Vector2 b, Bounds bounds)
     {
+        Vector2 center = bounds.center;
         Vector2 ab = b - a;
         float len2 = ab.sqrMagnitude;
-        if (len2 < 0.0001f) return Vector2.Distance(p, a) <= radius;
-        float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / len2);
-        Vector2 closest = a + t * ab;
-        return Vector2.Distance(p, closest) <= radius;
+        Vector2 closest = len2 < 0.0001f
+            ? a
+            : a + Mathf.Clamp01(Vector2.Dot(center - a, ab) / len2) * ab;
+        return bounds.SqrDistance(closest) <= m_PlayerCheckRadius * m_PlayerCheckRadius;
     }
+
+    // ─── Editor Gizmos ──────────────────────────────────────────────────────────
+
+#if UNITY_EDITOR
+    // Draws the beam and the capsule (radius = m_PlayerCheckRadius) within which the
+    // player's collider counts as hit, so the kill tolerance can be tuned visually.
+    // Shows only when this shooter is selected to keep the Scene view uncluttered.
+    private void OnDrawGizmosSelected()
+    {
+        Vector2 origin = (Vector2)transform.position + (Vector2)transform.TransformDirection(m_BeamOffset);
+        Vector2 direction = transform.right;
+
+        // Mirror CastBeam's termination so the preview matches the live segment
+        // length. This is a read-only raycast — safe in both edit and play mode.
+        int mask = m_BlockingLayers | m_RedirectorLayer;
+        RaycastHit2D hit = Physics2D.Raycast(origin, direction, m_MaxDistance, mask);
+        Vector2 end = hit.collider != null ? hit.point : origin + direction * m_MaxDistance;
+
+        Gizmos.color = new Color(1f, 0.25f, 0.25f, 0.9f);
+        Gizmos.DrawLine(origin, end);
+
+        // Capsule edges: two parallel lines offset by the radius, plus rounded caps.
+        Vector2 dir = (end - origin).sqrMagnitude > 0.0001f ? (end - origin).normalized : direction;
+        Vector2 normal = new Vector2(-dir.y, dir.x) * m_PlayerCheckRadius;
+        Gizmos.DrawLine(origin + normal, end + normal);
+        Gizmos.DrawLine(origin - normal, end - normal);
+        DrawWireCircle(origin, m_PlayerCheckRadius);
+        DrawWireCircle(end, m_PlayerCheckRadius);
+    }
+
+    private static void DrawWireCircle(Vector2 center, float radius, int segments = 24)
+    {
+        Vector2 prev = center + new Vector2(radius, 0f);
+        for (int i = 1; i <= segments; i++)
+        {
+            float ang = (i / (float)segments) * Mathf.PI * 2f;
+            Vector2 next = center + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * radius;
+            Gizmos.DrawLine(prev, next);
+            prev = next;
+        }
+    }
+#endif
 }

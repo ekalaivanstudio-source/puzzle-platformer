@@ -15,6 +15,10 @@ public class KeySlot : MonoBehaviour
 
     [Header("Door")]
     [SerializeField] private BoxCollider2D m_DoorCollider;
+    [Tooltip("Door sprite renderer whose sprite swaps when the key is placed.")]
+    [SerializeField] private SpriteRenderer m_DoorRenderer;
+    [SerializeField] private Sprite m_DoorClosedSprite;
+    [SerializeField] private Sprite m_DoorOpenSprite;
 
     private bool m_Filled;
 
@@ -28,10 +32,18 @@ public class KeySlot : MonoBehaviour
 
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
+
+        if (m_DoorRenderer != null && m_DoorClosedSprite != null)
+            m_DoorRenderer.sprite = m_DoorClosedSprite;
     }
 
-    private void OnEnable() => GameManager.OnTurnReset += ResetSlot;
-    private void OnDisable() => GameManager.OnTurnReset -= ResetSlot;
+    // Reset on OnKeyReset (fired only when a full input run finishes) — NOT OnTurnReset.
+    // OnTurnReset also fires when the player accesses a rotator/mover/checkpoint
+    // (ResetAtCheckpoint), and the placed key must survive those. Death reloads the
+    // scene, which re-initialises the slot via Awake. This keeps the slot in sync with
+    // PlaceableKey, which already resets on OnKeyReset.
+    private void OnEnable() => GameManager.OnKeyReset += ResetSlot;
+    private void OnDisable() => GameManager.OnKeyReset -= ResetSlot;
 
     private void OnTriggerEnter2D(Collider2D other)
     {
@@ -66,6 +78,9 @@ public class KeySlot : MonoBehaviour
             AudioManager.Instance?.PlayDoorOpen();
         }
 
+        if (m_DoorRenderer != null && m_DoorOpenSprite != null)
+            m_DoorRenderer.sprite = m_DoorOpenSprite;
+
         GameManager.Instance?.KeyCollected();
     }
 
@@ -81,5 +96,8 @@ public class KeySlot : MonoBehaviour
 
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
+
+        if (m_DoorRenderer != null && m_DoorClosedSprite != null)
+            m_DoorRenderer.sprite = m_DoorClosedSprite;
     }
 }
