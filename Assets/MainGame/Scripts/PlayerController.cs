@@ -864,6 +864,12 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
         m_EndTurnCoroutine = null;
+
+        // A turn that ended without winning is a failed attempt — count it toward the
+        // combined tally; the doctor gloats on every Nth failure before input resets.
+        if (EvilDoctorAnimationController.Instance != null)
+            yield return EvilDoctorAnimationController.Instance.RegisterFailureRoutine();
+
         GameManager.Instance?.PlayEnded();
     }
 
@@ -893,6 +899,10 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayWin();
 
+        // Doctor reacts (sad) — wait for the full reaction before leaving the level.
+        if (EvilDoctorAnimationController.Instance != null)
+            yield return EvilDoctorAnimationController.Instance.PlayLevelCompletedRoutine();
+
         yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
@@ -914,9 +924,29 @@ public class PlayerController : MonoBehaviour
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
         yield return new WaitForSecondsRealtime(1f);
+
+        // Count this death toward the combined failure tally — the doctor gloats on
+        // every Nth failure. Awaited so the restart waits for the full reaction.
+        if (EvilDoctorAnimationController.Instance != null)
+            yield return EvilDoctorAnimationController.Instance.RegisterFailureRoutine();
+
+        // Reset the level in place instead of reloading the scene, so the per-scene
+        // failure tally survives: fade out → reset → fade back in.
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
-        GameManager.Instance.ReloadLevel();
+
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+
+        GameManager.Instance?.SoftResetLevel();
+        m_Rigidbody.position = m_StartPosition;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        if (sr != null) sr.enabled = true;
+
+        if (UIManager.Instance != null)
+            yield return StartCoroutine(UIManager.Instance.FadeRoutine(1f, 0f));
+
+        DeviceInputProvider.Instance?.SetEnabled(true);
     }
 
     /// <summary>Called by LaserShooter when the player touches any active laser segment.</summary>

@@ -75,6 +75,21 @@ public class GameManager : MonoBehaviour
         OnTurnReset?.Invoke();
     }
 
+    /// <summary>
+    /// Resets the level in place — WITHOUT reloading the scene — so per-scene state
+    /// (e.g. the doctor's failure streak) survives. Fires the full reset chain and
+    /// clears the queued sequence. The caller is responsible for repositioning the
+    /// player and restoring input. Used by the death/restart flow.
+    /// </summary>
+    public void SoftResetLevel()
+    {
+        IsKeyCollected = false;
+        OnFullReset?.Invoke();   // bricks, redirectors → initial state
+        OnTurnReset?.Invoke();   // movable bricks, lock points
+        OnKeyReset?.Invoke();    // placeable key + key slot
+        SequenceManager.Instance?.OnTurnEnded();
+    }
+
     // ─── Game Events ─────────────────────────────────────────────────────────
 
     /// <summary>Marks the key as collected. Called by <see cref="Key"/> on interaction.</summary>
