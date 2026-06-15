@@ -1,37 +1,40 @@
 using UnityEngine;
 using TMPro;
 
+/// <summary>
+/// Shows a random line of doctor dialog for a given reaction.
+/// </summary>
 public class DoctorDialogController : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private TMP_Text m_DialogText;
 
-    [Header("Happy Dialogs")]
-    [SerializeField]
-    private string[] m_HappyDialogs;
-
-    [Header("Sad Dialogs")]
-    [SerializeField]
-    private string[] m_SadDialogs;
+    [Header("Dialogs")]
+    [SerializeField] private string[] m_HappyDialogs;
+    [SerializeField] private string[] m_SadDialogs;
 
     public void ShowDialog(EvilDoctorAnimationController.DoctorAnimation animation)
     {
-        switch (animation)
+        string[] pool = animation switch
         {
-            case EvilDoctorAnimationController.DoctorAnimation.Happy:
-                SetRandomDialog(m_HappyDialogs);
-                break;
+            EvilDoctorAnimationController.DoctorAnimation.Happy => m_HappyDialogs,
+            EvilDoctorAnimationController.DoctorAnimation.Sad => m_SadDialogs,
+            _ => null
+        };
 
-            case EvilDoctorAnimationController.DoctorAnimation.Sad:
-                SetRandomDialog(m_SadDialogs);
-                break;
-        }
+        SetRandomDialog(pool);
     }
 
     private void SetRandomDialog(string[] dialogs)
     {
-        if (dialogs == null || dialogs.Length == 0)
+        if (m_DialogText == null)
+        {
+            Debug.LogWarning($"[{nameof(DoctorDialogController)}] {nameof(m_DialogText)} is not assigned.", this);
             return;
+        }
 
-        m_DialogText.text = dialogs[Random.Range(0, dialogs.Length)];
+        m_DialogText.text = (dialogs != null && dialogs.Length > 0)
+            ? dialogs[Random.Range(0, dialogs.Length)]
+            : string.Empty;
     }
 }
