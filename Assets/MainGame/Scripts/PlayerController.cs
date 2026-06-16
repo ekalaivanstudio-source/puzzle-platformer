@@ -88,6 +88,7 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 m_StartPosition;
     private float m_OriginalGravityScale;
+    private Vector3 m_OriginalScale;   // spawn facing — restored on respawn so a left-facing death doesn't persist
 
     // Reusable buffers + filters for physics queries. Reusing these avoids the
     // per-call array allocation of the Physics2D.*All() overloads, which was
@@ -107,6 +108,7 @@ public class PlayerController : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         m_StartPosition = transform.position;
         m_OriginalGravityScale = m_Rigidbody.gravityScale;
+        m_OriginalScale = transform.localScale;
 
         // Cache the walkable layer union once — m_GroundLayers never changes at runtime.
         int combined = 0;
@@ -175,6 +177,9 @@ public class PlayerController : MonoBehaviour
         }
 
         m_MaxTimeIndex = SequenceManager.Instance.SequenceLength;
+        // Safety: ensure gravity is at its normal value before the turn starts, in case a
+        // prior abort left it zeroed (gravity is temporarily disabled during edge-walks/jumps).
+        m_Rigidbody.gravityScale = m_OriginalGravityScale;
         m_IsGamePlaying = true;
         m_ExecutionCoroutine = StartCoroutine(ExecutionLoop());
     }
@@ -848,6 +853,12 @@ public class PlayerController : MonoBehaviour
         }
 
         m_Rigidbody.linearVelocity = Vector2.zero;
+
+        // StopCoroutine above can kill MoveHorizontal/PerformJump/waypoint transport while
+        // they have gravity temporarily zeroed (edge-walk, jump arc), so their restore line
+        // never runs. Reset to the original here, otherwise the player keeps drifting
+        // horizontally through the air on the next turn (gravityScale stuck at 0).
+        m_Rigidbody.gravityScale = m_OriginalGravityScale;
     }
 
     // Short delay before resetting position and unlocking UI
@@ -863,6 +874,7 @@ public class PlayerController : MonoBehaviour
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
+        transform.localScale = m_OriginalScale;   // restore spawn facing
         m_EndTurnCoroutine = null;
 
         // A turn that ended without winning is a failed attempt — count it toward the
@@ -941,6 +953,7 @@ public class PlayerController : MonoBehaviour
         GameManager.Instance?.SoftResetLevel();
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
+        transform.localScale = m_OriginalScale;   // restore spawn facing
         if (sr != null) sr.enabled = true;
 
         if (UIManager.Instance != null)
