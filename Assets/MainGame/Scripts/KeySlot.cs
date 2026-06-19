@@ -19,7 +19,7 @@ public class KeySlot : MonoBehaviour
     [SerializeField] private SpriteRenderer m_DoorRenderer;
     [SerializeField] private Sprite m_DoorClosedSprite;
     [SerializeField] private Sprite m_DoorOpenSprite;
-
+    [SerializeField] private GameObject shineEffect;
     private bool m_Filled;
 
     private void Awake()
@@ -29,6 +29,9 @@ public class KeySlot : MonoBehaviour
 
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(false);
+
+        if (shineEffect != null)
+            shineEffect.SetActive(false);
 
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
@@ -69,6 +72,9 @@ public class KeySlot : MonoBehaviour
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(true);
 
+        if (shineEffect != null)
+            shineEffect.SetActive(true);
+
         m_LinkedKey?.Place();
         AudioManager.Instance?.PlayKeyPlaced();
 
@@ -93,6 +99,9 @@ public class KeySlot : MonoBehaviour
 
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(false);
+
+        if (shineEffect != null)
+            shineEffect.SetActive(false);
 
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
