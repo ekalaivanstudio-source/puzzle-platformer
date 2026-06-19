@@ -112,6 +112,8 @@ MonoBehaviour:
   m_BlockingLayers:
     serializedVersion: 2
     m_Bits: 64
+  m_FallSpeed: 12
+  m_MaxFallUnits: 6
   m_DestroyParticle: {fileID: 7581426562798727453, guid: 3008512c7d1b0ed48a89b30bafb7e4f6, type: 3}
   m_ShakeMagnitude: 0.15
   m_ShakeDuration: 0.3
@@ -153,13 +155,13 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 0.972973, y: 0.972973}
+    oldSize: {x: 1, y: 1}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.9, y: 1}
+  m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
 --- !u!50 &4531789135831115818
 Rigidbody2D:
