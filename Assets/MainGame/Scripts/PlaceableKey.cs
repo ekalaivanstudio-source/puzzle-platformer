@@ -37,7 +37,6 @@ public class PlaceableKey : MonoBehaviour
     [SerializeField] private GameObject m_CarryIndicator;
     [SerializeField] private GameObject shineEffect;
 
-
     // ─── Private state ────────────────────────────────────────────────────────
 
     private Transform m_PlayerTransform;

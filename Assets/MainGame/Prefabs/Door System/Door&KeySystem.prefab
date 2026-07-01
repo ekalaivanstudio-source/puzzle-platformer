@@ -390,7 +390,6 @@ GameObject:
   - component: {fileID: 4266888258132535399}
   - component: {fileID: 2551674296800355301}
   - component: {fileID: 7508023801700783087}
-  - component: {fileID: 6963745984535082601}
   m_Layer: 0
   m_Name: Key
   m_TagString: Untagged
@@ -634,19 +633,6 @@ MonoBehaviour:
   m_PickIcon: {fileID: 4071074571878500513}
   m_CarryIndicator: {fileID: 0}
   shineEffect: {fileID: 4200594236322381460}
---- !u!114 &6963745984535082601
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3901967678478176673}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8edfe4216a1402a4880f0274a646aadf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialTarget
-  m_TargetId: key_9da4
 --- !u!1 &4071074571878500513
 GameObject:
   m_ObjectHideFlags: 0
@@ -869,7 +855,6 @@ GameObject:
   - component: {fileID: 4410234744924566123}
   - component: {fileID: 6065901533649818052}
   - component: {fileID: 8391293304358054658}
-  - component: {fileID: 1419400271736154633}
   - component: {fileID: 2276762496144258441}
   m_Layer: 0
   m_Name: KeySlot
@@ -1058,22 +1043,13 @@ MonoBehaviour:
   m_FilledVisual: {fileID: 2768031314177276669}
   m_DoorCollider: {fileID: 1730837836457466484}
   m_DoorRenderer: {fileID: 4010761903008095582}
-  m_DoorClosedSprite: {fileID: 21300000, guid: c587d42bb416dc34888f019d276e9403, type: 3}
-  m_DoorOpenSprite: {fileID: 21300000, guid: ef92e8c11c3428f49869d85f25ddc89f, type: 3}
+  doorOpenSS:
+  - {fileID: 21300000, guid: dbae8a3366a473d478fca01d0410d3f4, type: 3}
+  - {fileID: 21300000, guid: 266e5c620493e4e46b08996b46cb6c2e, type: 3}
+  - {fileID: 21300000, guid: f69a203ddac2bfb48a794e7fd4ed8321, type: 3}
+  - {fileID: 21300000, guid: 5a6b556a394e49d4ba756e03acb73732, type: 3}
+  m_DoorFrameTime: 0.06
   shineEffect: {fileID: 7703078660324728281}
---- !u!114 &1419400271736154633
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6542570619695586013}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8edfe4216a1402a4880f0274a646aadf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialTarget
-  m_TargetId: keyslot_5ef5
 --- !u!212 &2276762496144258441
 SpriteRenderer:
   serializedVersion: 2
@@ -1475,7 +1451,6 @@ GameObject:
   - component: {fileID: 7607514757763344531}
   - component: {fileID: 4010761903008095582}
   - component: {fileID: 1730837836457466484}
-  - component: {fileID: 7665350408162380210}
   m_Layer: 0
   m_Name: Door
   m_TagString: Door
@@ -1547,7 +1522,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 3
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: c587d42bb416dc34888f019d276e9403, type: 3}
+  m_Sprite: {fileID: 21300000, guid: dbae8a3366a473d478fca01d0410d3f4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1595,7 +1570,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1.28, y: 1.28}
+    oldSize: {x: 1.65, y: 1.94}
     newSize: {x: 1.28, y: 1.28}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -1603,19 +1578,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 2}
   m_EdgeRadius: 0
---- !u!114 &7665350408162380210
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8443479349129819927}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8edfe4216a1402a4880f0274a646aadf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TutorialSystem.TutorialTarget
-  m_TargetId: door_840f
 --- !u!1001 &1354695364647869233
 PrefabInstance:
   m_ObjectHideFlags: 0
