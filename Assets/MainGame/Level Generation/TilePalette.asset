@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77313d1833227604086fc5d7a244437c, type: 3}
+  m_Name: TilePalette
+  m_EditorClassIdentifier: Assembly-CSharp::LevelGenerationSystem.TilePalette
+  m_TileSize: 1
+  m_EmptySymbols: .
+  m_Tiles:
+  - Symbol: +
+    Prefab: {fileID: 6508116165037200411, guid: 59dcfaad93edfc646bd3564d01ee4815, type: 3}
+    Description: 
+  - Symbol: '-'
+    Prefab: {fileID: 6508116165037200411, guid: 20e18fd716e65fe46a81206a107273e8, type: 3}
+    Description: 

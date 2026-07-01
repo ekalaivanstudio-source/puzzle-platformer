@@ -27,7 +27,7 @@ public class EvilDoctorAnimationController : MonoBehaviour
 
     [Tooltip("Shows the doctor's dialog/speech bubble.")]
     [SerializeField] private DoctorDialogController m_DialogController;
-
+    
     [Header("Settings")]
     [Tooltip("Failures (deaths + failed attempts) between each doctor gloat — reacts on 3, 6, 9, …")]
     [SerializeField] private int m_FailuresPerReaction = 3;
