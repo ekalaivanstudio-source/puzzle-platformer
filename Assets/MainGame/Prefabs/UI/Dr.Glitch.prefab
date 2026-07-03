@@ -293,7 +293,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EvilDoctorAnimationController
   m_Animator: {fileID: 6991508114390707197}
   m_DialogController: {fileID: 8840804286440040732}
-  m_DeathCount: 0
+  m_FailuresPerReaction: 3
 --- !u!114 &2667164201979308011
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -307,11 +307,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIFloatEffect
   m_Target: {fileID: 1669183299983228527}
-  m_MoveDistance: 400
-  m_MoveUpDuration: 1.5
-  m_StayDuration: 3
-  m_MoveDownDuration: 1.5
   m_DialogBox: {fileID: 767171587591031595}
+  m_MoveDistance: 400
+  m_MoveUpDuration: 1
+  m_StayDuration: 1.5
+  m_MoveDownDuration: 1
 --- !u!114 &8840804286440040732
 MonoBehaviour:
   m_ObjectHideFlags: 0

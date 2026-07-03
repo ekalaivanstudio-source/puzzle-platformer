@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
@@ -17,10 +18,15 @@ public class KeySlot : MonoBehaviour
     [SerializeField] private BoxCollider2D m_DoorCollider;
     [Tooltip("Door sprite renderer whose sprite swaps when the key is placed.")]
     [SerializeField] private SpriteRenderer m_DoorRenderer;
-    [SerializeField] private Sprite m_DoorClosedSprite;
-    [SerializeField] private Sprite m_DoorOpenSprite;
 
+    [Tooltip("Door open animation frames. Frame 0 is the closed state; the last frame is the fully-open state.")]
+    [SerializeField] private Sprite[] doorOpenSS;
+    [Tooltip("Seconds each frame of the door open animation is shown.")]
+    [SerializeField] private float m_DoorFrameTime = 0.06f;
+
+    [SerializeField] private GameObject shineEffect;
     private bool m_Filled;
+    private Coroutine m_DoorAnimation;
 
     private void Awake()
     {
@@ -30,11 +36,13 @@ public class KeySlot : MonoBehaviour
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(false);
 
+        if (shineEffect != null)
+            shineEffect.SetActive(false);
+
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
 
-        if (m_DoorRenderer != null && m_DoorClosedSprite != null)
-            m_DoorRenderer.sprite = m_DoorClosedSprite;
+        SetDoorClosed();
     }
 
     // Reset on OnKeyReset (fired only when a full input run finishes) — NOT OnTurnReset.
@@ -69,6 +77,9 @@ public class KeySlot : MonoBehaviour
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(true);
 
+        if (shineEffect != null)
+            shineEffect.SetActive(true);
+
         m_LinkedKey?.Place();
         AudioManager.Instance?.PlayKeyPlaced();
 
@@ -78,8 +89,7 @@ public class KeySlot : MonoBehaviour
             AudioManager.Instance?.PlayDoorOpen();
         }
 
-        if (m_DoorRenderer != null && m_DoorOpenSprite != null)
-            m_DoorRenderer.sprite = m_DoorOpenSprite;
+        PlayDoorOpenAnimation();
 
         GameManager.Instance?.KeyCollected();
     }
@@ -94,10 +104,51 @@ public class KeySlot : MonoBehaviour
         if (m_FilledVisual != null)
             m_FilledVisual.SetActive(false);
 
+        if (shineEffect != null)
+            shineEffect.SetActive(false);
+
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
 
-        if (m_DoorRenderer != null && m_DoorClosedSprite != null)
-            m_DoorRenderer.sprite = m_DoorClosedSprite;
+        SetDoorClosed();
+    }
+
+    // Closed state uses the first frame of the door open animation.
+    private void SetDoorClosed()
+    {
+        if (m_DoorAnimation != null)
+        {
+            StopCoroutine(m_DoorAnimation);
+            m_DoorAnimation = null;
+        }
+
+        if (m_DoorRenderer != null && doorOpenSS != null && doorOpenSS.Length > 0)
+            m_DoorRenderer.sprite = doorOpenSS[0];
+    }
+
+    // Plays doorOpenSS from start to finish and holds on the last frame.
+    private void PlayDoorOpenAnimation()
+    {
+        if (m_DoorRenderer == null || doorOpenSS == null || doorOpenSS.Length == 0)
+            return;
+
+        if (m_DoorAnimation != null)
+            StopCoroutine(m_DoorAnimation);
+
+        m_DoorAnimation = StartCoroutine(DoorOpenRoutine());
+    }
+
+    private IEnumerator DoorOpenRoutine()
+    {
+        for (int i = 0; i < doorOpenSS.Length; i++)
+        {
+            m_DoorRenderer.sprite = doorOpenSS[i];
+
+            if (i < doorOpenSS.Length - 1 && m_DoorFrameTime > 0f)
+                yield return new WaitForSeconds(m_DoorFrameTime);
+        }
+
+        // Hold on the last (fully-open) frame.
+        m_DoorAnimation = null;
     }
 }

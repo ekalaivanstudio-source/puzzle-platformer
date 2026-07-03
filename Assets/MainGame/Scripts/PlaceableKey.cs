@@ -35,6 +35,7 @@ public class PlaceableKey : MonoBehaviour
     [SerializeField] private GameObject m_PickIcon;
     [Tooltip("Shown while the player is carrying the key.")]
     [SerializeField] private GameObject m_CarryIndicator;
+    [SerializeField] private GameObject shineEffect;
 
     // ─── Private state ────────────────────────────────────────────────────────
 
@@ -90,6 +91,9 @@ public class PlaceableKey : MonoBehaviour
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, true);
 
+        // Key has been collected — stop the shine effect.
+        Show(shineEffect, false);
+
         // Hide sprite — key is now "in the player's hands".
         if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
 
@@ -107,6 +111,9 @@ public class PlaceableKey : MonoBehaviour
 
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, false);
+
+        // Key is back in the world — bring the shine effect back.
+        Show(shineEffect, true);
 
         if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
 

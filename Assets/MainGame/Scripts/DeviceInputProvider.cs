@@ -8,7 +8,7 @@ using TutorialSystem;
 /// Access via <see cref="Instance"/>.
 ///
 /// Actions mapped (configure bindings in the Input Actions editor):
-///   Left / Right / Jump / Interact  → queues into SequenceManager
+///   Left / Right / Jump             → queues into SequenceManager
 ///   Submit (Enter / Gamepad Start)  → triggers execution via GameManager
 ///   Undo (Backspace / Gamepad B)    → removes last queued action
 ///   Clear (Delete / Gamepad Select) → clears entire queue
@@ -24,7 +24,6 @@ public class DeviceInputProvider : MonoBehaviour
     private InputAction m_LeftAction;
     private InputAction m_RightAction;
     private InputAction m_JumpAction;
-    private InputAction m_InteractAction;
     private InputAction m_SubmitAction;
     private InputAction m_UndoAction;
     private InputAction m_ClearAction;
@@ -62,7 +61,9 @@ public class DeviceInputProvider : MonoBehaviour
         m_LeftAction = map.FindAction("Left", throwIfNotFound: false);
         m_RightAction = map.FindAction("Right", throwIfNotFound: false);
         m_JumpAction = map.FindAction("Jump", throwIfNotFound: false);
-        m_InteractAction = map.FindAction("Interact", throwIfNotFound: false);
+        // Interact (E) is NOT a sequence action — it triggers immediate interaction
+        // (e.g. entering laser mover/rotator control mode) handled directly by the
+        // LaserRedirector*InputResetter scripts, which subscribe to the action themselves.
         m_SubmitAction = map.FindAction("Submit", throwIfNotFound: false);
         m_UndoAction = map.FindAction("Undo", throwIfNotFound: false)
                         ?? map.FindAction("Back", throwIfNotFound: false);
@@ -85,7 +86,6 @@ public class DeviceInputProvider : MonoBehaviour
             if (m_LeftAction != null) m_LeftAction.performed += OnLeft;
             if (m_RightAction != null) m_RightAction.performed += OnRight;
             if (m_JumpAction != null) { m_JumpAction.started += OnJumpStarted; m_JumpAction.canceled += OnJumpCanceled; }
-            if (m_InteractAction != null) m_InteractAction.performed += OnInteract;
             if (m_SubmitAction != null) m_SubmitAction.performed += OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed += OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed += OnClear;
@@ -96,7 +96,6 @@ public class DeviceInputProvider : MonoBehaviour
             if (m_LeftAction != null) m_LeftAction.performed -= OnLeft;
             if (m_RightAction != null) m_RightAction.performed -= OnRight;
             if (m_JumpAction != null) { m_JumpAction.started -= OnJumpStarted; m_JumpAction.canceled -= OnJumpCanceled; }
-            if (m_InteractAction != null) m_InteractAction.performed -= OnInteract;
             if (m_SubmitAction != null) m_SubmitAction.performed -= OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed -= OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed -= OnClear;
@@ -177,7 +176,6 @@ public class DeviceInputProvider : MonoBehaviour
         m_JumpComboQueued = false;
     }
 
-    private void OnInteract(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.AddAction(ActionTypeEnum.Interact); AudioManager.Instance?.PlayQueue(); } }
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
     private void OnRestart(InputAction.CallbackContext c) { if (TutorialManager.GameplayInputBlocked) return; GameManager.Instance?.ReloadLevel(); }
