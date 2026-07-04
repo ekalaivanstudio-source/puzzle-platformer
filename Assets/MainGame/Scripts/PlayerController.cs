@@ -1,6 +1,8 @@
+using ModernLevelSelection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Drives the player character during a timeline execution turn using a
@@ -933,6 +935,8 @@ public class PlayerController : MonoBehaviour
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
         GameManager.Instance.LoadNextLevel();
+        LevelManager.Instance.CompleteLevel(SceneManager.GetActiveScene().buildIndex, 0);
+
     }
 
     private System.Collections.IEnumerator DeathRoutine()
