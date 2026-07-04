@@ -2,35 +2,35 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Rustles a bush by playing a sprite-sheet animation when the player touches it.
-/// The bush sits on its first (idle) frame until the player enters the trigger, then
-/// plays through <see cref="m_Frames"/> once. Uses unscaled time so it animates correctly
-/// during slow-motion, matching <see cref="SpriteSheetAnimator"/>.
+/// Plays a one-shot sprite-sheet animation when the player touches an interactable object
+/// (bush, chest, lever, torch, etc.). The object sits on its first (idle) frame until the
+/// player enters the trigger, then plays through <see cref="m_Frames"/> once. Uses unscaled
+/// time so it animates correctly during slow-motion, matching <see cref="SpriteSheetAnimator"/>.
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
-public class Bush : MonoBehaviour
+public class TouchAnimator : MonoBehaviour
 {
     [Header("Animation")]
-    [Tooltip("Ordered frames of the rustle. Frame 0 is the idle/resting sprite.")]
+    [Tooltip("Ordered frames of the animation. Frame 0 is the idle/resting sprite.")]
     [SerializeField] private Sprite[] m_Frames;
 
     [Tooltip("How many frames to display per second.")]
     [SerializeField] private float m_FramesPerSecond = 12f;
 
-    [Tooltip("Sprite renderer that shows the bush. Auto-fetched from this object if left empty.")]
+    [Tooltip("Sprite renderer that shows the object. Auto-fetched from this object if left empty.")]
     [SerializeField] private SpriteRenderer m_Renderer;
 
     [Header("Behaviour")]
-    [Tooltip("Tag of the object that makes the bush rustle.")]
+    [Tooltip("Tag of the object that triggers the animation.")]
     [SerializeField] private string m_PlayerTag = "Player";
 
-    [Tooltip("If true, the bush returns to its idle frame after the rustle finishes; otherwise it holds on the last frame.")]
+    [Tooltip("If true, the object returns to its idle frame after the animation finishes; otherwise it holds on the last frame.")]
     [SerializeField] private bool m_ReturnToIdleWhenDone = true;
 
-    [Tooltip("If true, the bush can rustle every time the player enters; otherwise it rustles only once.")]
+    [Tooltip("If true, the animation can play every time the player enters; otherwise it plays only once.")]
     [SerializeField] private bool m_Repeatable = true;
 
-    private Coroutine m_Rustle;
+    private Coroutine m_Playing;
     private bool m_HasPlayed;
 
     private void Awake()
@@ -39,18 +39,16 @@ public class Bush : MonoBehaviour
             m_Renderer = GetComponent<SpriteRenderer>();
 
         if (m_Renderer == null)
-            Debug.LogWarning($"[Bush] No SpriteRenderer found on '{name}'. Assign one or put the Bush on the object that has the SpriteRenderer.", this);
+            Debug.LogWarning($"[TouchAnimator] No SpriteRenderer found on '{name}'. Assign one or put the TouchAnimator on the object that has the SpriteRenderer.", this);
 
         if (m_Frames == null || m_Frames.Length == 0)
-            Debug.LogWarning($"[Bush] No frames assigned on '{name}'. Fill the Frames array with the bush sprite-sheet slices.", this);
+            Debug.LogWarning($"[TouchAnimator] No frames assigned on '{name}'. Fill the Frames array with the sprite-sheet slices.", this);
 
         SetIdle();
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        Debug.Log($"[Bush] Trigger entered by '{other.name}' (tag '{other.tag}'). Looking for tag '{m_PlayerTag}'.", this);
-
         if (!other.CompareTag(m_PlayerTag))
             return;
 
@@ -67,13 +65,13 @@ public class Bush : MonoBehaviour
 
         m_HasPlayed = true;
 
-        if (m_Rustle != null)
-            StopCoroutine(m_Rustle);
+        if (m_Playing != null)
+            StopCoroutine(m_Playing);
 
-        m_Rustle = StartCoroutine(RustleRoutine());
+        m_Playing = StartCoroutine(PlayRoutine());
     }
 
-    private IEnumerator RustleRoutine()
+    private IEnumerator PlayRoutine()
     {
         float frameDuration = 1f / Mathf.Max(m_FramesPerSecond, 0.01f);
         var wait = new WaitForSecondsRealtime(frameDuration);
@@ -89,7 +87,7 @@ public class Bush : MonoBehaviour
         if (m_ReturnToIdleWhenDone)
             SetIdle();
 
-        m_Rustle = null;
+        m_Playing = null;
     }
 
     private void SetIdle()

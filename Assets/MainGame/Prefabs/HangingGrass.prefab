@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 7532305486888701731}
   - component: {fileID: 1000040886758080618}
   m_Layer: 0
-  m_Name: Bush
+  m_Name: HangingGrass
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: a32ad474a8241d34393cb9277fa1d5f9, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 244a963962e5279418c70d1f833bda15, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -153,9 +153,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TouchAnimator
   m_Frames:
-  - {fileID: 21300000, guid: a32ad474a8241d34393cb9277fa1d5f9, type: 3}
-  - {fileID: 21300000, guid: 698c8835783ae1642883371a1dfc7549, type: 3}
-  - {fileID: 21300000, guid: da38409da81c5104ab18b9595e0cd5e9, type: 3}
+  - {fileID: 21300000, guid: 244a963962e5279418c70d1f833bda15, type: 3}
+  - {fileID: 21300000, guid: 0eb7f4b7684f5e44186e7fe64f883280, type: 3}
+  - {fileID: 21300000, guid: cc46ca90312990c42801e719948da364, type: 3}
+  - {fileID: 21300000, guid: d07da67f024e6e74b92f07af20ff34da, type: 3}
+  - {fileID: 21300000, guid: 3814bcbf816f5f54aaadcd7196ea68f7, type: 3}
   m_FramesPerSecond: 12
   m_Renderer: {fileID: 6387123485235118638}
   m_PlayerTag: Player
