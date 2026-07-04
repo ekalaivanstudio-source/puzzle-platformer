@@ -77,8 +77,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_DeathShakeMagnitude = 0.2f;
     [SerializeField] private float m_DeathShakeDuration = 0.4f;
 
+    [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / dead). Auto-fetched if left empty.")]
+    [SerializeField] private PlayerAnimator m_Animator;
+
     private Rigidbody2D m_Rigidbody;
     private Collider2D m_Collider;
+    private bool m_IsDead;   // true while the death animation/reset is playing
 
     private int m_MaxTimeIndex;        // snapshotted from source at turn start
     private int m_CurrentCommandIndex; // index of the command currently executing
@@ -106,6 +110,7 @@ public class PlayerController : MonoBehaviour
 
         m_Rigidbody = GetComponent<Rigidbody2D>();
         m_Collider = GetComponent<Collider2D>();
+        if (m_Animator == null) m_Animator = GetComponent<PlayerAnimator>();
         m_StartPosition = transform.position;
         m_OriginalGravityScale = m_Rigidbody.gravityScale;
         m_OriginalScale = transform.localScale;
@@ -142,15 +147,33 @@ public class PlayerController : MonoBehaviour
     // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
+        // While dead the death animation owns the sprite; don't override it.
+        if (m_IsDead) return;
+
+        // Animation runs even between turns so the player idles while standing.
+        UpdateAnimationState();
+
         if (!m_IsGamePlaying)
         {
             AudioManager.Instance?.SetWalking(false);
             return;
         }
-        UpdateGroundedAnimation();
-        UpdateFallingAnimation();
         CheckSpikeOverlap();
         UpdateWalkAudio();
+    }
+
+    // Chooses the animation clip from grounded state + velocity each frame:
+    // airborne → Jump, moving horizontally on the ground → Run, otherwise Idle.
+    private void UpdateAnimationState()
+    {
+        if (m_Animator == null) return;
+
+        if (!CheckIsGrounded())
+            m_Animator.Play(PlayerAnimState.Jump);
+        else if (Mathf.Abs(m_Rigidbody.linearVelocity.x) > 0.1f)
+            m_Animator.Play(PlayerAnimState.Run);
+        else
+            m_Animator.Play(PlayerAnimState.Idle);
     }
 
     // Drives the looping footstep sound: on while moving horizontally and roughly
@@ -674,11 +697,6 @@ public class PlayerController : MonoBehaviour
     }
     // ─── Ground Check & Animation ────────────────────────────────────────────────
 
-    private void UpdateGroundedAnimation()
-    {
-        //        m_Animator.SetBool("IsGrounded", CheckIsGrounded());
-    }
-
     // Continuous spike check — covers moving spikes that slide into the player via
     // transform.position, which don’t reliably fire OnTriggerEnter2D without a Rigidbody2D.
 
@@ -822,10 +840,6 @@ public class PlayerController : MonoBehaviour
         return null;
     }
 
-    private void UpdateFallingAnimation()
-    {
-        float falling = m_Rigidbody.linearVelocity.y < 0f ? 1f : 0f;
-    }
     // ─── Turn End / Abort ────────────────────────────────────────────────────────
 
     private void EndTurn()
@@ -926,12 +940,9 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayDeath();
 
-        if (m_DeathParticle != null)
-            Instantiate(m_DeathParticle, transform.position, Quaternion.identity);
-
-
-        var sr = GetComponent<SpriteRenderer>();
-        if (sr != null) sr.enabled = false;
+        // Play the dead sprite animation (holds its last frame) through the death pause.
+        m_IsDead = true;
+        m_Animator?.Play(PlayerAnimState.Dead);
 
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
@@ -954,7 +965,10 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
         transform.localScale = m_OriginalScale;   // restore spawn facing
-        if (sr != null) sr.enabled = true;
+
+        // Death done — hand the sprite back to the normal idle/run/jump animation.
+        m_IsDead = false;
+        m_Animator?.Play(PlayerAnimState.Idle);
 
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(1f, 0f));
