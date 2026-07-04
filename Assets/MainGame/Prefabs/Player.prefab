@@ -159,7 +159,6 @@ GameObject:
   - component: {fileID: 2506105049737500210}
   - component: {fileID: 5416978944303430500}
   - component: {fileID: 7558299849532869897}
-  - component: {fileID: 5938510604364211002}
   - component: {fileID: 4170603423667912436}
   m_Layer: 0
   m_Name: Player
@@ -282,6 +281,8 @@ MonoBehaviour:
   m_DeathShakeMagnitude: 0.2
   m_DeathShakeDuration: 0.4
   m_Animator: {fileID: 0}
+  m_JumpStartDust: {fileID: 6187233113735160681, guid: dff2dd0114f021e4685b985cfaa5355d, type: 3}
+  m_JumpEndDust: {fileID: 6187233113735160681, guid: d7543c0212c758d46be58e221bdf9749, type: 3}
 --- !u!61 &5416978944303430500
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -355,28 +356,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!95 &5938510604364211002
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1924888670265140245}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &4170603423667912436
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -402,6 +381,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 0a6ab87644568994990bcb52d2b4accd, type: 3}
   - {fileID: 21300000, guid: 5892f4ec3bcb05b4d9398b210ea49a87, type: 3}
   - {fileID: 21300000, guid: 4632b5da46fb6db4cb1aed49ac644215, type: 3}
+  m_Idle4: []
   m_IdleFps: 6
   m_RunFrames:
   - {fileID: 21300000, guid: ffd1ae43ed5c06545a6ee6c279d10850, type: 3}
