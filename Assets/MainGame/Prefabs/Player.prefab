@@ -158,9 +158,9 @@ GameObject:
   - component: {fileID: 252334386289264608}
   - component: {fileID: 2506105049737500210}
   - component: {fileID: 5416978944303430500}
-  - component: {fileID: 6624125559954295120}
   - component: {fileID: 7558299849532869897}
   - component: {fileID: 5938510604364211002}
+  - component: {fileID: 4170603423667912436}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -281,6 +281,7 @@ MonoBehaviour:
   m_DeathParticle: {fileID: 7581426562798727453, guid: 5eea17da54003c844baa005560e258db, type: 3}
   m_DeathShakeMagnitude: 0.2
   m_DeathShakeDuration: 0.4
+  m_Animator: {fileID: 0}
 --- !u!61 &5416978944303430500
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -327,23 +328,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.8, y: 1}
   m_EdgeRadius: 0
---- !u!114 &6624125559954295120
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1924888670265140245}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fbf748754517f25438268befa039e2bd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
-  m_Frames:
-  - {fileID: 21300000, guid: e058be86c227f3a4e8b6cbb23dc995b6, type: 3}
-  - {fileID: 21300000, guid: d47716621090d7b49978d83822e384b4, type: 3}
-  m_FramesPerSecond: 4
-  m_Loop: 1
 --- !u!50 &7558299849532869897
 Rigidbody2D:
   serializedVersion: 5
@@ -393,3 +377,52 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4170603423667912436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1924888670265140245}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10e970a734e9ff448a3d7b39b94c50b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimator
+  m_Idle1:
+  - {fileID: 21300000, guid: f665e982a8b804d4e8e11f6275ab2b57, type: 3}
+  - {fileID: 21300000, guid: 11162a0e5804989428d3c0a6ed48de23, type: 3}
+  - {fileID: 21300000, guid: 72c4c31790a3b1c4d940cc3607e41dae, type: 3}
+  m_Idle2:
+  - {fileID: 21300000, guid: 5bd6cf9157c0fca4489de7fa90692608, type: 3}
+  - {fileID: 21300000, guid: 00118dd2287ac0e4389a70c7de0ff0a7, type: 3}
+  - {fileID: 21300000, guid: 39dd87c6700b0504cbd5b06208ef2e49, type: 3}
+  - {fileID: 21300000, guid: 460c729d3a5cffc4f9a4fc478b3262eb, type: 3}
+  m_Idle3:
+  - {fileID: 21300000, guid: 0a6ab87644568994990bcb52d2b4accd, type: 3}
+  - {fileID: 21300000, guid: 5892f4ec3bcb05b4d9398b210ea49a87, type: 3}
+  - {fileID: 21300000, guid: 4632b5da46fb6db4cb1aed49ac644215, type: 3}
+  m_IdleFps: 6
+  m_RunFrames:
+  - {fileID: 21300000, guid: ffd1ae43ed5c06545a6ee6c279d10850, type: 3}
+  - {fileID: 21300000, guid: 1788d93ce029500438521e42f8db9926, type: 3}
+  - {fileID: 21300000, guid: b3d7c52ec96fb624eb0cac054360809d, type: 3}
+  - {fileID: 21300000, guid: dc29d31730a7d2a4b939c7bd9b22795b, type: 3}
+  m_RunFps: 12
+  m_JumpFrames:
+  - {fileID: 21300000, guid: 86c815945f7344d4da55d02770b23d63, type: 3}
+  - {fileID: 21300000, guid: bd0c1732e05931645a57bbfab80ba89b, type: 3}
+  - {fileID: 21300000, guid: c84d21772bee5204587f41835d02fa8d, type: 3}
+  - {fileID: 21300000, guid: ef80be0f6f6694241940f3d9daa8cf07, type: 3}
+  - {fileID: 21300000, guid: d18e2763485cab6429b08984e06dcf9c, type: 3}
+  - {fileID: 21300000, guid: f856c31c7d5de1a4884182365b79c7ea, type: 3}
+  m_JumpFps: 10
+  m_DeadFrames:
+  - {fileID: 21300000, guid: 5802077974ff6694f8e2283c3085a4ef, type: 3}
+  - {fileID: 21300000, guid: 8a0468615637ca140a77d1e0c31b0f97, type: 3}
+  - {fileID: 21300000, guid: 30d24fd85b5077544a3116c9c976cc03, type: 3}
+  - {fileID: 21300000, guid: 669b45cdbd04379478dce20b26b555db, type: 3}
+  - {fileID: 21300000, guid: 1bacb09adb6195e4a8be4abb73392813, type: 3}
+  - {fileID: 21300000, guid: bd7579bac5351fb4c97427c86eeb7759, type: 3}
+  - {fileID: 21300000, guid: ae5d1312540c5ee479b80635150df98c, type: 3}
+  m_DeadFps: 8
