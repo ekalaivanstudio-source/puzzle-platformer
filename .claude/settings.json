@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^$\")",
+      "Bash(xargs echo \"deleted file count:\")",
+      "Bash(awk '{print $1}')",
+      "Bash(xargs echo \"HEAD tutorial-ref count:\")",
+      "Bash(xargs echo \"disk tutorial-ref count:\")"
+    ]
+  }
+}
