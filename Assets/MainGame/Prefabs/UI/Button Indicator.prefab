@@ -34,9 +34,9 @@ RectTransform:
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 710, y: 50}
-  m_SizeDelta: {x: -1770, y: -930}
+  m_SizeDelta: {x: 117, y: 117}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1247376740010715222
 CanvasRenderer:
@@ -66,9 +66,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 1218446931, guid: 1d23b9433f4b1e449bec3aa94abd0826, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 47a600a564d505e42adcc52cce464e0f, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -89,7 +89,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 1218446931, guid: 1d23b9433f4b1e449bec3aa94abd0826, type: 3}
-  - {fileID: -984420205, guid: 1d23b9433f4b1e449bec3aa94abd0826, type: 3}
+  - {fileID: 21300000, guid: 709d4e6499f07974191849954c6c0790, type: 3}
+  - {fileID: 21300000, guid: 47a600a564d505e42adcc52cce464e0f, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
