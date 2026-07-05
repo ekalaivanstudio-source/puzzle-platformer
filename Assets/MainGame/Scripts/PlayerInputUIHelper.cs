@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections;
+using TutorialSystem;
+using UnityEditor.Rendering.LookDev;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -169,7 +171,7 @@ public class PlayerInputUIHelper : MonoBehaviour
                 int slotIndex = Mathf.Clamp(newIndex, 0, inputsUI.Length - 1);
                 if (inputsUI[slotIndex] != null)
                 {
-                    m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex]));
+                    m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex].transform.GetChild(0).GetComponent<Image>()));
                 }
                 CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
 
@@ -199,7 +201,12 @@ public class PlayerInputUIHelper : MonoBehaviour
                 {
                     Sprite actualSprite = GetSpriteForAction(actualAction);
                     if (actualSprite != null)
-                        inputsUI[newIndex].sprite = actualSprite;
+                    {
+                        inputsUI[newIndex].sprite = m_AnySprite;
+                        Image inputChild = inputsUI[newIndex].transform.GetChild(0).GetComponent<Image>();
+                        inputChild.sprite = actualSprite;
+                    }
+                        
                 }
             }
         }
@@ -214,6 +221,8 @@ public class PlayerInputUIHelper : MonoBehaviour
                 && m_AnySprite != null)
             {
                 inputsUI[removedIndex].sprite = m_AnySprite;
+                Image inputChild = inputsUI[removedIndex].transform.GetChild(0).GetComponent<Image>();
+                inputChild.sprite = m_AnySprite;
             }
         }
 
@@ -245,7 +254,12 @@ public class PlayerInputUIHelper : MonoBehaviour
             if (inputsUI[i] == null) continue;
             Sprite s = GetSpriteForAction(m_CorrectSequence[i]);
             if (s != null)
+            {
                 inputsUI[i].sprite = s;
+                Image inputChild = inputsUI[i].transform.GetChild(0).GetComponent<Image>();
+                inputChild.sprite = s;
+            }
+
         }
     }
 
