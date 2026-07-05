@@ -1,6 +1,8 @@
+using ModernLevelSelection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Drives the player character during a timeline execution turn using a
@@ -79,6 +81,13 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / dead). Auto-fetched if left empty.")]
     [SerializeField] private PlayerAnimator m_Animator;
+
+    [Header("Jump VFX")]
+    [Tooltip("Dust effect prefab spawned at the player's feet when a jump takes off. Optional. Should carry a OneShotEffect.")]
+    [SerializeField] private GameObject m_JumpStartDust;
+
+    [Tooltip("Dust effect prefab spawned at the player's feet when a jump lands. Optional. Should carry a OneShotEffect.")]
+    [SerializeField] private GameObject m_JumpEndDust;
 
     private Rigidbody2D m_Rigidbody;
     private Collider2D m_Collider;
@@ -572,6 +581,9 @@ public class PlayerController : MonoBehaviour
 
         AudioManager.Instance?.PlayJump();
 
+        // Kick up dust at the take-off spot (player's grid position).
+        SpawnGridEffect(m_JumpStartDust);
+
         // Derive effective gravity so the arc peaks at m_JumpHeight in exactly half of m_JumpDuration.
         // g_eff = 2h / t_half^2   →   v0y = g_eff * t_half = 2h / t_half
         float tHalf = m_JumpDuration * 0.5f;
@@ -650,6 +662,22 @@ public class PlayerController : MonoBehaviour
         }
         m_Rigidbody.linearVelocity = Vector2.zero;
         SnapToGrid();
+
+        // Puff of dust at the landing spot (player's settled grid position).
+        SpawnGridEffect(m_JumpEndDust);
+    }
+
+    // Instantiates a one-shot effect prefab at the player's grid position (rounded to the
+    // same 0.5-unit grid as SnapToGrid). No-op when the prefab is unassigned. The prefab's
+    // OneShotEffect destroys itself when done.
+    private void SpawnGridEffect(GameObject prefab)
+    {
+        if (prefab == null) return;
+
+        Vector2 gp = m_Rigidbody != null ? m_Rigidbody.position : (Vector2)transform.position;
+        Vector3 pos = new Vector3(Mathf.Round(gp.x * 2f) / 2f, Mathf.Round(gp.y * 2f) / 2f, transform.position.z);
+
+        Instantiate(prefab, pos, Quaternion.identity);
     }
 
     // Waits until the player is grounded on the DESCENDING side of the arc.
@@ -933,6 +961,8 @@ public class PlayerController : MonoBehaviour
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
         GameManager.Instance.LoadNextLevel();
+        LevelManager.Instance.CompleteLevel(SceneManager.GetActiveScene().buildIndex, 0);
+
     }
 
     private System.Collections.IEnumerator DeathRoutine()
