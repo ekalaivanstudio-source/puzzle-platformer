@@ -7378,17 +7378,17 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 4225374030248673134, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 5473420298225834865, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1576188976}
-    - targetCorrespondingSourceObject: {fileID: 4225374030248673134, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 5473420298225834865, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 385474841}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
 --- !u!4 &1581828019 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4225374030248673134, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
+  m_CorrespondingSourceObject: {fileID: 5473420298225834865, guid: 40c44329dfb70f54c93e88884b53d53a, type: 3}
   m_PrefabInstance: {fileID: 1581828018}
   m_PrefabAsset: {fileID: 0}
 --- !u!213 &1790445332
@@ -7920,7 +7920,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: Managers
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 4777735339768132969, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
