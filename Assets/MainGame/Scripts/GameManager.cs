@@ -132,6 +132,18 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(next);
     }
 
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            GoToMainMenu();
+        }
+    }
+
+    public void GoToMainMenu()
+    {
+        SceneManager.LoadScene(0);
+    }
     public void QuitApplication()
     {
 #if UNITY_EDITOR
