@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using TutorialSystem;
 using UnityEditor.Rendering.LookDev;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -103,8 +102,6 @@ public class PlayerInputUIHelper : MonoBehaviour
     {
         if (SequenceManager.Instance != null) SequenceManager.Instance.OnSequenceChanged += RefreshSequenceSlots;
 
-        SubscribeTutorialEvents();
-
         if (m_SubmitAction != null)
             m_SubmitAction.performed += OnSubmit;
     }
@@ -112,8 +109,6 @@ public class PlayerInputUIHelper : MonoBehaviour
     private void OnDisable()
     {
         if (SequenceManager.Instance != null) SequenceManager.Instance.OnSequenceChanged -= RefreshSequenceSlots;
-
-        UnsubscribeTutorialEvents();
 
         if (m_SubmitAction != null)
             m_SubmitAction.performed -= OnSubmit;
@@ -129,9 +124,6 @@ public class PlayerInputUIHelper : MonoBehaviour
             SequenceManager.Instance.OnSequenceChanged -= RefreshSequenceSlots;
             SequenceManager.Instance.OnSequenceChanged += RefreshSequenceSlots;
         }
-
-        // TutorialManager.Instance may have been null during OnEnable (Awake order) — ensure it now.
-        SubscribeTutorialEvents();
 
         // Drive MaxLength and correct-sequence validation from the configured sequence
         if (SequenceManager.Instance != null && m_CorrectSequence != null && m_CorrectSequence.Length > 0)
@@ -310,14 +302,6 @@ public class PlayerInputUIHelper : MonoBehaviour
     {
         if (m_ButtonIndicationRT == null || inputsUI == null) return;
 
-        // Keep the input hint hidden until the tutorial has finished — the tutorial
-        // teaches the controls itself, so the indicator would otherwise compete with it.
-        if (TutorialManager.Instance != null && TutorialManager.Instance.IsPlaying)
-        {
-            m_ButtonIndicationRT.gameObject.SetActive(false);
-            return;
-        }
-
         int slots = SequenceManager.Instance != null ? SequenceManager.Instance.MaxLength : 6;
         if (count >= slots)
         {
@@ -340,30 +324,6 @@ public class PlayerInputUIHelper : MonoBehaviour
             m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
         }
     }
-
-    // ─── Tutorial gating ────────────────────────────────────────────────────────
-    // The button indicator stays hidden while a tutorial is on screen and re-appears
-    // (if appropriate) the moment the tutorial ends.
-
-    private void SubscribeTutorialEvents()
-    {
-        if (TutorialManager.Instance == null) return;
-        TutorialManager.Instance.OnSequenceStarted -= OnTutorialChanged;
-        TutorialManager.Instance.OnSequenceStarted += OnTutorialChanged;
-        TutorialManager.Instance.OnSequenceEnded -= OnTutorialEnded;
-        TutorialManager.Instance.OnSequenceEnded += OnTutorialEnded;
-    }
-
-    private void UnsubscribeTutorialEvents()
-    {
-        if (TutorialManager.Instance == null) return;
-        TutorialManager.Instance.OnSequenceStarted -= OnTutorialChanged;
-        TutorialManager.Instance.OnSequenceEnded -= OnTutorialEnded;
-    }
-
-    private void OnTutorialChanged(TutorialSequenceData sequence) => UpdateButtonIndication(m_PreviousSequenceCount);
-
-    private void OnTutorialEnded(TutorialSequenceData sequence, bool completed) => UpdateButtonIndication(m_PreviousSequenceCount);
 
     private void StopBlinkImmediate()
     {

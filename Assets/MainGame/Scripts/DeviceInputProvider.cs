@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
-using TutorialSystem;
 
 /// <summary>
 /// Singleton input provider for keyboard and gamepad using Unity's New Input System.
@@ -32,11 +31,9 @@ public class DeviceInputProvider : MonoBehaviour
     private bool m_IsJumpHeld;
     private bool m_JumpComboQueued;
 
-    // Gameplay input is allowed only when this provider is locally enabled AND no tutorial is
-    // currently blocking input. The tutorial gate is global (TutorialManager.GameplayInputBlocked)
-    // so it composes with the GameManager's existing enable/disable without conflicting.
+    // Gameplay input is allowed only when this provider is locally enabled.
     private bool m_LocallyEnabled;
-    public bool IsEnabled => m_LocallyEnabled && !TutorialManager.GameplayInputBlocked;
+    public bool IsEnabled => m_LocallyEnabled;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -178,6 +175,6 @@ public class DeviceInputProvider : MonoBehaviour
 
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
-    private void OnRestart(InputAction.CallbackContext c) { if (TutorialManager.GameplayInputBlocked) return; GameManager.Instance?.ReloadLevel(); }
+    private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }
 }
