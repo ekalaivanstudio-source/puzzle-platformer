@@ -169,6 +169,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
   m_HorizontalFit: 2
   m_VerticalFit: 0
+--- !u!1 &4164232342357462950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6733430152505128233}
+  - component: {fileID: 883825677294895380}
+  m_Layer: 0
+  m_Name: 'LevelManager '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6733430152505128233
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4164232342357462950}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1151499323912156404}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &883825677294895380
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4164232342357462950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73343640f3193594ca0247ae90f01fa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Collectables.CollectableLevelManager
+  _database: {fileID: 11400000, guid: 8c53bd84ce65ce449b755006e79c2c71, type: 2}
+  _levelNumberOverride: 1
 --- !u!1 &4509260580575526479
 GameObject:
   m_ObjectHideFlags: 0
@@ -249,6 +295,7 @@ Transform:
   - {fileID: 4603327490050996111}
   - {fileID: 8839181784138379981}
   - {fileID: 218245213809348907}
+  - {fileID: 6733430152505128233}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5073830574807803050
@@ -832,6 +879,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1151499323912156404}
     m_Modifications:
+    - target: {fileID: 794143696427754637, guid: e9c4b5a15bc541349a3517ea82107c7c, type: 3}
+      propertyPath: maxX
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 794143696427754637, guid: e9c4b5a15bc541349a3517ea82107c7c, type: 3}
+      propertyPath: minX
+      value: -0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 3884515486809772479, guid: e9c4b5a15bc541349a3517ea82107c7c, type: 3}
       propertyPath: m_Name
       value: CameraFollow
