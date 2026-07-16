@@ -10,12 +10,12 @@ using UnityEngine;
 public class SequenceManager : MonoBehaviour, ISequenceSource
 {
     public static SequenceManager Instance { get; private set; }
-    [Tooltip("Maximum number of actions the player can queue per turn.")]
-    [SerializeField] private int m_MaxSequenceLength = 6;
 
-    [Tooltip("When true the player must fill every slot before pressing Enter. " +
-             "Set false to allow submitting a partial sequence.")]
-    [SerializeField] private bool m_RequireFullSequence = false;
+    // Driven by the level's LevelConfig (via LevelContext) at runtime. Kept serialized but
+    // hidden so any existing per-scene value survives as a fallback when no config is set.
+    [HideInInspector, SerializeField] private int m_MaxSequenceLength = 6;
+
+    [HideInInspector, SerializeField] private bool m_RequireFullSequence = false;
 
 
     private readonly List<ActionTypeEnum> m_Sequence = new List<ActionTypeEnum>();
@@ -83,6 +83,17 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        ApplyConfig();
+    }
+
+    /// <summary>Copies the sequence settings from the level's config, if one is present.</summary>
+    private void ApplyConfig()
+    {
+        LevelConfig cfg = LevelContext.Instance != null ? LevelContext.Instance.Config : null;
+        if (cfg == null) return;
+
+        m_MaxSequenceLength = Mathf.Max(1, cfg.sequence.maxSequenceLength);
+        m_RequireFullSequence = cfg.sequence.requireFullSequence;
     }
 
     private void OnValidate()

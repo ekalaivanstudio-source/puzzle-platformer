@@ -7,7 +7,7 @@ namespace Collectables.EditorTools
     /// Designer tools for the collectable systems:
     ///   • Reset all saved collectable progress (the JSON save file).
     ///   • Create ready-to-use Robot Part / Memory Shard prefabs.
-    ///   • Create the shared CollectableDatabase asset.
+    ///   • Create a per-level LevelConfig asset.
     ///   • Assign missing unique ids to Collectables in the open scene.
     ///
     /// Open via Tools ▸ Collectables ▸ Collectable Tools.
@@ -15,7 +15,9 @@ namespace Collectables.EditorTools
     public class CollectableToolsWindow : EditorWindow
     {
         private const string PrefabFolder = "Assets/MainGame/Prefabs/Collectables";
-        private const string DatabaseFolder = "Assets/MainGame/ScriptableObjects";
+        private const string ConfigFolder = "Assets/MainGame/ScriptableObjects/LevelConfigs";
+
+        private int _newConfigLevel = 1;
 
         [MenuItem("Tools/Collectables/Collectable Tools")]
         public static void Open()
@@ -67,9 +69,17 @@ namespace Collectables.EditorTools
             }
 
             EditorGUILayout.Space(12);
-            EditorGUILayout.LabelField("Database", EditorStyles.boldLabel);
-            if (GUILayout.Button("Create Collectable Database Asset", GUILayout.Height(28)))
-                CreateDatabaseAsset();
+            EditorGUILayout.LabelField("Level Config", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Creates one LevelConfig asset per level (collectable counts + camera + " +
+                "sequence). Assign it to that scene's LevelContext.",
+                MessageType.None);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _newConfigLevel = EditorGUILayout.IntField("Level Number", _newConfigLevel);
+                if (GUILayout.Button("Create Level Config", GUILayout.Height(20)))
+                    CreateLevelConfig(_newConfigLevel);
+            }
 
             EditorGUILayout.Space(12);
             EditorGUILayout.LabelField("Scene Maintenance", EditorStyles.boldLabel);
@@ -114,18 +124,19 @@ namespace Collectables.EditorTools
             }
         }
 
-        // ─── Database creation ────────────────────────────────────────────────────────
+        // ─── Level config creation ──────────────────────────────────────────────────────
 
-        private static void CreateDatabaseAsset()
+        private static void CreateLevelConfig(int levelNumber)
         {
-            CollectableToolsPaths.EnsureFolder(DatabaseFolder);
-            var db = ScriptableObject.CreateInstance<CollectableDatabase>();
-            string path = AssetDatabase.GenerateUniqueAssetPath($"{DatabaseFolder}/CollectableDatabase.asset");
-            AssetDatabase.CreateAsset(db, path);
+            CollectableToolsPaths.EnsureFolder(ConfigFolder);
+            var cfg = ScriptableObject.CreateInstance<LevelConfig>();
+            cfg.levelNumber = Mathf.Max(0, levelNumber);
+            string path = AssetDatabase.GenerateUniqueAssetPath($"{ConfigFolder}/Level{levelNumber}Config.asset");
+            AssetDatabase.CreateAsset(cfg, path);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[Collectables] Created database at {path}", db);
-            Selection.activeObject = db;
-            EditorGUIUtility.PingObject(db);
+            Debug.Log($"[Collectables] Created level config at {path}", cfg);
+            Selection.activeObject = cfg;
+            EditorGUIUtility.PingObject(cfg);
         }
 
         // ─── Scene maintenance ────────────────────────────────────────────────────────

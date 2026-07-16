@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using TMPro;
 using UnityEditor;
@@ -24,12 +25,13 @@ namespace Collectables.EditorTools
     {
         private const string PrefabFolder = "Assets/MainGame/Prefabs/Collectables";
         private const string HudPrefabPath = PrefabFolder + "/CollectableHUD.prefab";
+        private const string ConfigFolder = "Assets/MainGame/ScriptableObjects/LevelConfigs";
 
-        [SerializeField] private CollectableDatabase _database;
         [SerializeField] private Sprite _robotPartIcon;
         [SerializeField] private Sprite _memoryShardIcon;
         [SerializeField] private bool _onlyLevelScenes = true;
         [SerializeField] private bool _ensureManager = true;
+        [SerializeField] private bool _createLevelConfig = true;
 
         [MenuItem("Tools/Collectables/Setup Collectable UI")]
         public static void Open()
@@ -59,14 +61,14 @@ namespace Collectables.EditorTools
             EditorGUILayout.Space(12);
             EditorGUILayout.LabelField("Scene Injection", EditorStyles.boldLabel);
 
-            _database = (CollectableDatabase)EditorGUILayout.ObjectField(
-                "Database (for managers)", _database, typeof(CollectableDatabase), false);
             _ensureManager = EditorGUILayout.Toggle("Ensure Level Manager", _ensureManager);
+            _createLevelConfig = EditorGUILayout.Toggle("Create + assign LevelConfig", _createLevelConfig);
             _onlyLevelScenes = EditorGUILayout.Toggle("Only 'Level*' Scenes", _onlyLevelScenes);
 
             EditorGUILayout.HelpBox(
-                "Adds the HUD (if missing) and a CollectableLevelManager (if enabled) to the " +
-                "target scenes, then saves them.",
+                "Per scene: adds the HUD, a CollectableLevelManager, and (if enabled) a LevelContext " +
+                "with a per-level LevelConfig. The config captures that scene's current camera dead-zone " +
+                "and sequence values, so nothing is lost when those fields move into the asset.",
                 MessageType.None);
 
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
@@ -209,6 +211,7 @@ namespace Collectables.EditorTools
             if (prefab == null) return;
 
             bool changed = SetupScene(SceneManager.GetActiveScene(), prefab);
+            AssetDatabase.SaveAssets();
             if (changed)
             {
                 EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -216,7 +219,7 @@ namespace Collectables.EditorTools
             }
             else
             {
-                Debug.Log("[Collectables] Current scene already set up — no changes.");
+                Debug.Log("[Collectables] Current scene set up (LevelConfig captured; no scene-object changes).");
             }
         }
 
@@ -280,6 +283,7 @@ namespace Collectables.EditorTools
             }
             finally
             {
+                AssetDatabase.SaveAssets();
                 EditorUtility.ClearProgressBar();
                 if (!string.IsNullOrEmpty(originalScene))
                     EditorSceneManager.OpenScene(originalScene, OpenSceneMode.Single);
@@ -302,37 +306,175 @@ namespace Collectables.EditorTools
                 changed = true;
             }
 
-            // Manager
+            // Single "LevelManager" object holding CollectableLevelManager + LevelContext.
             if (_ensureManager)
             {
-                var mgr = FindInScene<CollectableLevelManager>(scene);
-                if (mgr == null)
+                int level = ResolveLevelNumber(scene);
+                LevelConfig config = null;
+                if (_createLevelConfig)
                 {
-                    var go = new GameObject("CollectableLevelManager");
-                    SceneManager.MoveGameObjectToScene(go, scene);
-
-                    var managers = GameObject.Find("Managers");
-                    if (managers != null && managers.scene == scene)
-                        go.transform.SetParent(managers.transform, false);
-
-                    mgr = go.AddComponent<CollectableLevelManager>();
-                    changed = true;
+                    config = GetOrCreateLevelConfig(level);
+                    CaptureSceneIntoConfig(scene, config, level);
                 }
+                changed |= EnsureLevelManager(scene, config);
+            }
 
-                if (_database != null)
+            return changed;
+        }
+
+        /// <summary>
+        /// Ensures one "LevelManager" object hosts both CollectableLevelManager and
+        /// LevelContext, consolidating any separate objects left by an earlier setup, and
+        /// assigns the level's config.
+        /// </summary>
+        private bool EnsureLevelManager(Scene scene, LevelConfig config)
+        {
+            bool changed = false;
+
+            // Target object = the CollectableLevelManager's object, else a lone LevelContext's
+            // object to reuse, else a fresh "LevelManager".
+            var clm = FindInScene<CollectableLevelManager>(scene);
+            GameObject target;
+            if (clm != null)
+            {
+                target = clm.gameObject;
+            }
+            else
+            {
+                var existingCtx = FindInScene<LevelContext>(scene);
+                target = existingCtx != null ? existingCtx.gameObject : NewManagerObject("LevelManager", scene);
+                target.AddComponent<CollectableLevelManager>(); // RequireComponent adds LevelContext
+                changed = true;
+            }
+
+            // Guarantee a LevelContext on the same object.
+            var ctx = target.GetComponent<LevelContext>();
+            if (ctx == null)
+            {
+                ctx = target.AddComponent<LevelContext>();
+                changed = true;
+            }
+
+            // Effective config: the one we were given, else whatever is already assigned.
+            LevelConfig finalConfig = config != null ? config : ReadConfig(ctx);
+
+            // Remove stray LevelContexts left on other objects by the old two-object setup,
+            // salvaging their config assignment if we don't have one yet.
+            foreach (var other in Object.FindObjectsByType<LevelContext>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (other == ctx || other.gameObject.scene != scene) continue;
+                if (finalConfig == null) finalConfig = ReadConfig(other);
+                RemoveStrayContext(other);
+                changed = true;
+            }
+
+            if (target.name != "LevelManager")
+            {
+                target.name = "LevelManager";
+                changed = true;
+            }
+
+            // Assign the resolved config.
+            if (finalConfig != null)
+            {
+                var so = new SerializedObject(ctx);
+                var prop = so.FindProperty("config");
+                if (prop.objectReferenceValue != finalConfig)
                 {
-                    var so = new SerializedObject(mgr);
-                    var prop = so.FindProperty("_database");
-                    if (prop.objectReferenceValue != _database)
-                    {
-                        prop.objectReferenceValue = _database;
-                        so.ApplyModifiedPropertiesWithoutUndo();
-                        changed = true;
-                    }
+                    prop.objectReferenceValue = finalConfig;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    changed = true;
                 }
             }
 
             return changed;
+        }
+
+        private static LevelConfig ReadConfig(LevelContext ctx)
+            => new SerializedObject(ctx).FindProperty("config").objectReferenceValue as LevelConfig;
+
+        /// <summary>Removes a leftover LevelContext — the whole object if it only held that.</summary>
+        private static void RemoveStrayContext(LevelContext ctx)
+        {
+            var go = ctx.gameObject;
+            bool loneObject = go.transform.childCount == 0 &&
+                              go.GetComponents<Component>().Length <= 2; // Transform + LevelContext
+            if (loneObject) Object.DestroyImmediate(go);
+            else Object.DestroyImmediate(ctx);
+        }
+
+        private static GameObject NewManagerObject(string name, Scene scene)
+        {
+            var go = new GameObject(name);
+            SceneManager.MoveGameObjectToScene(go, scene);
+
+            var managers = GameObject.Find("Managers");
+            if (managers != null && managers.scene == scene)
+                go.transform.SetParent(managers.transform, false);
+
+            return go;
+        }
+
+        // ─── Level config creation / migration ──────────────────────────────────────────
+
+        /// <summary>Build index when the scene is in build settings, else trailing digits of its name.</summary>
+        private static int ResolveLevelNumber(Scene scene)
+        {
+            if (scene.buildIndex >= 1) return scene.buildIndex;
+
+            string digits = new string((scene.name ?? string.Empty).Where(char.IsDigit).ToArray());
+            return int.TryParse(digits, out int n) && n > 0 ? n : 0;
+        }
+
+        private static LevelConfig GetOrCreateLevelConfig(int level)
+        {
+            CollectableToolsPaths.EnsureFolder(ConfigFolder);
+            string path = $"{ConfigFolder}/Level{level}Config.asset";
+
+            var config = AssetDatabase.LoadAssetAtPath<LevelConfig>(path);
+            if (config == null)
+            {
+                config = ScriptableObject.CreateInstance<LevelConfig>();
+                config.levelNumber = level;
+                AssetDatabase.CreateAsset(config, path);
+            }
+            return config;
+        }
+
+        /// <summary>
+        /// Copies the scene's current CameraFollowDeadZone and SequenceManager values into the
+        /// config, so the (now hidden) component fields survive the move to the asset.
+        /// </summary>
+        private static void CaptureSceneIntoConfig(Scene scene, LevelConfig config, int level)
+        {
+            config.levelNumber = level;
+
+            var cam = FindInScene<CameraFollowDeadZone>(scene);
+            if (cam != null)
+            {
+                var so = new SerializedObject(cam);
+                var c = config.cameraDeadZone;
+                c.deadZoneX = so.FindProperty("deadZoneX").floatValue;
+                c.deadZoneY = so.FindProperty("deadZoneY").floatValue;
+                c.offset = so.FindProperty("offset").vector2Value;
+                c.smoothTime = so.FindProperty("smoothTime").floatValue;
+                c.minX = so.FindProperty("minX").floatValue;
+                c.maxX = so.FindProperty("maxX").floatValue;
+                c.minY = so.FindProperty("minY").floatValue;
+                c.maxY = so.FindProperty("maxY").floatValue;
+                c.followX = so.FindProperty("followX").boolValue;
+                c.followY = so.FindProperty("followY").boolValue;
+            }
+
+            var seq = FindInScene<SequenceManager>(scene);
+            if (seq != null)
+            {
+                var so = new SerializedObject(seq);
+                config.sequence.maxSequenceLength = Mathf.Max(1, so.FindProperty("m_MaxSequenceLength").intValue);
+                config.sequence.requireFullSequence = so.FindProperty("m_RequireFullSequence").boolValue;
+            }
+
+            EditorUtility.SetDirty(config);
         }
 
         private static T FindInScene<T>(Scene scene) where T : Component

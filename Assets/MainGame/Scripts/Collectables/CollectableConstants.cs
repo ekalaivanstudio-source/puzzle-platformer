@@ -34,15 +34,14 @@ namespace Collectables
     /// <see cref="RobotPartsGrandTotal"/>.
     ///
     /// Per-level placement counts (how many parts/shards are physically dropped in
-    /// each level) live in the <c>CollectableDatabase</c> ScriptableObject instead,
+    /// each level) live in each level's <c>LevelConfig</c> ScriptableObject instead,
     /// because those are content, not global rules.
     /// </summary>
     public static class CollectableConstants
     {
         /// <summary>
         /// Total number of Robot Parts in the whole game. Drives the "x/56" HUD label.
-        /// Keep this in sync with the sum of per-level counts in the database, or call
-        /// <c>CollectableDatabase.TotalRobotParts</c> to read the content-derived value.
+        /// Keep this in sync with the sum of the per-level counts in the LevelConfig assets.
         /// </summary>
         public const int RobotPartsGrandTotal = 56;
 
