@@ -5,36 +5,39 @@ using UnityEngine.SceneManagement;
 namespace Collectables
 {
     /// <summary>
-    /// Per-scene coordinator for the collectable systems. Place one on a manager object
-    /// in every level scene (e.g. under "Managers") and assign the shared
-    /// <see cref="CollectableDatabase"/>. Every <see cref="Collectable"/> and
-    /// <see cref="CollectableHUD"/> in the scene talks to this manager, so there is a
-    /// single access point for the database and the save file.
+    /// Per-scene coordinator for the collectable systems. Lives on the scene's
+    /// "LevelManager" object alongside its required <see cref="LevelContext"/>. Every
+    /// <see cref="Collectable"/> and <see cref="CollectableHUD"/> talks to this manager, so
+    /// there is a single access point for the save file.
     ///
-    /// The current level number defaults to the scene build index (Home = 0, Level1 = 1, …),
-    /// matching the convention used by MainMenuManager / LevelManager. Override it with
-    /// <see cref="_levelNumberOverride"/> for scenes that don't follow that convention.
+    /// The current level number comes from the LevelContext's config (its
+    /// <c>levelNumber</c>), falling back to the scene build index (Home = 0, Level1 = 1, …).
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(LevelContext))]
     public class CollectableLevelManager : MonoBehaviour
     {
         public static CollectableLevelManager Instance { get; private set; }
 
-        [Header("Config")]
-        [Tooltip("Shared database asset holding per-level collectable counts. " +
-                 "Assign the same asset in every level scene.")]
-        [SerializeField] private CollectableDatabase _database;
-
-        [Tooltip("Level number for this scene. Leave at 0 to auto-derive from the scene build index.")]
-        [SerializeField] private int _levelNumberOverride = 0;
+        private LevelContext _context;
 
         /// <summary>Raised whenever a collectable is picked up in this level. UI listens to this.</summary>
         public event Action OnCollectableCollected;
 
-        public CollectableDatabase Database => _database;
-
         /// <summary>The resolved level number for this scene.</summary>
         public int CurrentLevel { get; private set; }
+
+        /// <summary>The LevelContext on the same object (added automatically via RequireComponent).</summary>
+        private LevelContext Context => _context != null ? _context : (_context = GetComponent<LevelContext>());
+
+        /// <summary>This level's config (from the LevelContext), or null. Exposes the per-level counts.</summary>
+        public LevelConfig Config => Context != null ? Context.Config : null;
+
+        /// <summary>Robot Parts designed to be placed in this level (authoring info; 0 if no config).</summary>
+        public int RobotPartCountThisLevel => Config != null ? Config.robotPartCount : 0;
+
+        /// <summary>Memory Shards designed to be placed in this level (authoring info; 0 if no config).</summary>
+        public int MemoryShardCountThisLevel => Config != null ? Config.memoryShardCount : 0;
 
         private void Awake()
         {
@@ -45,12 +48,10 @@ namespace Collectables
             }
             Instance = this;
 
-            CurrentLevel = _levelNumberOverride > 0
-                ? _levelNumberOverride
+            // Level number = the config's levelNumber (via LevelContext), else scene build index.
+            CurrentLevel = Context != null
+                ? Context.CurrentLevel
                 : SceneManager.GetActiveScene().buildIndex;
-
-            if (_database == null)
-                Debug.LogWarning("[CollectableLevelManager] No CollectableDatabase assigned.", this);
         }
 
         private void OnDestroy()
