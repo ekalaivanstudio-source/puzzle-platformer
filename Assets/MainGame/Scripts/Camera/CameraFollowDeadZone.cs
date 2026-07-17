@@ -2,34 +2,40 @@ using UnityEngine;
 
 public class CameraFollowDeadZone : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] private Transform target;
-    [SerializeField] private Camera targetCamera;
+    // All tuning below is driven by the level's LevelConfig (via LevelContext) at runtime.
+    // The fields stay serialized but hidden so existing per-scene values are preserved as a
+    // fallback (and can be migrated into a LevelConfig by the collectable tools).
 
-    [Header("Dead Zone")]
-    [SerializeField] private float deadZoneX = 0.5f;
-    [SerializeField] private float deadZoneY = 0.3f;
+    // References — resolved automatically at runtime.
+    [HideInInspector, SerializeField] private Transform target;
+    [HideInInspector, SerializeField] private Camera targetCamera;
 
-    [Header("Offset")]
-    [SerializeField] private Vector2 offset;
+    // Dead zone
+    [HideInInspector, SerializeField] private float deadZoneX = 0.5f;
+    [HideInInspector, SerializeField] private float deadZoneY = 0.3f;
 
-    [Header("Smooth")]
-    [SerializeField] private float smoothTime = 0.15f;
+    // Offset
+    [HideInInspector, SerializeField] private Vector2 offset;
 
-    [Header("Bounds")]
-    [SerializeField] private float minX;
-    [SerializeField] private float maxX;
-    [SerializeField] private float minY;
-    [SerializeField] private float maxY;
+    // Smooth
+    [HideInInspector, SerializeField] private float smoothTime = 0.15f;
 
-    [Header("Options")]
-    [SerializeField] private bool followX = true;
-    [SerializeField] private bool followY = true;
+    // Bounds
+    [HideInInspector, SerializeField] private float minX;
+    [HideInInspector, SerializeField] private float maxX;
+    [HideInInspector, SerializeField] private float minY;
+    [HideInInspector, SerializeField] private float maxY;
+
+    // Options
+    [HideInInspector, SerializeField] private bool followX = true;
+    [HideInInspector, SerializeField] private bool followY = true;
 
     private Vector3 velocity;
 
     private void Awake()
     {
+        ApplyConfig();
+
         if (target == null)
         {
             PlayerController player = FindFirstObjectByType<PlayerController>();
@@ -39,6 +45,25 @@ public class CameraFollowDeadZone : MonoBehaviour
         }
         if (targetCamera == null)
             targetCamera = Camera.main;
+    }
+
+    /// <summary>Copies the dead-zone settings from the level's config, if one is present.</summary>
+    private void ApplyConfig()
+    {
+        LevelConfig cfg = LevelContext.Instance != null ? LevelContext.Instance.Config : null;
+        if (cfg == null) return;
+
+        LevelConfig.CameraDeadZoneSettings c = cfg.cameraDeadZone;
+        deadZoneX = c.deadZoneX;
+        deadZoneY = c.deadZoneY;
+        offset = c.offset;
+        smoothTime = c.smoothTime;
+        minX = c.minX;
+        maxX = c.maxX;
+        minY = c.minY;
+        maxY = c.maxY;
+        followX = c.followX;
+        followY = c.followY;
     }
 
     private void LateUpdate()
