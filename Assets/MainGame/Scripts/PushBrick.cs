@@ -38,10 +38,18 @@ public class PushBrick : MonoBehaviour
 
     [Header("Falling")]
     [Tooltip("Speed at which the brick drops when unsupported (units / sec).")]
-    [SerializeField] private float m_FallSpeed = 12f;
+    private float m_FallSpeed = 12f;
 
     [Tooltip("If the brick falls more than this many units without landing, it shatters.")]
-    [SerializeField] private int m_MaxFallUnits = 6;
+    private int m_MaxFallUnits = 20;
+
+    [Tooltip("Extra layers the brick lands on while falling, beyond Blocking Layers " +
+             "(e.g. the Laser emitter layer). Ground is already covered by Blocking Layers.")]
+    [SerializeField] private LayerMask m_LandingLayers;
+
+    [Tooltip("Falling brick also lands on top of colliders with this tag (e.g. spikes), " +
+             "whatever layer they sit on. Leave blank to disable tag-based landing.")]
+    [SerializeField] private string m_LandingTag = "Spike";
 
     [Header("Destroy FX")]
     [Tooltip("Particle prefab spawned at the brick's position when destroyed by a laser.")]
@@ -57,9 +65,14 @@ public class PushBrick : MonoBehaviour
 
     // Reused by GetAllowedDistance so the sweep allocates no garbage.
     private readonly List<RaycastHit2D> m_CastResults = new List<RaycastHit2D>();
-    // Reused by the ground probe so IsSupported allocates no garbage.
+    // Reused by the ground probe so IsSupportedForFall allocates no garbage.
     private readonly List<Collider2D> m_OverlapResults = new List<Collider2D>();
     private ContactFilter2D m_BlockingFilter;
+
+    // Fall landing uses NO layer mask (detects every collider in the sweep) and then
+    // accepts hits via IsLandingSurface — this lets it catch spikes by tag even though
+    // they live on the Default layer, without dragging all of Default into a mask.
+    private ContactFilter2D m_LandingFilter;
 
     // Thickness of the probe used to detect ground directly under the brick.
     private const float k_GroundProbeThickness = 0.05f;
@@ -72,6 +85,9 @@ public class PushBrick : MonoBehaviour
         m_Collider = GetComponent<Collider2D>();
         m_BlockingFilter = new ContactFilter2D { useTriggers = true, useLayerMask = true };
         m_BlockingFilter.SetLayerMask(m_BlockingLayers);
+
+        // No layer mask: catch everything, then filter with IsLandingSurface.
+        m_LandingFilter = new ContactFilter2D { useTriggers = true, useLayerMask = false };
 
         // Force the body to be physics-immovable: the brick must move ONLY via the
         // scripted unit Push() (left/right player movement). Kinematic bodies ignore
@@ -151,7 +167,7 @@ public class PushBrick : MonoBehaviour
     {
         int unitsFallen = 0;
 
-        while (!IsSupported())
+        while (!IsSupportedForFall())
         {
             if (unitsFallen >= m_MaxFallUnits)
             {
@@ -159,8 +175,15 @@ public class PushBrick : MonoBehaviour
                 yield break;
             }
 
-            // Step down exactly one grid unit, preserving any grid offset.
-            Vector3 target = transform.position + Vector3.down * m_PushDistance;
+            // Sweep downward to find how far the brick can actually drop this step.
+            // This catches a landing surface anywhere inside the step — not just at
+            // the unit boundary — so the brick lands exactly on top of it instead of
+            // jumping straight through when the surface sits partway into a step.
+            float drop = GetFallDistance();
+            if (drop <= 0.01f)
+                break; // Something is directly below — treat as landed.
+
+            Vector3 target = transform.position + Vector3.down * drop;
 
             while (Mathf.Abs(transform.position.y - target.y) > 0.01f)
             {
@@ -170,6 +193,11 @@ public class PushBrick : MonoBehaviour
             }
 
             transform.position = target;
+
+            // A surface stopped the brick short of a full step → it has landed.
+            if (drop < m_PushDistance - 0.01f)
+                break;
+
             unitsFallen++;
         }
     }
@@ -228,10 +256,36 @@ public class PushBrick : MonoBehaviour
         return allowed;
     }
 
-    // True when a blocker sits directly beneath the brick (i.e. it's resting on
-    // ground or another brick). A thin probe just below the bottom edge is used so
-    // colliders the brick is merely touching on its sides aren't mistaken for ground.
-    private bool IsSupported()
+    // How far (≤ m_PushDistance) the brick can drop before landing on a surface.
+    // Unlike GetAllowedDistance this uses the landing rule, so the brick also lands
+    // on spikes (by tag) and the laser emitter (by layer), not just Blocking Layers.
+    private float GetFallDistance()
+    {
+        Bounds b = m_Collider.bounds;
+
+        // Shrink the footprint slightly so colliders merely touching the brick's
+        // sides aren't treated as landing surfaces.
+        Vector2 size = b.size * 0.95f;
+
+        int count = Physics2D.BoxCast(
+            b.center, size, 0f, Vector2.down, m_LandingFilter, m_CastResults, m_PushDistance);
+
+        float allowed = m_PushDistance;
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit2D hit = m_CastResults[i];
+            if (!IsLandingSurface(hit.collider)) continue;
+            allowed = Mathf.Min(allowed, hit.distance);
+        }
+
+        return allowed;
+    }
+
+    // True when a landing surface sits directly beneath the brick (ground, another
+    // brick, a spike, or the laser emitter). A thin probe just below the bottom edge
+    // is used so colliders the brick merely touches on its sides aren't mistaken for
+    // support.
+    private bool IsSupportedForFall()
     {
         Bounds b = m_Collider.bounds;
 
@@ -240,13 +294,28 @@ public class PushBrick : MonoBehaviour
         Vector2 size = new Vector2(b.size.x * 0.9f, k_GroundProbeThickness);
         Vector2 center = new Vector2(b.center.x, b.min.y - k_GroundProbeThickness * 0.5f);
 
-        int count = Physics2D.OverlapBox(center, size, 0f, m_BlockingFilter, m_OverlapResults);
+        int count = Physics2D.OverlapBox(center, size, 0f, m_LandingFilter, m_OverlapResults);
         for (int i = 0; i < count; i++)
         {
-            Collider2D hit = m_OverlapResults[i];
-            if (hit == null || hit == m_Collider) continue;
-            return true;
+            if (IsLandingSurface(m_OverlapResults[i]))
+                return true;
         }
+
+        return false;
+    }
+
+    // A collider counts as something the falling brick lands on when it sits on the
+    // Blocking Layers (ground/walls/bricks), on the extra Landing Layers (laser
+    // emitter, etc.), OR carries the Landing Tag (spikes) regardless of its layer.
+    // The brick's own collider never counts.
+    private bool IsLandingSurface(Collider2D col)
+    {
+        if (col == null || col == m_Collider) return false;
+
+        int layerBit = 1 << col.gameObject.layer;
+        if ((m_BlockingLayers.value & layerBit) != 0) return true;
+        if ((m_LandingLayers.value & layerBit) != 0) return true;
+        if (!string.IsNullOrEmpty(m_LandingTag) && col.CompareTag(m_LandingTag)) return true;
 
         return false;
     }
