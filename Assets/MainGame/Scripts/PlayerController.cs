@@ -110,6 +110,10 @@ public class PlayerController : MonoBehaviour
     private ContactFilter2D m_NoFilter;       // all layers, includes triggers (matches *All defaults)
     private ContactFilter2D m_InteractFilter; // m_InteractLayer only
 
+    // Lookahead buffers for the pre-move wall prediction (walls only, no triggers).
+    private readonly List<RaycastHit2D> m_WallCastResults = new List<RaycastHit2D>();
+    private ContactFilter2D m_WallCastFilter;
+
     // ─── Unity Lifecycle ────────────────────────────────────────────────────────
 
     private void Awake()
@@ -133,6 +137,10 @@ public class PlayerController : MonoBehaviour
         m_NoFilter = ContactFilter2D.noFilter;
         m_InteractFilter = new ContactFilter2D { useTriggers = true };
         m_InteractFilter.SetLayerMask(m_InteractLayer);
+
+        // Wall lookahead: solid walkable layers only, triggers excluded.
+        m_WallCastFilter = new ContactFilter2D { useTriggers = false, useLayerMask = true };
+        m_WallCastFilter.SetLayerMask(m_WalkableMask);
     }
 
     private void Start()
@@ -393,8 +401,13 @@ public class PlayerController : MonoBehaviour
         if (!m_IsGamePlaying) yield break;
 
         float startX = m_Rigidbody.position.x;
-        float targetX = startX + distance;
         float speed = distance / m_MoveDuration;
+
+        // Predict the reachable target BEFORE moving: clamp the command to the whole
+        // number of cells the player can advance before a solid wall. The player then
+        // drives straight to its final integer cell — no stop-flush-then-snap-back
+        // correction. (Pushable bricks/edges are excluded here; the loop handles them.)
+        float targetX = startX + PredictWallClampedDistance(distance);
 
         transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
 
@@ -413,8 +426,11 @@ public class PlayerController : MonoBehaviour
                 hitWall = true;
                 break;
             }
-            // Wall on the path — stop flush and end this command.
-            if (CheckHorizontalWall(speed))
+            // Safety net for an UNpredicted wall (e.g. one that moved into the path
+            // after the pre-move prediction). The static case is already handled by
+            // the clamped targetX, so this only fires when still clearly short of the
+            // target — never when settling onto the predicted (possibly flush) cell.
+            if (Mathf.Abs(m_Rigidbody.position.x - targetX) > 0.15f && CheckHorizontalWall(speed))
             {
                 m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
                 hitWall = true;
@@ -543,10 +559,24 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Snap to exact target X — only when not stopped by a wall.
+        // Snap X — either to the exact target (clear path) or, when blocked by a
+        // wall/brick, back to the nearest whole-unit cell the player has fully
+        // cleared. The player must never rest pressed part-way into an obstacle at
+        // a fractional X (e.g. 2.681); it always settles on an integer grid cell.
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
         if (!hitWall)
+        {
             m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
+        }
+        else
+        {
+            float sign = Mathf.Sign(distance);
+            float blockedX = m_Rigidbody.position.x;
+            // Floor toward the start direction so we never snap forward into the
+            // obstacle: moving right → round down, moving left → round up.
+            float wholeX = sign > 0f ? Mathf.Floor(blockedX) : Mathf.Ceil(blockedX);
+            m_Rigidbody.position = new Vector2(wholeX, m_Rigidbody.position.y);
+        }
         yield return new WaitForFixedUpdate();
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
 
@@ -798,13 +828,19 @@ public class PlayerController : MonoBehaviour
     }
 #endif
 
-    // Rounds the rigidbody position to the nearest 0.5-unit grid, eliminating the
+    // Settles the player onto the grid after every move/jump, eliminating the
     // floating-point drift that causes colliders to slightly intersect surfaces when
     // Z-rotation is frozen (preventing the physics solver from self-correcting).
+    //
+    //   X → nearest WHOLE unit: horizontal travel is always an integer number of
+    //       cells, so the player must never rest at a fractional X (e.g. 2.681).
+    //   Y → nearest 0.5 unit: keeps the drift correction but still lets the player
+    //       sit flush on platforms placed on the half grid, rather than being forced
+    //       to an integer height it may float above or sink into.
     private void SnapToGrid()
     {
         Vector2 pos = m_Rigidbody.position;
-        pos.x = Mathf.Round(pos.x * 2f) / 2f;
+        pos.x = Mathf.Round(pos.x);
         pos.y = Mathf.Round(pos.y * 2f) / 2f;
         m_Rigidbody.position = pos;
     }
@@ -817,6 +853,48 @@ public class PlayerController : MonoBehaviour
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         float frontX = transform.position.x + sign * (m_Collider != null ? m_Collider.bounds.extents.x : 0.5f);
         return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, WalkableMask);
+    }
+
+    // Looks ahead over the intended horizontal distance and returns the largest
+    // WHOLE-unit signed distance the player can travel before a solid wall blocks it.
+    // Rounding down to whole cells lets the player pre-compute an integer stopping
+    // position and drive straight to it, instead of pressing flush against the wall
+    // at a fractional X and correcting afterward.
+    //
+    // Pushable bricks and triggers are deliberately ignored: bricks are handled by
+    // the push logic and edges/hazards by the fall logic — this clamps for walls only.
+    private float PredictWallClampedDistance(float distance)
+    {
+        if (m_Collider == null || Mathf.Approximately(distance, 0f)) return distance;
+
+        float sign = Mathf.Sign(distance);
+        float maxDist = Mathf.Abs(distance);
+
+        Bounds b = m_Collider.bounds;
+        // Full width, slightly shrunk height so the floor/ceiling the player is flush
+        // with isn't mistaken for a wall.
+        Vector2 size = new Vector2(b.size.x, b.size.y * 0.9f);
+        Vector2 dir = new Vector2(sign, 0f);
+
+        int count = Physics2D.BoxCast(b.center, size, 0f, dir, m_WallCastFilter, m_WallCastResults, maxDist);
+
+        float clearDist = maxDist;
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit2D hit = m_WallCastResults[i];
+            Collider2D col = hit.collider;
+            if (col == null || col == m_Collider) continue;
+            if (col.GetComponentInParent<PushBrick>() != null) continue; // pushed, not a wall
+            clearDist = Mathf.Min(clearDist, hit.distance);
+        }
+
+        if (clearDist >= maxDist)
+            return distance; // path clear — travel the full command distance
+
+        // Round down to whole cells (small epsilon absorbs float error so a nearly
+        // complete cell isn't dropped) so the player never stops part-way into a wall.
+        float wholeCells = Mathf.Floor(clearDist + 0.02f);
+        return sign * wholeCells;
     }
 
     // BoxCasts horizontally to detect a wall in the direction of travel.
