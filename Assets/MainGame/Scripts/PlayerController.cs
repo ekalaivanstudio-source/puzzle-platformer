@@ -110,10 +110,6 @@ public class PlayerController : MonoBehaviour
     private ContactFilter2D m_NoFilter;       // all layers, includes triggers (matches *All defaults)
     private ContactFilter2D m_InteractFilter; // m_InteractLayer only
 
-    // Lookahead buffers for the pre-move wall prediction (walls only, no triggers).
-    private readonly List<RaycastHit2D> m_WallCastResults = new List<RaycastHit2D>();
-    private ContactFilter2D m_WallCastFilter;
-
     // ─── Unity Lifecycle ────────────────────────────────────────────────────────
 
     private void Awake()
@@ -137,10 +133,6 @@ public class PlayerController : MonoBehaviour
         m_NoFilter = ContactFilter2D.noFilter;
         m_InteractFilter = new ContactFilter2D { useTriggers = true };
         m_InteractFilter.SetLayerMask(m_InteractLayer);
-
-        // Wall lookahead: solid walkable layers only, triggers excluded.
-        m_WallCastFilter = new ContactFilter2D { useTriggers = false, useLayerMask = true };
-        m_WallCastFilter.SetLayerMask(m_WalkableMask);
     }
 
     private void Start()
@@ -401,19 +393,15 @@ public class PlayerController : MonoBehaviour
         if (!m_IsGamePlaying) yield break;
 
         float startX = m_Rigidbody.position.x;
+        float targetX = startX + distance;
         float speed = distance / m_MoveDuration;
-
-        // Predict the reachable target BEFORE moving: clamp the command to the whole
-        // number of cells the player can advance before a solid wall. The player then
-        // drives straight to its final integer cell — no stop-flush-then-snap-back
-        // correction. (Pushable bricks/edges are excluded here; the loop handles them.)
-        float targetX = startX + PredictWallClampedDistance(distance);
 
         transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
 
         // Position-based loop: keep moving until targetX is reached.
         // If the platform ends mid-move, stop, fall, land, then resume the remaining distance.
         bool hitWall = false;
+        bool pushedBrick = false;
         float commandElapsed = 0f;
         while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed) && !hitWall)
         {            // Push-brick check � must come before the regular wall check so the
@@ -421,16 +409,24 @@ public class PlayerController : MonoBehaviour
             PushBrick pushBrick = CheckPushBrick(speed);
             if (pushBrick != null)
             {
-                m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
+                // Freeze the player in place while the brick slides and falls. The
+                // push coroutine can run for a while (the brick may fall several
+                // units), and leaving the body free lets contact depenetration drift
+                // it sideways — which surfaced as the player "teleporting" backwards
+                // the moment the brick landed. Restore the constraints afterward.
+                RigidbodyConstraints2D savedConstraints = m_Rigidbody.constraints;
+                m_Rigidbody.linearVelocity = Vector2.zero;
+                m_Rigidbody.constraints = savedConstraints | RigidbodyConstraints2D.FreezePositionX;
+
                 yield return StartCoroutine(pushBrick.Push(Mathf.Sign(speed)));
+
+                m_Rigidbody.constraints = savedConstraints;
                 hitWall = true;
+                pushedBrick = true;
                 break;
             }
-            // Safety net for an UNpredicted wall (e.g. one that moved into the path
-            // after the pre-move prediction). The static case is already handled by
-            // the clamped targetX, so this only fires when still clearly short of the
-            // target — never when settling onto the predicted (possibly flush) cell.
-            if (Mathf.Abs(m_Rigidbody.position.x - targetX) > 0.15f && CheckHorizontalWall(speed))
+            // Wall on the path — stop flush and end this command.
+            if (CheckHorizontalWall(speed))
             {
                 m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
                 hitWall = true;
@@ -471,6 +467,12 @@ public class PlayerController : MonoBehaviour
                 float savedGravity = m_Rigidbody.gravityScale;
                 m_Rigidbody.gravityScale = 0f;
 
+                // Walk toward the cell boundary, but keep checking BOTH ground rays
+                // every physics step. The moment the player is fully over a gap
+                // (neither foot on ground) stop and fall from right here, instead of
+                // gliding across a one-unit gap because the far foot happens to catch
+                // the next platform mid-walk.
+                bool wentOffEdge = false;
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
                     if (CheckHorizontalWall(speed))
@@ -480,18 +482,24 @@ public class PlayerController : MonoBehaviour
                         hitWall = true;
                         break;
                     }
+                    if (!CheckIsGrounded()) { wentOffEdge = true; break; }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
-                // Direct assignment — bypasses physics integration for an exact snap.
-                m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
-                yield return new WaitForFixedUpdate();
-                m_Rigidbody.linearVelocity = Vector2.zero;
+                if (!wentOffEdge)
+                {
+                    // Reached the boundary with support the whole way — snap exactly.
+                    // Direct assignment bypasses physics integration for an exact snap.
+                    m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
+                    yield return new WaitForFixedUpdate();
+                    m_Rigidbody.linearVelocity = Vector2.zero;
+                }
                 m_Rigidbody.gravityScale = savedGravity;
 
-                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
+                // Fall if there is no ground beneath the player now (either because the
+                // edge cell had none, or because we bailed out mid-walk over a gap).
                 if (!CheckIsGrounded())
                 {
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
@@ -524,6 +532,12 @@ public class PlayerController : MonoBehaviour
                 float savedGravity = m_Rigidbody.gravityScale;
                 m_Rigidbody.gravityScale = 0f;
 
+                // Walk toward the cell boundary, but keep checking BOTH ground rays
+                // every physics step. The moment the player is fully over a gap
+                // (neither foot on ground) stop and fall from right here, instead of
+                // gliding across a one-unit gap because the far foot happens to catch
+                // the next platform mid-walk.
+                bool wentOffEdge = false;
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
                     if (CheckHorizontalWall(speed))
@@ -533,18 +547,24 @@ public class PlayerController : MonoBehaviour
                         hitWall = true;
                         break;
                     }
+                    if (!CheckIsGrounded()) { wentOffEdge = true; break; }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
-                // Direct assignment — bypasses physics integration for an exact snap.
-                m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
-                yield return new WaitForFixedUpdate();
-                m_Rigidbody.linearVelocity = Vector2.zero;
+                if (!wentOffEdge)
+                {
+                    // Reached the boundary with support the whole way — snap exactly.
+                    // Direct assignment bypasses physics integration for an exact snap.
+                    m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
+                    yield return new WaitForFixedUpdate();
+                    m_Rigidbody.linearVelocity = Vector2.zero;
+                }
                 m_Rigidbody.gravityScale = savedGravity;
 
-                // Fall if there is no ground at the edge — even when fallEdgeX == targetX.
+                // Fall if there is no ground beneath the player now (either because the
+                // edge cell had none, or because we bailed out mid-walk over a gap).
                 if (!CheckIsGrounded())
                 {
                     float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
@@ -559,14 +579,19 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Snap X — either to the exact target (clear path) or, when blocked by a
-        // wall/brick, back to the nearest whole-unit cell the player has fully
-        // cleared. The player must never rest pressed part-way into an obstacle at
-        // a fractional X (e.g. 2.681); it always settles on an integer grid cell.
+        // Snap X to a whole cell — the player must never rest at a fractional X.
         m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
         if (!hitWall)
         {
             m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
+        }
+        else if (pushedBrick)
+        {
+            // After a push the brick has moved away, so there's no obstacle to avoid
+            // rounding into. Snap to the NEAREST cell — the one the player occupies
+            // adjacent to where the brick was — instead of flooring back toward the
+            // start, which used to yank the player a full cell backwards.
+            m_Rigidbody.position = new Vector2(Mathf.Round(m_Rigidbody.position.x), m_Rigidbody.position.y);
         }
         else
         {
@@ -853,48 +878,6 @@ public class PlayerController : MonoBehaviour
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         float frontX = transform.position.x + sign * (m_Collider != null ? m_Collider.bounds.extents.x : 0.5f);
         return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, WalkableMask);
-    }
-
-    // Looks ahead over the intended horizontal distance and returns the largest
-    // WHOLE-unit signed distance the player can travel before a solid wall blocks it.
-    // Rounding down to whole cells lets the player pre-compute an integer stopping
-    // position and drive straight to it, instead of pressing flush against the wall
-    // at a fractional X and correcting afterward.
-    //
-    // Pushable bricks and triggers are deliberately ignored: bricks are handled by
-    // the push logic and edges/hazards by the fall logic — this clamps for walls only.
-    private float PredictWallClampedDistance(float distance)
-    {
-        if (m_Collider == null || Mathf.Approximately(distance, 0f)) return distance;
-
-        float sign = Mathf.Sign(distance);
-        float maxDist = Mathf.Abs(distance);
-
-        Bounds b = m_Collider.bounds;
-        // Full width, slightly shrunk height so the floor/ceiling the player is flush
-        // with isn't mistaken for a wall.
-        Vector2 size = new Vector2(b.size.x, b.size.y * 0.9f);
-        Vector2 dir = new Vector2(sign, 0f);
-
-        int count = Physics2D.BoxCast(b.center, size, 0f, dir, m_WallCastFilter, m_WallCastResults, maxDist);
-
-        float clearDist = maxDist;
-        for (int i = 0; i < count; i++)
-        {
-            RaycastHit2D hit = m_WallCastResults[i];
-            Collider2D col = hit.collider;
-            if (col == null || col == m_Collider) continue;
-            if (col.GetComponentInParent<PushBrick>() != null) continue; // pushed, not a wall
-            clearDist = Mathf.Min(clearDist, hit.distance);
-        }
-
-        if (clearDist >= maxDist)
-            return distance; // path clear — travel the full command distance
-
-        // Round down to whole cells (small epsilon absorbs float error so a nearly
-        // complete cell isn't dropped) so the player never stops part-way into a wall.
-        float wholeCells = Mathf.Floor(clearDist + 0.02f);
-        return sign * wholeCells;
     }
 
     // BoxCasts horizontally to detect a wall in the direction of travel.
