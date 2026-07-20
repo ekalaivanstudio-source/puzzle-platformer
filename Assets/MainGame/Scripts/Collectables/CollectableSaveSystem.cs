@@ -21,7 +21,7 @@ namespace Collectables
         private const string FileName = "collectables.json";
 
         private static CollectableSaveData _data;
-        private static HashSet<string> _collectedIds;
+        private static HashSet<string> _collectedKeys;
 
         public static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
 
@@ -60,10 +60,15 @@ namespace Collectables
 
         private static void RebuildIndex()
         {
-            _collectedIds = new HashSet<string>();
+            _collectedKeys = new HashSet<string>();
             foreach (var r in _data.records)
-                if (r != null && !string.IsNullOrEmpty(r.id)) _collectedIds.Add(r.id);
+                if (r != null && !string.IsNullOrEmpty(r.id)) _collectedKeys.Add(Key(r.type, r.level, r.id));
         }
+
+        // A collectable's identity is (type, level, id) — NOT id alone. This way the same id
+        // reused in a different level (e.g. a duplicated prefab instance) is a distinct thing,
+        // so collecting one does not hide the other.
+        private static string Key(CollectableType type, int level, string id) => $"{(int)type}|{level}|{id}";
 
         private static void Save()
         {
@@ -83,12 +88,12 @@ namespace Collectables
 
         // ─── Queries ──────────────────────────────────────────────────────────────
 
-        /// <summary>True if the collectable with this id has already been picked up.</summary>
-        public static bool IsCollected(string id)
+        /// <summary>True if this specific collectable (type + level + id) has been picked up.</summary>
+        public static bool IsCollected(CollectableType type, int level, string id)
         {
             if (string.IsNullOrEmpty(id)) return false;
             EnsureLoaded();
-            return _collectedIds.Contains(id);
+            return _collectedKeys.Contains(Key(type, level, id));
         }
 
         /// <summary>Total number of collected items of a type across the whole game.</summary>
@@ -118,8 +123,8 @@ namespace Collectables
         // ─── Mutations ──────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Records a pickup. No-op (returns false) if this id was already collected,
-        /// which keeps counts idempotent when a level is replayed.
+        /// Records a pickup. No-op (returns false) if this exact collectable (type + level + id)
+        /// was already collected, which keeps counts idempotent when a level is replayed.
         /// </summary>
         public static bool MarkCollected(string id, CollectableType type, int level)
         {
@@ -130,10 +135,11 @@ namespace Collectables
             }
 
             EnsureLoaded();
-            if (_collectedIds.Contains(id)) return false;
+            string key = Key(type, level, id);
+            if (_collectedKeys.Contains(key)) return false;
 
             _data.records.Add(new CollectedRecord { id = id, type = type, level = level });
-            _collectedIds.Add(id);
+            _collectedKeys.Add(key);
             Save();
             return true;
         }
@@ -142,7 +148,7 @@ namespace Collectables
         public static void ResetAll()
         {
             _data = new CollectableSaveData();
-            _collectedIds = new HashSet<string>();
+            _collectedKeys = new HashSet<string>();
 
             try
             {

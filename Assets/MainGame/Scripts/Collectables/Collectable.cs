@@ -101,8 +101,8 @@ namespace Collectables
         {
             var manager = CollectableLevelManager.Instance;
             return manager != null
-                ? manager.IsCollected(m_UniqueId)
-                : CollectableSaveSystem.IsCollected(m_UniqueId);
+                ? manager.IsCollected(m_Type, m_UniqueId)
+                : CollectableSaveSystem.IsCollected(m_Type, 0, m_UniqueId);
         }
 
         private void EnsureId()
