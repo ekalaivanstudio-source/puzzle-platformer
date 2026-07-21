@@ -379,33 +379,34 @@ namespace Setting.Menu
         private void HandleAudioVolumeChanged(float value, string parameterName)
         {
             if (currentSettings == null)
-            {
                 currentSettings = new SettingsData();
-            }
 
             switch (parameterName)
             {
                 case MasterVolumeParameter:
-                    currentSettings.MasterVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                    currentSettings.MasterVolume = value;
                     break;
+
                 case MusicVolumeParameter:
-                    currentSettings.MusicVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                    currentSettings.MusicVolume = value;
                     break;
+
                 case AmbienceVolumeParameter:
-                    currentSettings.AmbienceVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                    currentSettings.AmbienceVolume = value;
                     break;
+
                 case SFXVolumeParameter:
-                    currentSettings.SFXVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                    currentSettings.SFXVolume = value;
                     break;
+
                 case VoiceVolumeParameter:
-                    currentSettings.VoiceVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                    currentSettings.VoiceVolume = value;
                     break;
             }
 
             ApplyAudioSettings();
             RefreshDirtyState();
         }
-
         /// <summary>
         /// Handles brightness slider changes. Updates local currentSettings values and applies brightness for real-time preview.
         /// </summary>
