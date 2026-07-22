@@ -61,8 +61,13 @@ namespace Collectables
 
         // ─── Collect API (called by Collectable) ────────────────────────────────────
 
-        /// <summary>Has this collectable id already been picked up (this or a previous session)?</summary>
-        public bool IsCollected(string uniqueId) => CollectableSaveSystem.IsCollected(uniqueId);
+        /// <summary>
+        /// Has this specific collectable already been picked up in THIS level (this or a
+        /// previous session)? Identity is (type, current level, id), so the same id placed in
+        /// another level is independent.
+        /// </summary>
+        public bool IsCollected(CollectableType type, string uniqueId)
+            => CollectableSaveSystem.IsCollected(type, CurrentLevel, uniqueId);
 
         /// <summary>
         /// Records a pickup and notifies listeners. Returns false if the id was already

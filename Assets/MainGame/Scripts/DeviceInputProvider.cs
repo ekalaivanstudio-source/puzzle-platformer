@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 ///   Submit (Enter / Gamepad Start)  → triggers execution via GameManager
 ///   Undo (Backspace / Gamepad B)    → removes last queued action
 ///   Clear (Delete / Gamepad Select) → clears entire queue
-///   Restart (R)                     → reloads the current level
+///   Restart (R)                     → opens the restart confirmation dialog
 /// </summary>
 public class DeviceInputProvider : MonoBehaviour
 {
@@ -175,6 +175,6 @@ public class DeviceInputProvider : MonoBehaviour
 
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
-    private void OnRestart(InputAction.CallbackContext c) { GameManager.Instance?.ReloadLevel(); }
+    private void OnRestart(InputAction.CallbackContext c) { RestartConfirmationUI.ShowRestart(); }
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }
 }
