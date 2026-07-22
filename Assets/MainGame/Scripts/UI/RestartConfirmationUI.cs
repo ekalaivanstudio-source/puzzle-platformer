@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Runtime restart confirmation used by the Restart input action.
@@ -21,6 +22,8 @@ public sealed class RestartConfirmationUI : MonoBehaviour
     private GUIStyle m_DialogStyle;
     private GUIStyle m_MessageStyle;
     private GUIStyle m_ButtonStyle;
+    private Texture2D m_BackdropTexture;
+    private Texture2D m_DialogTexture;
 
     public static bool IsOpen => s_Instance != null && s_Instance.m_IsOpen;
 
@@ -32,6 +35,23 @@ public sealed class RestartConfirmationUI : MonoBehaviour
         GameObject host = new GameObject(nameof(RestartConfirmationUI));
         s_Instance = host.AddComponent<RestartConfirmationUI>();
         DontDestroyOnLoad(host);
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // GUI.skin and textures can be replaced/unloaded during a scene change.
+        // Recreate every style from the new scene's active skin on the next OnGUI call.
+        ClearStyles();
     }
 
     public static void ShowRestart()
@@ -82,7 +102,10 @@ public sealed class RestartConfirmationUI : MonoBehaviour
         float buttonY = dialog.y + height - 75f * scale;
 
         if (GUI.Button(new Rect(dialog.x + 75f * scale, buttonY, buttonWidth, buttonHeight), "Yes", m_ButtonStyle))
+        {
             Confirm();
+            return;
+        }
 
         if (GUI.Button(new Rect(dialog.x + width - 75f * scale - buttonWidth, buttonY, buttonWidth, buttonHeight), "No", m_ButtonStyle))
             Close();
@@ -108,11 +131,11 @@ public sealed class RestartConfirmationUI : MonoBehaviour
     {
         if (m_DialogStyle != null) return;
 
-        Texture2D backdrop = MakeTexture(new Color(0f, 0f, 0f, 0.72f));
-        Texture2D dialog = MakeTexture(new Color(0.075f, 0.09f, 0.13f, 0.98f));
+        m_BackdropTexture = MakeTexture(new Color(0f, 0f, 0f, 0.72f));
+        m_DialogTexture = MakeTexture(new Color(0.075f, 0.09f, 0.13f, 1f));
 
-        m_BackdropStyle = new GUIStyle { normal = { background = backdrop } };
-        m_DialogStyle = new GUIStyle(GUI.skin.box) { normal = { background = dialog } };
+        m_BackdropStyle = new GUIStyle { normal = { background = m_BackdropTexture } };
+        m_DialogStyle = new GUIStyle(GUI.skin.box) { normal = { background = m_DialogTexture } };
         m_MessageStyle = new GUIStyle(GUI.skin.label)
         {
             alignment = TextAnchor.MiddleCenter,
@@ -132,8 +155,22 @@ public sealed class RestartConfirmationUI : MonoBehaviour
     private static Texture2D MakeTexture(Color color)
     {
         var texture = new Texture2D(1, 1);
+        texture.hideFlags = HideFlags.HideAndDontSave;
         texture.SetPixel(0, 0, color);
         texture.Apply();
         return texture;
+    }
+
+    private void ClearStyles()
+    {
+        if (m_BackdropTexture != null) Destroy(m_BackdropTexture);
+        if (m_DialogTexture != null) Destroy(m_DialogTexture);
+
+        m_BackdropTexture = null;
+        m_DialogTexture = null;
+        m_BackdropStyle = null;
+        m_DialogStyle = null;
+        m_MessageStyle = null;
+        m_ButtonStyle = null;
     }
 }
