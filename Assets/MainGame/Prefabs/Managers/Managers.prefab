@@ -179,6 +179,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6733430152505128233}
   - component: {fileID: 883825677294895380}
+  - component: {fileID: 7178919839492170681}
   m_Layer: 0
   m_Name: 'LevelManager '
   m_TagString: Untagged
@@ -213,8 +214,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73343640f3193594ca0247ae90f01fa8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Collectables.CollectableLevelManager
-  _database: {fileID: 11400000, guid: 8c53bd84ce65ce449b755006e79c2c71, type: 2}
-  _levelNumberOverride: 1
+--- !u!114 &7178919839492170681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4164232342357462950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d7cc7a48764e8849b024fc20b0501be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LevelContext
+  config: {fileID: 0}
 --- !u!1 &4509260580575526479
 GameObject:
   m_ObjectHideFlags: 0
@@ -289,6 +301,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7535104754422696926}
+  - {fileID: 4135507738513851386}
   - {fileID: 2467253770377899571}
   - {fileID: 4059694250735233219}
   - {fileID: 8411353782471948087}
@@ -940,6 +953,68 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 7328159280070042337, guid: e9c4b5a15bc541349a3517ea82107c7c, type: 3}
   m_PrefabInstance: {fileID: 945980016006949183}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &4100381059761842560
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1151499323912156404}
+    m_Modifications:
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4696767240715397404, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+      propertyPath: m_Name
+      value: Audio Source Manager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+--- !u!4 &4135507738513851386 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+  m_PrefabInstance: {fileID: 4100381059761842560}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &8283785026588201010
 PrefabInstance:
