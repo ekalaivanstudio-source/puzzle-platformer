@@ -107,13 +107,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PushBrick
   m_IsLaserDestructible: 0
+  m_ResetOnRespawn: 1
   m_PushSpeed: 10
   m_PushDistance: 3
   m_BlockingLayers:
     serializedVersion: 2
     m_Bits: 64
-  m_FallSpeed: 12
-  m_MaxFallUnits: 6
+  m_LandingLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LandingTag: Spike
   m_DestroyParticle: {fileID: 7581426562798727453, guid: 3008512c7d1b0ed48a89b30bafb7e4f6, type: 3}
   m_ShakeMagnitude: 0.15
   m_ShakeDuration: 0.3

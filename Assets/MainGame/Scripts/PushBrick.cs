@@ -27,6 +27,12 @@ public class PushBrick : MonoBehaviour
     [Tooltip("If true, a laser beam destroys this brick for the current turn.")]
     [SerializeField] private bool m_IsLaserDestructible = false;
 
+    [Tooltip("If true, the brick returns to its start position whenever the player respawns " +
+             "at spawn (turn completed / soft reset), not only on a full restart. Enable this " +
+             "for bricks that ride a moving platform so they don't stay displaced. Leave OFF to " +
+             "keep the default behaviour where a pushed brick persists across turns.")]
+    [SerializeField] private bool m_ResetOnRespawn = false;
+
     [Tooltip("Speed at which the brick slides after being pushed (units / sec).")]
     [SerializeField] private float m_PushSpeed = 10f;
 
@@ -102,8 +108,17 @@ public class PushBrick : MonoBehaviour
         }
     }
 
-    private void OnEnable() => GameManager.OnFullReset += ResetBrick;
-    private void OnDisable() => GameManager.OnFullReset -= ResetBrick;
+    private void OnEnable()
+    {
+        GameManager.OnFullReset += ResetBrick;
+        if (m_ResetOnRespawn) GameManager.OnPlayerRespawn += ResetBrick;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.OnFullReset -= ResetBrick;
+        if (m_ResetOnRespawn) GameManager.OnPlayerRespawn -= ResetBrick;
+    }
 
     private void ResetBrick()
     {
