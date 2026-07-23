@@ -23,6 +23,15 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public static event System.Action OnFullReset;
 
+    /// <summary>
+    /// Fired whenever the player returns to its initial spawn position — i.e. after a
+    /// full turn completes or the level is soft-reset (death). Unlike <see cref="OnTurnReset"/>
+    /// this does NOT fire when a lever/checkpoint aborts a run in place, so objects that
+    /// should "return home only when the player does" (moving platforms, platform-riding
+    /// bricks) can listen here without being reset mid-turn by a lever.
+    /// </summary>
+    public static event System.Action OnPlayerRespawn;
+
     /// <summary>Fired when execution begins so interactables can activate during a run.</summary>
     public static event System.Action OnExecutionStarted;
 
@@ -66,6 +75,7 @@ public class GameManager : MonoBehaviour
         IsKeyCollected = false;
         StopExecution();
         OnKeyReset?.Invoke();
+        OnPlayerRespawn?.Invoke();   // player is back at spawn — return platforms/riding bricks home
     }
 
     public void StopExecution()
@@ -84,9 +94,10 @@ public class GameManager : MonoBehaviour
     public void SoftResetLevel()
     {
         IsKeyCollected = false;
-        OnFullReset?.Invoke();   // bricks, redirectors → initial state
-        OnTurnReset?.Invoke();   // movable bricks, lock points
-        OnKeyReset?.Invoke();    // placeable key + key slot
+        OnFullReset?.Invoke();     // bricks, redirectors → initial state
+        OnTurnReset?.Invoke();     // movable bricks, lock points
+        OnKeyReset?.Invoke();      // placeable key + key slot
+        OnPlayerRespawn?.Invoke(); // player is back at spawn
         SequenceManager.Instance?.OnTurnEnded();
     }
 

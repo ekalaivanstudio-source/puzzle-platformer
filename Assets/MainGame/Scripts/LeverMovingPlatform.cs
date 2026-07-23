@@ -118,10 +118,22 @@ public class LeverMovingPlatform : MonoBehaviour
         if (m_RiderProbeHeight <= 0f) m_RiderProbeHeight = 0.2f;
     }
 
-    private void OnEnable() => GameManager.OnFullReset += OnFullReset;
-    private void OnDisable() => GameManager.OnFullReset -= OnFullReset;
+    private void OnEnable()
+    {
+        // Return to the start position both on an explicit restart AND whenever the
+        // player respawns at spawn (turn completed / soft reset) — but NOT on a plain
+        // turn-reset, so engaging the lever mid-turn doesn't yank the platform home.
+        GameManager.OnFullReset += ResetToStart;
+        GameManager.OnPlayerRespawn += ResetToStart;
+    }
 
-    private void OnFullReset()
+    private void OnDisable()
+    {
+        GameManager.OnFullReset -= ResetToStart;
+        GameManager.OnPlayerRespawn -= ResetToStart;
+    }
+
+    private void ResetToStart()
     {
         transform.position = m_StartPosition;
         m_IsOn = false;
