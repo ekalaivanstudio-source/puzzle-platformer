@@ -253,7 +253,7 @@ public class PlayerInputUIHelper : MonoBehaviour
             Sprite s = GetSpriteForAction(m_CorrectSequence[i]);
             if (s != null)
             {
-                inputsUI[i].sprite = s;
+                inputsUI[i].sprite = m_InteractSprite;
                 Image inputChild = inputsUI[i].transform.GetChild(0).GetComponent<Image>();
                 inputChild.sprite = s;
             }
