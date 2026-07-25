@@ -276,7 +276,7 @@ namespace Setting.Menu
         /// <param name="brightness">The brightness value to apply.</param>
         private void ApplyBrightnessValue(float brightness)
         {
-            // Adjust screen brightness on mobile devices
+/*            // Adjust screen brightness on mobile devices
             Screen.brightness = brightness;
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
@@ -299,14 +299,14 @@ namespace Setting.Menu
             {
                 Debug.LogWarning($"Failed to apply physical PC screen brightness: {ex.Message}");
             }
-#endif
+#endif*/
 
             // Fallback: Adjust a UI screen overlay if one is assigned
             if (brightnessOverlay != null)
             {
                 // Max brightness (1.0) -> overlay is completely transparent (alpha = 0)
                 // Min brightness (0.0) -> overlay is 80% black (alpha = 0.8)
-                float alpha = Mathf.Lerp(0.8f, 0.0f, brightness);
+                float alpha = Mathf.Lerp(0.95f, 0.0f, brightness);
                 Color color = brightnessOverlay.color;
                 color.a = alpha;
                 brightnessOverlay.color = color;
