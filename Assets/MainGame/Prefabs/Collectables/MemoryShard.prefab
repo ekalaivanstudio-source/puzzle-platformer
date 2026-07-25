@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2743213338291192380}
   - component: {fileID: 698265169199901790}
   - component: {fileID: 7009512688459382928}
+  - component: {fileID: 7223232421781195083}
   m_Layer: 0
   m_Name: MemoryShard
   m_TagString: Untagged
@@ -83,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -2078366971, guid: af8f7ea2e5a3cfd4ea5c4a83eefe86d8, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 6beafba4490627945ae49c6d4cfd8252, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -146,3 +147,23 @@ MonoBehaviour:
   m_PlayerTag: Player
   m_ShineEffect: {fileID: 0}
   m_CollectEffectPrefab: {fileID: 0}
+--- !u!114 &7223232421781195083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2082221888021389031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbf748754517f25438268befa039e2bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
+  m_Frames:
+  - {fileID: 21300000, guid: 6beafba4490627945ae49c6d4cfd8252, type: 3}
+  - {fileID: 21300000, guid: b85aad6d61152ae409f3b45640d48bdc, type: 3}
+  - {fileID: 21300000, guid: 6f98f6d13541ccf4a88fd181224fa9aa, type: 3}
+  - {fileID: 21300000, guid: b2130ffeb910e4b4291df10653157810, type: 3}
+  - {fileID: 21300000, guid: 6a62ebb3520825d4c94d73737a1619d6, type: 3}
+  m_FramesPerSecond: 4
+  m_Loop: 1
