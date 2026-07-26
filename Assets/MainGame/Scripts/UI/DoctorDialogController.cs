@@ -5,10 +5,12 @@ public class DoctorDialogController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TMP_Text m_DialogText;
+    [SerializeField] private UIFloatEffect m_UIFloatEffect;
 
     [Header("Dialogs")]
     [SerializeField] private DoctorDialog[] m_HappyDialogs;
     [SerializeField] private DoctorDialog[] m_SadDialogs;
+
 
     public void ShowDialog(EvilDoctorAnimationController.DoctorAnimation animation)
     {
@@ -44,6 +46,9 @@ public class DoctorDialogController : MonoBehaviour
         if(dialog.audioClip != null)
         {
             AudioManager.Instance?.PlayVoice(dialog.audioClip);
+
+            if(m_UIFloatEffect != null)
+                m_UIFloatEffect.SetStayDuration(dialog.audioClip.length +.2f);
         }
     }
 }
