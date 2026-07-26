@@ -64,7 +64,7 @@ namespace Setting.Menu
         #region Unity Lifecycle
 
         /// <summary>
-        /// Initializes the manager, registers event handlers, loads settings, updates the UI, and applies the settings.
+        /// Initializes the manager, registers event handlers, loads settings and updates the UI.
         /// </summary>
         private void Awake()
         {
@@ -76,8 +76,17 @@ namespace Setting.Menu
             lastAppliedSettings = loadedSettings.Clone();
 
             UpdateUIFromSettings();
-            ApplySettingsToRuntime();
             SetDirtyState(false);
+        }
+
+        /// <summary>
+        /// Applies the loaded settings to the runtime systems.
+        /// This runs in Start rather than Awake because the audio system applies the mixer's
+        /// start snapshot after Awake, which discards any AudioMixer.SetFloat call made there.
+        /// </summary>
+        private void Start()
+        {
+            ApplySettingsToRuntime();
         }
 
         #endregion
