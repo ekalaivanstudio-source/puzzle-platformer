@@ -80,7 +80,8 @@ public class AudioManager : MonoBehaviour
     // ─── Runtime ──────────────────────────────────────────────────────────────
 
     private AudioSource m_MusicSource;
-    private AudioSource m_SfxSource;
+    public AudioSource m_SfxSource;
+    public AudioSource m_VoiceSource;
     private AudioSource m_WalkSource;
     private AudioSource m_LaserSource;
     private AudioSource m_UiSource;
@@ -97,7 +98,7 @@ public class AudioManager : MonoBehaviour
         Instance = this;
 
         m_MusicSource = CreateSource(true);
-        m_SfxSource   = CreateSource(false);
+       // m_SfxSource   = CreateSource(false);
         m_WalkSource  = CreateSource(true);
         m_LaserSource = CreateSource(true);
         m_UiSource    = CreateSource(false);
@@ -161,6 +162,12 @@ public class AudioManager : MonoBehaviour
         if (clip == null || m_MusicSource == null) return;
         m_MusicSource.clip = clip;
         m_MusicSource.Play();
+    }
+    public void PlayVoice(AudioClip clip)
+    {
+        if (clip == null || m_VoiceSource == null) return;
+        m_VoiceSource.clip = clip;
+        m_VoiceSource.Play();
     }
 
     public void StopMusic()

@@ -1,21 +1,18 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Shows a random line of doctor dialog for a given reaction.
-/// </summary>
 public class DoctorDialogController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TMP_Text m_DialogText;
 
     [Header("Dialogs")]
-    [SerializeField] private string[] m_HappyDialogs;
-    [SerializeField] private string[] m_SadDialogs;
+    [SerializeField] private DoctorDialog[] m_HappyDialogs;
+    [SerializeField] private DoctorDialog[] m_SadDialogs;
 
     public void ShowDialog(EvilDoctorAnimationController.DoctorAnimation animation)
     {
-        string[] pool = animation switch
+        DoctorDialog[] pool = animation switch
         {
             EvilDoctorAnimationController.DoctorAnimation.Happy => m_HappyDialogs,
             EvilDoctorAnimationController.DoctorAnimation.Sad => m_SadDialogs,
@@ -25,7 +22,7 @@ public class DoctorDialogController : MonoBehaviour
         SetRandomDialog(pool);
     }
 
-    private void SetRandomDialog(string[] dialogs)
+    private void SetRandomDialog(DoctorDialog[] dialogs)
     {
         if (m_DialogText == null)
         {
@@ -33,8 +30,29 @@ public class DoctorDialogController : MonoBehaviour
             return;
         }
 
-        m_DialogText.text = (dialogs != null && dialogs.Length > 0)
-            ? dialogs[Random.Range(0, dialogs.Length)]
-            : string.Empty;
+        if (dialogs == null || dialogs.Length == 0)
+        {
+            m_DialogText.text = string.Empty;
+            return;
+        }
+
+        DoctorDialog dialog = dialogs[Random.Range(0, dialogs.Length)];
+
+        m_DialogText.text = dialog.dialogText;
+
+        // Play dialog.audioClip here if needed.
+        if(dialog.audioClip != null)
+        {
+            AudioManager.Instance?.PlayVoice(dialog.audioClip);
+        }
     }
+}
+
+[System.Serializable]
+public class DoctorDialog
+{
+    [TextArea]
+    public string dialogText;
+
+    public AudioClip audioClip;
 }
