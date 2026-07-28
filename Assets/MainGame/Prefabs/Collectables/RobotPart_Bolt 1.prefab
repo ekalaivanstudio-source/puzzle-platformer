@@ -12,8 +12,9 @@ GameObject:
   - component: {fileID: 3149436887647294458}
   - component: {fileID: 7246908787735355509}
   - component: {fileID: 1101378099918640859}
+  - component: {fileID: 1399716727689115743}
   m_Layer: 0
-  m_Name: RobotPart 3
+  m_Name: RobotPart_Bolt 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -83,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -62813729, guid: 112d90311e9ad234da8b3b341a51c9b1, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 1caa64aec4c729c43b651dc3d50a2815, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -146,3 +147,23 @@ MonoBehaviour:
   m_PlayerTag: Player
   m_ShineEffect: {fileID: 0}
   m_CollectEffectPrefab: {fileID: 0}
+--- !u!114 &1399716727689115743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7368667700760368185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbf748754517f25438268befa039e2bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
+  m_Frames:
+  - {fileID: 21300000, guid: 1caa64aec4c729c43b651dc3d50a2815, type: 3}
+  - {fileID: 21300000, guid: 76a16ea13e3eb5c479af22aa082fe041, type: 3}
+  - {fileID: 21300000, guid: 17c6fce73c5397a448303b77cf5b2e5d, type: 3}
+  - {fileID: 21300000, guid: d598006c9194d7446870a04c363f8939, type: 3}
+  - {fileID: 21300000, guid: c888abe29d149d64f9b0c0ca66d22595, type: 3}
+  m_FramesPerSecond: 6
+  m_Loop: 1
