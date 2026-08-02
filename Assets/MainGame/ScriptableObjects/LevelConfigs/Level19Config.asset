@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
+  m_Name: Level19Config
+  m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
+  levelNumber: 19
+  robotPartCount: 1
+  memoryShardCount: 1
+  cameraDeadZone:
+    deadZoneX: 0.1
+    deadZoneY: 0.1
+    offset: {x: 0, y: 0}
+    smoothTime: 1
+    minX: 1
+    maxX: 3
+    minY: 0
+    maxY: 1
+    followX: 1
+    followY: 1
+  sequence:
+    maxSequenceLength: 6
+    requireFullSequence: 0
