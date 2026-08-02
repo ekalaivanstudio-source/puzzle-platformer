@@ -504,6 +504,7 @@ public class PlayerController : MonoBehaviour
                 // gliding across a one-unit gap because the far foot happens to catch
                 // the next platform mid-walk.
                 bool wentOffEdge = false;
+                bool stuck = false;
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
                     if (CheckHorizontalWall(speed))
@@ -516,6 +517,22 @@ public class PlayerController : MonoBehaviour
                     if (!CheckIsGrounded()) { wentOffEdge = true; break; }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
+
+                    // The main loop's stuck timeout has to apply here too. This walk can
+                    // grind forever against an obstacle CheckHorizontalWall doesn't
+                    // recognise: the player stays grounded so the edge test never trips,
+                    // and position never advances so the target is never reached. Without
+                    // this the turn hangs and the level has to be restarted by hand.
+                    commandElapsed += Time.fixedDeltaTime;
+                    if (commandElapsed >= m_CommandTimeout) { stuck = true; break; }
+                }
+                if (stuck)
+                {
+                    m_Rigidbody.gravityScale = savedGravity;
+                    m_Rigidbody.linearVelocity = Vector2.zero;
+                    AbortExecution();
+                    StartCoroutine(WaitForEndStuff());
+                    yield break;
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
@@ -569,6 +586,7 @@ public class PlayerController : MonoBehaviour
                 // gliding across a one-unit gap because the far foot happens to catch
                 // the next platform mid-walk.
                 bool wentOffEdge = false;
+                bool stuck = false;
                 while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
                 {
                     if (CheckHorizontalWall(speed))
@@ -581,6 +599,18 @@ public class PlayerController : MonoBehaviour
                     if (!CheckIsGrounded()) { wentOffEdge = true; break; }
                     m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
                     yield return new WaitForFixedUpdate();
+
+                    // Same stuck timeout as Case 1 — see the comment there.
+                    commandElapsed += Time.fixedDeltaTime;
+                    if (commandElapsed >= m_CommandTimeout) { stuck = true; break; }
+                }
+                if (stuck)
+                {
+                    m_Rigidbody.gravityScale = savedGravity;
+                    m_Rigidbody.linearVelocity = Vector2.zero;
+                    AbortExecution();
+                    StartCoroutine(WaitForEndStuff());
+                    yield break;
                 }
                 if (hitWall) break;
                 m_Rigidbody.linearVelocity = Vector2.zero;
@@ -858,7 +888,21 @@ public class PlayerController : MonoBehaviour
 
             bool rightHit = m_RightGroundCheck != null &&
                 Physics2D.Raycast(m_RightGroundCheck.position, Vector2.down, m_GroundRayLength, WalkableMask);
-            return rightHit;
+            if (rightHit) return true;
+
+            // Neither foot ray found ground — but the foot transforms sit slightly
+            // INSIDE the collider's side faces, while the solver keeps holding the
+            // player up until the two boxes are further apart than their contact
+            // offsets. Inside that band this check reports thin air for a body that
+            // is still resting on a ledge: the move code then orders a fall the body
+            // physically cannot perform, and the player hangs at the lip until
+            // WaitUntilGrounded times out six seconds later.
+            //
+            // Whether a walk ever samples a position inside the band is pure luck of
+            // the fixed step, which is why a 3.0-wide platform collider froze the
+            // player and a 2.9-wide one did not. Probe the collider's real support
+            // width so the ground check and the physics engine agree.
+            return CheckLedgeSupport();
         }
 
         // Fallback (foot transforms not assigned): OverlapCircle centred just
@@ -867,6 +911,37 @@ public class PlayerController : MonoBehaviour
         float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
         Vector2 centre = new Vector2(transform.position.x, bottom - m_GroundCheckDistance);
         return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, WalkableMask);
+    }
+
+    // Casts down from just outside each bottom corner of the collider — the widest
+    // point at which physics can still be resting the player on a surface. Both
+    // colliders in a contact pair are inflated by Physics2D.defaultContactOffset,
+    // so the contact (and the support it provides) survives a gap of two of them.
+    // Same origin height and ray length as the foot rays, so only the horizontal
+    // reach changes — the player does not become "grounded" any higher above a
+    // surface than before.
+    private bool CheckLedgeSupport()
+    {
+        if (m_Collider == null) return false;
+
+        Bounds bounds = m_Collider.bounds;
+        float reach = Physics2D.defaultContactOffset * 2f;
+        float originY = m_LeftGroundCheck != null ? m_LeftGroundCheck.position.y
+                      : m_RightGroundCheck != null ? m_RightGroundCheck.position.y
+                      : bounds.min.y;
+
+        return HasFloorBelow(new Vector2(bounds.min.x - reach, originY))
+            || HasFloorBelow(new Vector2(bounds.max.x + reach, originY));
+    }
+
+    // A hit at distance 0 means the ray started inside the collider it hit. Because
+    // these origins sit outside the player's own side faces, that only happens for a
+    // wall the player is pressed against — which is not a floor, and must not read as
+    // ground while the player is falling past it.
+    private bool HasFloorBelow(Vector2 origin)
+    {
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, m_GroundRayLength, WalkableMask);
+        return hit.collider != null && hit.distance > 0f;
     }
 
 #if UNITY_EDITOR
