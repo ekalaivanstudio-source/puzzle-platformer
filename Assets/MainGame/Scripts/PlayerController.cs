@@ -99,6 +99,15 @@ public class PlayerController : MonoBehaviour
     private Coroutine m_ExecutionCoroutine;  // stored so it can be stopped on abort
     private Coroutine m_EndTurnCoroutine;    // stored so checkpoint can cancel a pending reset
 
+    // Whether hazards (laser, spikes) can currently affect the player. The rule is
+    // simply "is the player a live body standing in the level" — it is NOT tied to the
+    // turn system, so if a beam touches the player it kills them whether a turn is
+    // running, the lever has parked them on a moving platform, or they were dragged
+    // there in the editor. Starts true and is suspended only while the player is not a
+    // normal body: mid-death, mid-win, or riding a scripted waypoint route with their
+    // collider switched off (where the hit tests would read disabled-collider bounds).
+    private bool m_IsHazardable = true;
+
     private Vector3 m_StartPosition;
     private float m_OriginalGravityScale;
     private Vector3 m_OriginalScale;   // spawn facing — restored on respawn so a left-facing death doesn't persist
@@ -162,12 +171,16 @@ public class PlayerController : MonoBehaviour
         // Animation runs even between turns so the player idles while standing.
         UpdateAnimationState();
 
+        // Sweep for spikes whenever the player is a live body, not just mid-turn — a
+        // moving spike, or a platform carrying the player onto one, counts the same
+        // whether or not a command sequence happens to be running.
+        if (m_IsHazardable) CheckSpikeOverlap();
+
         if (!m_IsGamePlaying)
         {
             AudioManager.Instance?.SetWalking(false);
             return;
         }
-        CheckSpikeOverlap();
         UpdateWalkAudio();
     }
 
@@ -213,6 +226,7 @@ public class PlayerController : MonoBehaviour
         // prior abort left it zeroed (gravity is temporarily disabled during edge-walks/jumps).
         m_Rigidbody.gravityScale = m_OriginalGravityScale;
         m_IsGamePlaying = true;
+        m_IsHazardable = true;
         m_ExecutionCoroutine = StartCoroutine(ExecutionLoop());
     }
 
@@ -224,6 +238,12 @@ public class PlayerController : MonoBehaviour
     public void ResetAtCheckpoint(Vector3 checkpointPosition)
     {
         AbortExecution();
+        // The turn is over, but the player is NOT out of the level — they keep standing
+        // exactly where they are. PlatformLever uses this to park them ON a moving
+        // platform and then starts it patrolling, so the world goes on moving them
+        // around while input is being re-entered. Hazards must stay ARMED here, or that
+        // platform carries them straight through a laser untouched.
+        m_IsHazardable = true;
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         // Do NOT update m_StartPosition � death and turn-end still reset to the
@@ -249,6 +269,9 @@ public class PlayerController : MonoBehaviour
         float savedGravity = m_Rigidbody.gravityScale;
         m_Rigidbody.gravityScale = 0f;
         m_Rigidbody.linearVelocity = Vector2.zero;
+        // Hazards go quiet for the scripted ride: the collider is off, so their hit
+        // tests would be reading a disabled collider's bounds.
+        m_IsHazardable = false;
         if (m_Collider != null) m_Collider.enabled = false;
 
         foreach (Transform target in waypoints)
@@ -273,6 +296,9 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.gravityScale = savedGravity;
         m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
+        // Back in the world under its own collider — a normal hittable body again,
+        // whether the turn resumes below or ends.
+        m_IsHazardable = true;
 
         // Resume remaining commands; if none are left, end the turn normally
         int resumeIndex = m_CurrentCommandIndex + 1;
@@ -303,6 +329,9 @@ public class PlayerController : MonoBehaviour
         float savedGravity = m_Rigidbody.gravityScale;
         m_Rigidbody.gravityScale = 0f;
         m_Rigidbody.linearVelocity = Vector2.zero;
+        // Off for the scripted ride only: the collider is disabled below, so hazard hit
+        // tests would be reading a disabled collider's bounds. Re-armed on arrival.
+        m_IsHazardable = false;
         if (m_Collider != null) m_Collider.enabled = false;
 
         foreach (Transform target in waypoints)
@@ -326,6 +355,8 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.gravityScale = savedGravity;
         m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
+        // Collider back on, so the player is a normal hittable body again.
+        m_IsHazardable = true;
 
         // End the turn — player resets to start position, just like wrong inputs.
         EndTurn();
@@ -785,7 +816,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        if (!m_IsGamePlaying) return;
+        if (!m_IsHazardable) return;
 
         if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
         {
@@ -974,6 +1005,10 @@ public class PlayerController : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(0.5f);
 
+        // Hazards are NOT disarmed here. The turn ending doesn't make the player any
+        // less of a body standing in the level — it just resets them to spawn, where
+        // they stay hittable like anywhere else.
+
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_Rigidbody.linearVelocity = Vector2.zero;
@@ -992,7 +1027,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!m_IsGamePlaying || GameManager.Instance == null) return;
+        if (!m_IsHazardable || GameManager.Instance == null) return;
 
         if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
         {
@@ -1011,6 +1046,9 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator WinRoutine()
     {
+        // The level is won — don't let a hazard kill the player during the fade out.
+        m_IsHazardable = false;
+
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayWin();
 
@@ -1028,6 +1066,10 @@ public class PlayerController : MonoBehaviour
 
     private System.Collections.IEnumerator DeathRoutine()
     {
+        // Runs before the first yield, so the hazard that triggered this death cannot
+        // fire again on the following frame and start a second death routine.
+        m_IsHazardable = false;
+
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayDeath();
 
@@ -1061,6 +1103,11 @@ public class PlayerController : MonoBehaviour
         m_IsDead = false;
         m_Animator?.Play(PlayerAnimState.Idle);
 
+        // A normal body again, back at spawn — hazards apply once more. (If spawn itself
+        // sits in a beam this kills again immediately, which is the honest answer: the
+        // level would be unplayable and should be fixed there, not masked here.)
+        m_IsHazardable = true;
+
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(1f, 0f));
 
@@ -1070,7 +1117,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>Called by LaserShooter when the player touches any active laser segment.</summary>
     public void OnLaserHit()
     {
-        if (!m_IsGamePlaying) return;
+        if (!m_IsHazardable) return;
         AbortExecution();
         StartCoroutine(DeathRoutine());
     }
