@@ -57,8 +57,7 @@ namespace Collectables
         /// </summary>
         public static readonly MemoryShardTier[] MemoryShardTiers =
         {
-            new MemoryShardTier(fromLevel: 1,  toLevel: 12, required: 6,  storyId: "Story_1"),
-            new MemoryShardTier(fromLevel: 13, toLevel: 50, required: 20, storyId: "Story_2"),
+            new MemoryShardTier(fromLevel: 1,  toLevel: 20, required: 40,  storyId: "Story_1"),
         };
 
         /// <summary>
