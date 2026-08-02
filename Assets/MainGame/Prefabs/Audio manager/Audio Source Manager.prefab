@@ -267,6 +267,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 108997584628443770}
+  - component: {fileID: 8591391501213420406}
   m_Layer: 0
   m_Name: Audio Source Manager
   m_TagString: Untagged
@@ -293,6 +294,19 @@ Transform:
   - {fileID: 7981980069103191764}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8591391501213420406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4696767240715397404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbcd7046326ff3747b479e70f601789e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.AudioSettingsLoader
+  audioMixer: {fileID: 24100000, guid: 715849985e109a349815b0f62ce525b9, type: 2}
 --- !u!1 &5742019857894172035
 GameObject:
   m_ObjectHideFlags: 0

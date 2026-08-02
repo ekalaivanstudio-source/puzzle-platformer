@@ -11,21 +11,6 @@ namespace Setting.Menu
     [DisallowMultipleComponent]
     public class SettingsManager : MonoBehaviour
     {
-        #region Constants
-
-        private const string MasterVolumeParameter = "MasterVolume";
-        private const string MusicVolumeParameter = "MusicVolume";
-        private const string AmbienceVolumeParameter = "AmbienceVolume";
-        private const string SFXVolumeParameter = "SFXVolume";
-        private const string VoiceVolumeParameter = "VoiceVolume";
-
-        private const float MinMixerVolume = -80f;
-        private const float MaxMixerVolume = 0f;
-        private const float MinSliderValue = 0f;
-        private const float MaxSliderValue = 1f;
-
-        #endregion
-
         #region Inspector Fields
 
         [Header("Audio")]
@@ -135,27 +120,27 @@ namespace Setting.Menu
         {
             if (masterSlider != null)
             {
-                masterSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, MasterVolumeParameter));
+                masterSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AudioMixerParameters.MasterVolumeParameter));
             }
 
             if (musicSlider != null)
             {
-                musicSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, MusicVolumeParameter));
+                musicSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AudioMixerParameters.MusicVolumeParameter));
             }
 
             if (ambienceSlider != null)
             {
-                ambienceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AmbienceVolumeParameter));
+                ambienceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AudioMixerParameters.AmbienceVolumeParameter));
             }
 
             if (sfxSlider != null)
             {
-                sfxSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, SFXVolumeParameter));
+                sfxSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AudioMixerParameters.SFXVolumeParameter));
             }
 
             if (voiceSlider != null)
             {
-                voiceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, VoiceVolumeParameter));
+                voiceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AudioMixerParameters.VoiceVolumeParameter));
             }
 
             if (brightnessSlider != null)
@@ -259,11 +244,11 @@ namespace Setting.Menu
                 return;
             }
 
-            audioMixer.SetFloat(MasterVolumeParameter, ConvertToMixerVolume(currentSettings.MasterVolume));
-            audioMixer.SetFloat(MusicVolumeParameter, ConvertToMixerVolume(currentSettings.MusicVolume));
-            audioMixer.SetFloat(AmbienceVolumeParameter, ConvertToMixerVolume(currentSettings.AmbienceVolume));
-            audioMixer.SetFloat(SFXVolumeParameter, ConvertToMixerVolume(currentSettings.SFXVolume));
-            audioMixer.SetFloat(VoiceVolumeParameter, ConvertToMixerVolume(currentSettings.VoiceVolume));
+            audioMixer.SetFloat(AudioMixerParameters.MasterVolumeParameter, ConvertToMixerVolume(currentSettings.MasterVolume));
+            audioMixer.SetFloat(AudioMixerParameters.MusicVolumeParameter, ConvertToMixerVolume(currentSettings.MusicVolume));
+            audioMixer.SetFloat(AudioMixerParameters.AmbienceVolumeParameter, ConvertToMixerVolume(currentSettings.AmbienceVolume));
+            audioMixer.SetFloat(AudioMixerParameters.SFXVolumeParameter, ConvertToMixerVolume(currentSettings.SFXVolume));
+            audioMixer.SetFloat(AudioMixerParameters.VoiceVolumeParameter, ConvertToMixerVolume(currentSettings.VoiceVolume));
         }
 
         /// <summary>
@@ -285,31 +270,6 @@ namespace Setting.Menu
         /// <param name="brightness">The brightness value to apply.</param>
         private void ApplyBrightnessValue(float brightness)
         {
-/*            // Adjust screen brightness on mobile devices
-            Screen.brightness = brightness;
-
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-            try
-            {
-                int brightnessInt = Mathf.RoundToInt(brightness * 100f);
-                brightnessInt = Mathf.Clamp(brightnessInt, 0, 100);
-
-                // Use WMI via PowerShell to change physical PC screen brightness
-                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-Command \"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, {brightnessInt})\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                System.Diagnostics.Process.Start(startInfo);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"Failed to apply physical PC screen brightness: {ex.Message}");
-            }
-#endif*/
-
             // Fallback: Adjust a UI screen overlay if one is assigned
             if (brightnessOverlay != null)
             {
@@ -392,23 +352,23 @@ namespace Setting.Menu
 
             switch (parameterName)
             {
-                case MasterVolumeParameter:
+                case AudioMixerParameters.MasterVolumeParameter:
                     currentSettings.MasterVolume = value;
                     break;
 
-                case MusicVolumeParameter:
+                case AudioMixerParameters.MusicVolumeParameter:
                     currentSettings.MusicVolume = value;
                     break;
 
-                case AmbienceVolumeParameter:
+                case AudioMixerParameters.AmbienceVolumeParameter:
                     currentSettings.AmbienceVolume = value;
                     break;
 
-                case SFXVolumeParameter:
+                case AudioMixerParameters.SFXVolumeParameter:
                     currentSettings.SFXVolume = value;
                     break;
 
-                case VoiceVolumeParameter:
+                case AudioMixerParameters.VoiceVolumeParameter:
                     currentSettings.VoiceVolume = value;
                     break;
             }
@@ -427,7 +387,7 @@ namespace Setting.Menu
                 currentSettings = new SettingsData();
             }
 
-            currentSettings.Brightness = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+            currentSettings.Brightness = Mathf.Clamp(value, AudioMixerParameters.MinSliderValue, AudioMixerParameters.MaxSliderValue);
             ApplyBrightnessSettings();
             RefreshDirtyState();
         }
@@ -524,15 +484,38 @@ namespace Setting.Menu
         /// <returns>An AudioMixer-friendly decibel value.</returns>
         private float ConvertToMixerVolume(float sliderValue)
         {
-            float clampedValue = Mathf.Clamp(sliderValue, MinSliderValue, MaxSliderValue);
+            float clampedValue = Mathf.Clamp(sliderValue, AudioMixerParameters.MinSliderValue, AudioMixerParameters.MaxSliderValue);
 
-            if (clampedValue <= MinSliderValue)
+            if (clampedValue <= AudioMixerParameters.MinSliderValue)
             {
-                return MinMixerVolume;
+                return AudioMixerParameters.MinMixerVolume;
             }
 
-            return Mathf.Lerp(MinMixerVolume, MaxMixerVolume, Mathf.InverseLerp(MinSliderValue, MaxSliderValue, clampedValue));
+            return Mathf.Lerp(AudioMixerParameters.MinMixerVolume, AudioMixerParameters.MaxMixerVolume, Mathf.InverseLerp(AudioMixerParameters.MinSliderValue, AudioMixerParameters.MaxSliderValue, clampedValue));
         }
+
+        #endregion
+    }
+}
+namespace Setting.Menu
+{
+    /// <summary>
+    /// AudioMixer exposed parameter names.
+    /// </summary>
+    public static class AudioMixerParameters
+    {
+        #region Constants
+
+        public const string MasterVolumeParameter = "MasterVolume";
+        public const string MusicVolumeParameter = "MusicVolume";
+        public const string AmbienceVolumeParameter = "AmbienceVolume";
+        public const string SFXVolumeParameter = "SFXVolume";
+        public const string VoiceVolumeParameter = "VoiceVolume";
+
+        public const float MinMixerVolume = -80f;
+        public const float MaxMixerVolume = 0f;
+        public const float MinSliderValue = 0f;
+        public const float MaxSliderValue = 1f;
 
         #endregion
     }

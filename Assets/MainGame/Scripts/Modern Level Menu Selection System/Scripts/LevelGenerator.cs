@@ -38,8 +38,10 @@ namespace ModernLevelSelection
         [Tooltip("Number of Scenes to avoid. for show unlocked or locked levels.")]
         [SerializeField]
         private int avoidScenecount = 1;
-       
 
+
+        [SerializeField]
+        private GameObject _continueButton;
         #endregion
 
         #region Events
@@ -140,6 +142,15 @@ namespace ModernLevelSelection
             int maxPlayable = LevelManager.GetHighestPlayableLevelFromBuild(avoidScenecount);
             Debug.Log("Highest Unlocked : " + SaveManager.GetHighestUnlocked());
             Debug.Log("Highest Playable : " + LevelManager.GetHighestPlayableLevelFromBuild(avoidScenecount));
+            // Show Continue button only if more than one level is unlocked.
+            if (_continueButton != null)
+            {
+                if (SaveManager.GetHighestUnlocked() > 1)
+                    _continueButton.SetActive(true);
+                else
+                    _continueButton.SetActive(false);
+            }
+
             for (int i = 0; i < total; i++)
             {
                 int levelNumber = i + 1;
