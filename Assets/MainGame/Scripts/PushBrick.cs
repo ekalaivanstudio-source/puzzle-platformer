@@ -7,7 +7,9 @@ using UnityEngine;
 /// Only pushing is possible — the player cannot pull.
 ///
 /// When the player's horizontal movement hits this brick:
-///   • The brick slides one unit in the movement direction (if not blocked).
+///   • The brick slides one push distance in the movement direction, stopping short
+///     if something blocks it or if it reaches a cell with no ground under it — in
+///     which case it falls into the gap rather than sliding across.
 ///   • The player stops at their current position.
 ///   • The remaining distance of the current move command is abandoned.
 ///   • Execution continues with the next command in the sequence.
@@ -36,7 +38,9 @@ public class PushBrick : MonoBehaviour
     [Tooltip("Speed at which the brick slides after being pushed (units / sec).")]
     [SerializeField] private float m_PushSpeed = 10f;
 
-    [Tooltip("Distance the brick travels per push (should match the level grid unit).")]
+    [Tooltip("Distance the brick travels per push. Usually matches the player's Move " +
+             "Distance Per Command so brick and player stay in step; it may span several " +
+             "grid units, and the brick still stops at the first unsupported unit.")]
     [SerializeField] private float m_PushDistance = 1f;
 
     [Tooltip("Layers that block the brick's movement (Ground, walls, other bricks, etc.).")]
@@ -82,6 +86,12 @@ public class PushBrick : MonoBehaviour
 
     // Thickness of the probe used to detect ground directly under the brick.
     private const float k_GroundProbeThickness = 0.05f;
+
+    // One cell of the level grid. Every level uses a 1-unit Grid, so pushes and falls
+    // advance in 1-unit steps and the brick is support-checked at every cell it enters.
+    // This is deliberately NOT m_PushDistance: a push may span several cells, and using
+    // the push length as the step would skip over any hole narrower than it.
+    private const float k_GridUnit = 1f;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -130,8 +140,9 @@ public class PushBrick : MonoBehaviour
 
     /// <summary>
     /// Called by <see cref="PlayerController"/> when the player walks into this brick.
-    /// Slides the brick one unit in <paramref name="signDir"/> (+1 right, -1 left)
-    /// unless the destination is blocked.
+    /// Slides the brick <see cref="m_PushDistance"/> in <paramref name="signDir"/>
+    /// (+1 right, -1 left), stopping early at whatever comes first: a blocker in the
+    /// path, or the first grid cell with nothing underneath — where it drops instead.
     /// </summary>
     public IEnumerator Push(float signDir)
     {
@@ -156,16 +167,30 @@ public class PushBrick : MonoBehaviour
         // clear this is a no-op (start + integer distance is already on-grid).
         float targetX = dir.x > 0f ? Mathf.Floor(rawTargetX) : Mathf.Ceil(rawTargetX);
 
-        Vector3 target = new Vector3(targetX, transform.position.y, transform.position.z);
-
+        // Slide one grid unit at a time, checking support after each unit. A push can
+        // span several cells, so testing only the final destination would let the brick
+        // glide straight over a hole narrower than the push and land on the far side.
+        // Stopping at the first unsupported cell makes it drop into the gap instead.
         while (Mathf.Abs(transform.position.x - targetX) > 0.01f)
         {
-            transform.position = Vector3.MoveTowards(
-                transform.position, target, m_PushSpeed * Time.fixedDeltaTime);
-            yield return new WaitForFixedUpdate();
-        }
+            float remaining = targetX - transform.position.x;
+            float step = Mathf.Min(k_GridUnit, Mathf.Abs(remaining)) * Mathf.Sign(remaining);
 
-        transform.position = target;
+            Vector3 stepTarget = new Vector3(
+                transform.position.x + step, transform.position.y, transform.position.z);
+
+            while (Mathf.Abs(transform.position.x - stepTarget.x) > 0.01f)
+            {
+                transform.position = Vector3.MoveTowards(
+                    transform.position, stepTarget, m_PushSpeed * Time.fixedDeltaTime);
+                yield return new WaitForFixedUpdate();
+            }
+
+            transform.position = stepTarget;
+
+            // Nothing underneath this cell — abandon the rest of the push and fall.
+            if (!IsSupportedForFall()) break;
+        }
 
         // The push may have left the brick hanging over a gap — drop it if so.
         yield return Fall();
@@ -210,7 +235,7 @@ public class PushBrick : MonoBehaviour
             transform.position = target;
 
             // A surface stopped the brick short of a full step → it has landed.
-            if (drop < m_PushDistance - 0.01f)
+            if (drop < k_GridUnit - 0.01f)
                 break;
 
             unitsFallen++;
@@ -271,7 +296,7 @@ public class PushBrick : MonoBehaviour
         return allowed;
     }
 
-    // How far (≤ m_PushDistance) the brick can drop before landing on a surface.
+    // How far (≤ k_GridUnit) the brick can drop before landing on a surface.
     // Unlike GetAllowedDistance this uses the landing rule, so the brick also lands
     // on spikes (by tag) and the laser emitter (by layer), not just Blocking Layers.
     private float GetFallDistance()
@@ -283,9 +308,9 @@ public class PushBrick : MonoBehaviour
         Vector2 size = b.size * 0.95f;
 
         int count = Physics2D.BoxCast(
-            b.center, size, 0f, Vector2.down, m_LandingFilter, m_CastResults, m_PushDistance);
+            b.center, size, 0f, Vector2.down, m_LandingFilter, m_CastResults, k_GridUnit);
 
-        float allowed = m_PushDistance;
+        float allowed = k_GridUnit;
         for (int i = 0; i < count; i++)
         {
             RaycastHit2D hit = m_CastResults[i];
