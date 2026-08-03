@@ -383,6 +383,8 @@ MonoBehaviour:
   m_ControlEnterClip: {fileID: 0}
   m_ControlExitClip: {fileID: 0}
   m_LevelCompleteClip: {fileID: 0}
+  m_SfxSource: {fileID: 5264303634613232840}
+  m_VoiceSource: {fileID: 113815223126868119}
 --- !u!1 &6338316325353491884
 GameObject:
   m_ObjectHideFlags: 0
@@ -1011,9 +1013,19 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+--- !u!82 &113815223126868119 stripped
+AudioSource:
+  m_CorrespondingSourceObject: {fileID: 4139688280874182935, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+  m_PrefabInstance: {fileID: 4100381059761842560}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &4135507738513851386 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 108997584628443770, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
+  m_PrefabInstance: {fileID: 4100381059761842560}
+  m_PrefabAsset: {fileID: 0}
+--- !u!82 &5264303634613232840 stripped
+AudioSource:
+  m_CorrespondingSourceObject: {fileID: 8208349747236523336, guid: 32acd36e0552973418ff9b338205e5aa, type: 3}
   m_PrefabInstance: {fileID: 4100381059761842560}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &8283785026588201010

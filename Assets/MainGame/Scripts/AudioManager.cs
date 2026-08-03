@@ -102,7 +102,7 @@ public class AudioManager : MonoBehaviour
         m_WalkSource  = CreateSource(true);
         m_LaserSource = CreateSource(true);
         m_UiSource    = CreateSource(false);
-        ApplyVolumes();
+      //  ApplyVolumes();
     }
 
     private void Start()
