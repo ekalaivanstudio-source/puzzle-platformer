@@ -503,13 +503,13 @@ CompositeCollider2D:
         Y: 69444
       - X: -50000000
         Y: 69444
-    - - X: -10000000
+    - - X: 0
         Y: -10069444
       - X: -30000000
         Y: -10069444
       - X: -30000000
         Y: -19930556
-      - X: -10000000
+      - X: 0
         Y: -19930556
     - - X: 70000000
         Y: -20069444
@@ -545,8 +545,8 @@ CompositeCollider2D:
       - {x: -5.000029, y: 0.9930556}
       - {x: -8, y: 0.9930263}
       - {x: -7.9999704, y: 0.0069444003}
-    - - {x: -1.0000293, y: -1.9930556}
-      - {x: -1.0000293, y: -1.0069444}
+    - - {x: -0.000029300001, y: -1.9930556}
+      - {x: -0.000029300001, y: -1.0069444}
       - {x: -3, y: -1.0069737}
       - {x: -2.999971, y: -1.9930556}
     - - {x: 6.9999704, y: -2.9930556}
@@ -3100,6 +3100,16 @@ Tilemap:
   - first: {x: -3, y: -2, z: 0}
     second:
       serializedVersion: 2
+      m_TileIndex: 5
+      m_TileSpriteIndex: 5
+      m_TileMatrixIndex: 0
+      m_TileColorIndex: 0
+      m_TileObjectToInstantiateIndex: 65535
+      dummyAlignment: 0
+      m_AllTileFlags: 1073741825
+  - first: {x: -2, y: -2, z: 0}
+    second:
+      serializedVersion: 2
       m_TileIndex: 4
       m_TileSpriteIndex: 4
       m_TileMatrixIndex: 0
@@ -3107,7 +3117,7 @@ Tilemap:
       m_TileObjectToInstantiateIndex: 65535
       dummyAlignment: 0
       m_AllTileFlags: 1073741825
-  - first: {x: -2, y: -2, z: 0}
+  - first: {x: -1, y: -2, z: 0}
     second:
       serializedVersion: 2
       m_TileIndex: 3
@@ -5195,7 +5205,7 @@ Tilemap:
     m_RefCount: 5
     m_Data: {fileID: 11400000, guid: 0db297355181c2b4ea6e665e95f52171, type: 2}
   - serializedVersion: 2
-    m_RefCount: 3
+    m_RefCount: 4
     m_Data: {fileID: 11400000, guid: fbdd3df69ba14914daae9aac56227aea, type: 2}
   - serializedVersion: 2
     m_RefCount: 29
@@ -5226,7 +5236,7 @@ Tilemap:
     m_RefCount: 5
     m_Data: {fileID: 1939470507, guid: 7122581f222eedf4d96acea11f8a3e0f, type: 3}
   - serializedVersion: 2
-    m_RefCount: 3
+    m_RefCount: 4
     m_Data: {fileID: -1829602055, guid: 7122581f222eedf4d96acea11f8a3e0f, type: 3}
   - serializedVersion: 2
     m_RefCount: 29
@@ -5242,7 +5252,7 @@ Tilemap:
     m_Data: {fileID: -1803425580, guid: cfc6ec2a2c7a17c41b80f618d0fb5602, type: 3}
   m_TileMatrixArray:
   - serializedVersion: 2
-    m_RefCount: 449
+    m_RefCount: 450
     m_Data:
       e00: 1
       e01: 0
@@ -5262,7 +5272,7 @@ Tilemap:
       e33: 1
   m_TileColorArray:
   - serializedVersion: 2
-    m_RefCount: 449
+    m_RefCount: 450
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   - serializedVersion: 2
     m_RefCount: 0
