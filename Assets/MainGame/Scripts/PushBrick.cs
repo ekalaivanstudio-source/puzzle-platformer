@@ -21,6 +21,10 @@ using UnityEngine;
 /// Setup:
 ///   • Place on the Ground layer so the player wall-check detects it.
 ///   • Assign Blocking Layers (what stops the brick from being pushed further).
+///   • Include GridSolid in Landing Layers so the brick rests on the CELL of objects
+///     whose art collider is smaller than the cell they occupy (spikes). Without it the
+///     support probe misses the short collider, the brick reads as unsupported, falls
+///     the sub-unit gap onto the art geometry, and settles at a fractional Y.
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class PushBrick : MonoBehaviour
@@ -36,12 +40,12 @@ public class PushBrick : MonoBehaviour
     [SerializeField] private bool m_ResetOnRespawn = false;
 
     [Tooltip("Speed at which the brick slides after being pushed (units / sec).")]
-    [SerializeField] private float m_PushSpeed = 10f;
+     private float m_PushSpeed = 10f;
 
     [Tooltip("Distance the brick travels per push. Usually matches the player's Move " +
              "Distance Per Command so brick and player stay in step; it may span several " +
              "grid units, and the brick still stops at the first unsupported unit.")]
-    [SerializeField] private float m_PushDistance = 1f;
+     private float m_PushDistance = 7f;
 
     [Tooltip("Layers that block the brick's movement (Ground, walls, other bricks, etc.).")]
     [SerializeField] private LayerMask m_BlockingLayers;
@@ -54,12 +58,16 @@ public class PushBrick : MonoBehaviour
     private int m_MaxFallUnits = 20;
 
     [Tooltip("Extra layers the brick lands on while falling, beyond Blocking Layers " +
-             "(e.g. the Laser emitter layer). Ground is already covered by Blocking Layers.")]
+             "(e.g. the Laser emitter layer, and GridSolid for cell footprints). " +
+             "Ground is already covered by Blocking Layers.")]
     [SerializeField] private LayerMask m_LandingLayers;
 
-    [Tooltip("Falling brick also lands on top of colliders with this tag (e.g. spikes), " +
-             "whatever layer they sit on. Leave blank to disable tag-based landing.")]
-    [SerializeField] private string m_LandingTag = "Spike";
+    [Tooltip("Falling brick also lands on top of colliders with this tag, whatever layer " +
+             "they sit on. LEAVE BLANK unless you know the tagged collider fills its whole " +
+             "cell — a tagged art collider smaller than its cell (spikes) makes the brick " +
+             "land on the art geometry and come to rest at a fractional Y. Put a 1x1 " +
+             "GridSolid footprint on such objects and use Landing Layers instead.")]
+    [SerializeField] private string m_LandingTag = "";
 
     [Header("Destroy FX")]
     [Tooltip("Particle prefab spawned at the brick's position when destroyed by a laser.")]
@@ -194,6 +202,12 @@ public class PushBrick : MonoBehaviour
 
         // The push may have left the brick hanging over a gap — drop it if so.
         yield return Fall();
+
+        // Settle on the cell grid. MoveTowards leaves sub-millimetre residue on X, and
+        // Fall() lands the brick on whatever surface geometry it found — which for an
+        // object whose art collider is smaller than its cell is a fractional Y. Left
+        // uncorrected the brick occupies a row that no support/blocking query agrees on.
+        transform.position = GridWorld.SnapToCell(transform.position);
     }
 
     // ─── Fall ─────────────────────────────────────────────────────────────────

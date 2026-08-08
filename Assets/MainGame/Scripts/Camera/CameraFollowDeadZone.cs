@@ -38,7 +38,11 @@ public class CameraFollowDeadZone : MonoBehaviour
 
         if (target == null)
         {
-            PlayerController player = FindFirstObjectByType<PlayerController>();
+            // Scene-scoped, and disabled objects included: a level with an entry door starts
+            // with its player disabled in the doorway, so the ordinary search finds nothing
+            // and the camera would never follow anyone — while an inactive-inclusive Unity
+            // search would hand back the player PREFAB ASSET and follow that instead.
+            PlayerController player = SceneObjects.FindInActiveScene<PlayerController>();
 
             if (player != null)
                 target = player.transform;
