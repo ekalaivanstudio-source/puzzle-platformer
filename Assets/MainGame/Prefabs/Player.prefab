@@ -177,7 +177,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3645185109527651536}
@@ -256,23 +256,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03baf45f5c9bb3d409dbe14b3748a364, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  m_MoveDistancePerCommand: 3
+  m_MoveDistancePerCommand: 5
   m_MoveDuration: 0.45
-  m_JumpHeight: 3
-  m_JumpForwardDistance: 4
+  m_JumpHeight: 6
+  m_JumpForwardDistance: 8
   m_JumpDuration: 1
   m_BeatGapTime: 0
-  m_CommandTimeout: 1
   m_GroundLayers:
   - serializedVersion: 2
     m_Bits: 64
   - serializedVersion: 2
     m_Bits: 192
-  m_GroundCheckRadius: 0.15
-  m_GroundCheckDistance: 0.1
-  m_LeftGroundCheck: {fileID: 1829714759078041871}
-  m_RightGroundCheck: {fileID: 2204781298614608187}
-  m_GroundRayLength: 0.15
+  m_FallGravity: 40
+  m_MaxFallSpeed: 25
+  m_FallTimeout: 6
+  m_LedgeHopHeight: 1.2
+  m_LedgeHopGravityScale: 1
+  m_PortalDuration: 1
+  m_PortalSpins: 3
+  m_DoorEnterEffect: {fileID: 2020661361868494885, guid: 895c6d094b6b213418cddcfb520298e9, type: 3}
+  m_DoorEnterEffectScale: 0.2
+  m_SpawnDoorLead: 0.15
   m_InteractRadius: 0.5
   m_InteractLayer:
     serializedVersion: 2
@@ -327,7 +331,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8, y: 1}
+  m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
 --- !u!50 &7558299849532869897
 Rigidbody2D:
@@ -337,9 +341,9 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1924888670265140245}
-  m_BodyType: 0
+  m_BodyType: 1
   m_Simulated: 1
-  m_UseFullKinematicContacts: 0
+  m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
@@ -381,7 +385,12 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 0a6ab87644568994990bcb52d2b4accd, type: 3}
   - {fileID: 21300000, guid: 5892f4ec3bcb05b4d9398b210ea49a87, type: 3}
   - {fileID: 21300000, guid: 4632b5da46fb6db4cb1aed49ac644215, type: 3}
-  m_Idle4: []
+  m_Idle4:
+  - {fileID: 21300000, guid: 12fb6de54340f5f4692a08162dfbd331, type: 3}
+  - {fileID: 21300000, guid: 4dc7840cdfa21e74298830be88f284b8, type: 3}
+  - {fileID: 21300000, guid: 9d8eea7bcc219c44eae0c8eca50ad41a, type: 3}
+  - {fileID: 21300000, guid: cb2bc02a38645ee40a0b0b61a1a34e58, type: 3}
+  - {fileID: 21300000, guid: de58884652f4b7343828d3ebcd665803, type: 3}
   m_IdleFps: 6
   m_RunFrames:
   - {fileID: 21300000, guid: ffd1ae43ed5c06545a6ee6c279d10850, type: 3}

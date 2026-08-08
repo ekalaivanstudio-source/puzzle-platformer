@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
@@ -16,17 +15,26 @@ public class KeySlot : MonoBehaviour
 
     [Header("Door")]
     [SerializeField] private BoxCollider2D m_DoorCollider;
-    [Tooltip("Door sprite renderer whose sprite swaps when the key is placed.")]
-    [SerializeField] private SpriteRenderer m_DoorRenderer;
-
-    [Tooltip("Door open animation frames. Frame 0 is the closed state; the last frame is the fully-open state.")]
-    [SerializeField] private Sprite[] doorOpenSS;
-    [Tooltip("Seconds each frame of the door open animation is shown.")]
-    [SerializeField] private float m_DoorFrameTime = 0.06f;
+    [Tooltip("The exit door this slot opens. It owns the doorway's animation and its open " +
+             "effect — the slot only tells it when to open and when to go back to shut — so " +
+             "the frames, the renderer and the effect are configured over there, on the door.")]
+    [SerializeField] private LevelExitDoor m_ExitDoor;
 
     [SerializeField] private GameObject shineEffect;
+
+    [Header("Place Effect")]
+    [Tooltip("Burst spawned at the slot the moment the key is placed. Optional. A particle " +
+             "prefab — it is destroyed automatically once its systems have finished, so it " +
+             "needs no self-cleanup.")]
+    [SerializeField] private GameObject m_PlaceEffect;
+    [Tooltip("Offset from the slot's position where the place effect spawns.")]
+    [SerializeField] private Vector3 m_PlaceEffectOffset;
+    [Tooltip("Uniform scale applied to the spawned effect. The FX pack's flashes are authored " +
+             "around a dozen world units wide, so a burst meant to sit on a one-unit grid cell " +
+             "needs shrinking here.")]
+    [SerializeField] private float m_PlaceEffectScale = 1f;
+
     private bool m_Filled;
-    private Coroutine m_DoorAnimation;
 
     private void Awake()
     {
@@ -42,7 +50,7 @@ public class KeySlot : MonoBehaviour
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
 
-        SetDoorClosed();
+        m_ExitDoor?.SetClosed();
     }
 
     // Reset on OnKeyReset (fired only when a full input run finishes) — NOT OnTurnReset.
@@ -80,6 +88,10 @@ public class KeySlot : MonoBehaviour
         if (shineEffect != null)
             shineEffect.SetActive(true);
 
+        // Burst at the socket, punctuating the moment the key drops in.
+        ParticleEffectSpawner.Spawn(
+            m_PlaceEffect, transform.position + m_PlaceEffectOffset, m_PlaceEffectScale);
+
         m_LinkedKey?.Place();
         AudioManager.Instance?.PlayKeyPlaced();
 
@@ -89,7 +101,7 @@ public class KeySlot : MonoBehaviour
             AudioManager.Instance?.PlayDoorOpen();
         }
 
-        PlayDoorOpenAnimation();
+        m_ExitDoor?.Open();
 
         GameManager.Instance?.KeyCollected();
     }
@@ -110,45 +122,7 @@ public class KeySlot : MonoBehaviour
         if (m_DoorCollider != null)
             m_DoorCollider.enabled = false;
 
-        SetDoorClosed();
+        m_ExitDoor?.SetClosed();
     }
 
-    // Closed state uses the first frame of the door open animation.
-    private void SetDoorClosed()
-    {
-        if (m_DoorAnimation != null)
-        {
-            StopCoroutine(m_DoorAnimation);
-            m_DoorAnimation = null;
-        }
-
-        if (m_DoorRenderer != null && doorOpenSS != null && doorOpenSS.Length > 0)
-            m_DoorRenderer.sprite = doorOpenSS[0];
-    }
-
-    // Plays doorOpenSS from start to finish and holds on the last frame.
-    private void PlayDoorOpenAnimation()
-    {
-        if (m_DoorRenderer == null || doorOpenSS == null || doorOpenSS.Length == 0)
-            return;
-
-        if (m_DoorAnimation != null)
-            StopCoroutine(m_DoorAnimation);
-
-        m_DoorAnimation = StartCoroutine(DoorOpenRoutine());
-    }
-
-    private IEnumerator DoorOpenRoutine()
-    {
-        for (int i = 0; i < doorOpenSS.Length; i++)
-        {
-            m_DoorRenderer.sprite = doorOpenSS[i];
-
-            if (i < doorOpenSS.Length - 1 && m_DoorFrameTime > 0f)
-                yield return new WaitForSeconds(m_DoorFrameTime);
-        }
-
-        // Hold on the last (fully-open) frame.
-        m_DoorAnimation = null;
-    }
 }
