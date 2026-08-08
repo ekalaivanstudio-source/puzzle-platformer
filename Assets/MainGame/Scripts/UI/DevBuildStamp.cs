@@ -20,13 +20,26 @@ public sealed class DevBuildStamp : MonoBehaviour
 
     private const KeyCode ToggleKey = KeyCode.F9;
 
+    /// <summary>Breathing room on each side of the line, so it never touches the safe-area edges.</summary>
+    private const float HorizontalPadding = 12f;
+
+    /// <summary>Smallest font we will shrink to when squeezing the line into a narrow window.</summary>
+    private const int MinFontSize = 9;
+
     private static DevBuildStamp s_Instance;
 
     private string m_Text;
+    private GUIContent m_Content;
     private GUIStyle m_LabelStyle;
     private GUIStyle m_BackdropStyle;
     private Texture2D m_BackdropTexture;
     private bool m_IsVisible = true;
+
+    // Screen size the current styles/metrics were measured against; a resize rebuilds them.
+    private int m_StyledWidth;
+    private int m_StyledHeight;
+    private float m_BarHeight;
+    private float m_BottomMargin;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Install()
@@ -66,9 +79,14 @@ public sealed class DevBuildStamp : MonoBehaviour
         // Sit above the mobile gesture bar / notch cut-outs. safeArea is in screen
         // space with y growing upwards; GUI space grows downwards, hence the flip.
         Rect safe = Screen.safeArea;
-        float barHeight = m_LabelStyle.fontSize + 10f;
         float bottomInset = Screen.height - (safe.y + safe.height);
-        Rect bar = new Rect(safe.x, Screen.height - bottomInset - barHeight, safe.width, barHeight);
+
+        // Keep a margin below the bar rather than hugging the very last row of
+        // pixels: game-view scaling, letterboxing and display overscan all eat a
+        // few pixels off the bottom edge, which would clip the glyphs in half.
+        float barBottom = Screen.height - bottomInset - m_BottomMargin;
+        float barTop = Mathf.Max(0f, barBottom - m_BarHeight);
+        Rect bar = new Rect(safe.x, barTop, safe.width, barBottom - barTop);
 
         GUI.depth = -1000; // draw on top of any other IMGUI in the scene
         GUI.Box(bar, GUIContent.none, m_BackdropStyle);
@@ -97,27 +115,58 @@ public sealed class DevBuildStamp : MonoBehaviour
         return line;
     }
 
+    /// <summary>
+    /// Builds the styles and measures the bar, and does so again whenever the
+    /// screen is resized so the scale never goes stale in a resizable window.
+    /// Must run inside OnGUI — text measurement needs the live GUI skin.
+    /// </summary>
     private void BuildStyles()
     {
-        if (m_LabelStyle != null) return;
+        if (m_LabelStyle != null && m_StyledWidth == Screen.width && m_StyledHeight == Screen.height) return;
+
+        m_StyledWidth = Screen.width;
+        m_StyledHeight = Screen.height;
 
         // Same clamped 1080p-relative scale the restart dialog uses, so the stamp
         // stays readable on phones without dominating a desktop window.
         float scale = Mathf.Clamp(Mathf.Min(Screen.width / 1920f, Screen.height / 1080f), 0.75f, 1.35f);
 
-        m_BackdropTexture = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
-        m_BackdropTexture.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.55f));
-        m_BackdropTexture.Apply();
+        if (m_BackdropTexture == null)
+        {
+            m_BackdropTexture = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
+            m_BackdropTexture.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.55f));
+            m_BackdropTexture.Apply();
+            m_BackdropStyle = new GUIStyle { normal = { background = m_BackdropTexture } };
+        }
 
-        m_BackdropStyle = new GUIStyle { normal = { background = m_BackdropTexture } };
+        m_Content = new GUIContent(m_Text);
         m_LabelStyle = new GUIStyle(GUI.skin.label)
         {
             alignment = TextAnchor.MiddleCenter,
             fontSize = Mathf.RoundToInt(18f * scale),
             fontStyle = FontStyle.Bold,
             wordWrap = false,
+            padding = new RectOffset(0, 0, 0, 0),
             normal = { textColor = new Color(1f, 0.82f, 0.25f, 1f) }
         };
+
+        // wordWrap is off, so a line wider than the safe area would spill past both
+        // ends. Shrink until it fits instead of letting it run off the screen.
+        float available = Mathf.Max(1f, Screen.safeArea.width - 2f * HorizontalPadding);
+        while (m_LabelStyle.fontSize > MinFontSize && m_LabelStyle.CalcSize(m_Content).x > available)
+        {
+            m_LabelStyle.fontSize--;
+        }
+
+        // Measure the line rather than assuming fontSize + padding: dynamic fonts
+        // report a line height taller than their point size, which is what pushed
+        // the descenders past the bottom edge.
+        float lineHeight = m_LabelStyle.CalcHeight(m_Content, available);
+        m_BarHeight = Mathf.Ceil(lineHeight) + Mathf.Round(8f * scale);
+
+        // Proportional, so the gap survives high-DPI game views where a handful of
+        // absolute pixels would be invisible once the view is scaled down.
+        m_BottomMargin = Mathf.Round(Mathf.Max(6f * scale, Screen.height * 0.012f));
     }
 }
 
