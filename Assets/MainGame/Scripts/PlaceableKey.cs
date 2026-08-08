@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -62,10 +61,6 @@ public class PlaceableKey : MonoBehaviour
     private Transform m_PlayerTransform;
     private bool m_Collected;
     private SpriteRenderer m_SpriteRenderer;
-
-    // Held so a reset landing between the pickup and the player touching down can cancel the
-    // burst, rather than firing it over a key that is already back in the world.
-    private Coroutine m_CollectEffectRoutine;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -135,7 +130,7 @@ public class PlaceableKey : MonoBehaviour
         // Key has been collected — stop the shine effect.
         Show(shineEffect, false);
 
-        m_CollectEffectRoutine = StartCoroutine(CollectEffectRoutine());
+        SpawnCollectEffect();
 
         // Hide sprite — key is now "in the player's hands".
         if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
@@ -145,20 +140,19 @@ public class PlaceableKey : MonoBehaviour
         if (col != null) col.enabled = false;
     }
 
-    // The pickup triggers on proximity, which the player often reaches mid-jump — the arc
-    // passes within range well before it comes down. Bursting there would leave the effect
-    // hanging in mid-air, disowned by the landing that earned it, so it waits for the feet
-    // to be back on the ground. Grounded already (a walk into the battery) costs one frame.
-    private IEnumerator CollectEffectRoutine()
-    {
-        while (PlayerController.Instance != null && PlayerController.Instance.IsAirborne)
-            yield return null;
-
-        SpawnCollectEffect();
-        m_CollectEffectRoutine = null;
-    }
-
-    // Burst at the battery's own depth, so it draws with the pickup rather than at z 0.
+    // Fires on the pickup frame, NOT deferred to the player's next landing.
+    //
+    // It used to wait out PlayerController.IsAirborne so the burst would coincide with the
+    // feet touching down. That flag is only false BETWEEN commands, and with a zero beat gap
+    // one jump sets it back to true in the same tick the previous one cleared it — no Update
+    // ever runs in between, so a per-frame poll of it is a race. In Level 7, where the key is
+    // taken mid-descent and every following beat is another jump, the poll lost: the burst was
+    // held until the landing on the KeySlot and read as the pickup effect playing on placement.
+    //
+    // Nothing is gained by waiting anyway: the burst spawns at the KEY's own position, which
+    // is a fixed spot on the ground, so it was never going to hang in mid-air over the player.
+    //
+    // Burst at the key's own depth, so it draws with the pickup rather than at z 0.
     // ParticleEffectSpawner owns the scaling, the fade, and the cleanup.
     private void SpawnCollectEffect() =>
         ParticleEffectSpawner.Spawn(
@@ -174,14 +168,6 @@ public class PlaceableKey : MonoBehaviour
     {
         m_Collected = false;
         IsCarried = false;
-
-        // A burst still waiting on the player to land belongs to a pickup this reset has
-        // just undone — drop it, or it would go off over a key back in the world.
-        if (m_CollectEffectRoutine != null)
-        {
-            StopCoroutine(m_CollectEffectRoutine);
-            m_CollectEffectRoutine = null;
-        }
 
         Show(m_PickIcon, false);
         Show(m_CarryIndicator, false);
