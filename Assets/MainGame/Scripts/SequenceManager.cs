@@ -53,6 +53,13 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     /// </summary>
     public void SetCorrectSequence(ActionTypeEnum[] sequence) { m_CorrectSequence = sequence; }
 
+    /// <summary>
+    /// Read-only view of the correct sequence registered for this level, or null when none is set.
+    /// Read by <see cref="AutoPlayTester"/> so the solution it plays back does not have to be
+    /// authored a second time when the level's correct sequence is already concrete.
+    /// </summary>
+    public IReadOnlyList<ActionTypeEnum> CorrectSequence => m_CorrectSequence;
+
     /// <summary>True when the queue has reached its maximum length.</summary>
     public bool IsFull => m_Sequence.Count >= m_MaxSequenceLength;
 

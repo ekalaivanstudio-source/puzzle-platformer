@@ -44,9 +44,6 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
 
-    [Tooltip("Max seconds a single movement command may run. If exceeded the turn ends (safety net for getting stuck).")]
-    [SerializeField] private float m_CommandTimeout = 3f;
-
     [Header("Ground Check")]
     [Tooltip("All layers that count as walkable ground / solid walls (Ground, Laser, etc.).")]
     [SerializeField] private LayerMask[] m_GroundLayers;
@@ -55,17 +52,59 @@ public class PlayerController : MonoBehaviour
     // property recomputed this every ground/wall check by looping the array.
     private int m_WalkableMask;
     private LayerMask WalkableMask => m_WalkableMask;
-    [Tooltip("Radius of the overlap circle used to detect ground contact. Increase if the player gets stuck when half-inside a surface.")]
-    [SerializeField] private float m_GroundCheckRadius = 0.15f;
-    [Tooltip("How far below the collider bottom the circle centre is placed.")]
-    [SerializeField] private float m_GroundCheckDistance = 0.05f;
 
-    [Tooltip("Left foot origin. A ray is cast straight down from here to detect ground under the player's left corner.")]
-    [SerializeField] private Transform m_LeftGroundCheck;
-    [Tooltip("Right foot origin. A ray is cast straight down from here to detect ground under the player's right corner.")]
-    [SerializeField] private Transform m_RightGroundCheck;
-    [Tooltip("Length of the downward rays cast from the left/right foot origins.")]
-    [SerializeField] private float m_GroundRayLength = 0.15f;
+    [Header("Falling")]
+    [Tooltip("Downward acceleration (units/sec²) while falling. A pure script value — the " +
+             "body is kinematic and ignores Physics2D.gravity entirely.")]
+    [SerializeField] private float m_FallGravity = 40f;
+
+    [Tooltip("Terminal fall speed (units/sec).")]
+    [SerializeField] private float m_MaxFallSpeed = 25f;
+
+    [Tooltip("Abandon a fall after this many seconds — the player is over the void.")]
+    [SerializeField] private float m_FallTimeout = 6f;
+
+    [Tooltip("Peak height (units) of the small hop the player makes when a step walks off a " +
+             "ledge into empty space. Set to 0 to step off flat.")]
+    [SerializeField] private float m_LedgeHopHeight = 1.2f;
+
+    [Tooltip("Scales the gravity the ledge hop arcs under, relative to Fall Gravity. 1 keeps " +
+             "the hop and the fall on one continuous curve. Below 1 makes the hop floatier " +
+             "and slower; above 1 snappier. Duration is derived — it is not a separate knob.")]
+    [SerializeField] private float m_LedgeHopGravityScale = 1f;
+
+    // Thickness of the probe used to detect ground directly under the player. Matches
+    // the equivalent constant in PushBrick so the brick and the player agree on what
+    // "supported" means.
+    private const float k_GroundProbeThickness = 0.05f;
+
+    // Footprint probes are shrunk by this factor so a surface the player is merely
+    // resting flush against never reads as an obstacle blocking the next cell.
+    private const float k_ProbeShrink = 0.9f;
+
+    [Header("Portal Spawn / Exit")]
+    [Tooltip("Seconds the spawn spin-in and the doorway spin-out each take.")]
+    [SerializeField] private float m_PortalDuration = 1f;
+
+    [Tooltip("Full turns the player spins through during a portal animation.")]
+    [SerializeField] private float m_PortalSpins = 3f;
+
+    [Tooltip("Effect burst spawned at the door's interaction point once the player has " +
+             "spun out of the level there. Optional. A particle prefab — it is destroyed " +
+             "automatically once its systems have finished, so it needs no self-cleanup.")]
+    [SerializeField] private GameObject m_DoorEnterEffect;
+
+    [Tooltip("Uniform scale applied to the door effect when it spawns. The stock FX packs are " +
+             "authored for a far larger world than this one — Flash_magic_ellow_blue throws " +
+             "particles 13 units wide, against a 1-unit grid cell — so a burst meant for a " +
+             "doorway has to be shrunk here rather than used at 1. 0.2 puts it at about two " +
+             "and a half cells, a little wider than the player.")]
+    [SerializeField] private float m_DoorEnterEffectScale = 0.2f;
+
+    [Tooltip("Seconds the player waits, invisible, on the entry door's arrival point before " +
+             "spinning in, so they read as coming out of the doorway rather than being " +
+             "there as the level opens.")]
+    [SerializeField] private float m_SpawnDoorLead = 0.15f;
 
     [Header("Interaction")]
     [Tooltip("Radius of the overlap circle used to detect interactable objects.")]
@@ -109,8 +148,53 @@ public class PlayerController : MonoBehaviour
     private bool m_IsHazardable = true;
 
     private Vector3 m_StartPosition;
-    private float m_OriginalGravityScale;
     private Vector3 m_OriginalScale;   // spawn facing — restored on respawn so a left-facing death doesn't persist
+
+    // ─── Motion state ───────────────────────────────────────────────────────────
+    // The body is kinematic, so linearVelocity is always zero and can no longer tell
+    // the animator or the footstep loop what the player is doing. These flags carry
+    // that information instead, set by whichever routine currently owns the body.
+
+    private bool m_IsWalking;    // mid-step of a horizontal command
+    private bool m_IsAirborne;   // mid-jump arc, or falling
+
+    /// <summary>
+    /// True while the player's feet are off the ground — mid-jump arc, or falling. Read by
+    /// effects that want to land with the player rather than go off in mid-air.
+    /// </summary>
+    public bool IsAirborne => m_IsAirborne;
+
+    // True while a command/transport routine is driving the body. Blocks the passive
+    // settle in FixedUpdate so the two never issue MovePosition in the same step.
+    private bool m_IsScriptedMotion;
+
+    // Set the moment the player touches the open door and never cleared — the level is on
+    // its way out. Guards against a second win starting while the portal is still drawing
+    // the player into the doorway; the door's collider spans the whole opening, so the
+    // travel through it would otherwise re-trigger the win every frame.
+    private bool m_IsWinning;
+
+    // Wall-clock cap on the travel into the doorway, so a mis-placed interaction point can
+    // never leave the player stepping towards a door that ends the level.
+    private const float k_DoorApproachTimeout = 3f;
+
+    // True while the spawn / exit portal animation owns the transform and the sprite.
+    // Everything that reads the collider has to stand down for it: the body is spinning
+    // and scaling through zero, so ground probes and hazard tests would be measuring a
+    // shape the player doesn't really have.
+    private bool m_IsPortalAnimating;
+
+    // Set the moment an arrival begins, by whichever of the two openings is running it. Start
+    // reads it to know the entry door has already brought this player in — the normal order
+    // for a player left disabled in the scene, whose Start only runs once the door enables it.
+    private bool m_IsEnteringFromDoor;
+
+    // Carried across FixedUpdate calls by the passive settle.
+    private float m_PassiveFallSpeed;
+
+    // Downward speed the ledge hop was travelling at when its arc ended, handed to the
+    // fall that follows so the drop continues the curve instead of restarting from rest.
+    private float m_HopExitFallSpeed;
 
     // Reusable buffers + filters for physics queries. Reusing these avoids the
     // per-call array allocation of the Physics2D.*All() overloads, which was
@@ -129,9 +213,32 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody = GetComponent<Rigidbody2D>();
         m_Collider = GetComponent<Collider2D>();
         if (m_Animator == null) m_Animator = GetComponent<PlayerAnimator>();
-        m_StartPosition = transform.position;
-        m_OriginalGravityScale = m_Rigidbody.gravityScale;
+        // Snapped, so a spawn the designer nudged off-grid in the scene doesn't seed a
+        // fractional offset into every command of every turn.
+        m_StartPosition = GridWorld.SnapToCell(transform.position);
+        // A zero authored scale is treated as 1: the arrival animation writes fractions of
+        // this scale, so capturing a zero would multiply every frame of the spin — and every
+        // frame of normal play after it — down to nothing, leaving an invisible player with
+        // no way back. Zero is a plausible thing to find here, since hiding the player at the
+        // start of a level is exactly what the entry door's opening does for real.
         m_OriginalScale = transform.localScale;
+        if (m_OriginalScale.x == 0f || m_OriginalScale.y == 0f)
+            m_OriginalScale = Vector3.one;
+
+        // Force the body kinematic. Movement is entirely scripted: every command steps a
+        // whole number of cells and every fall ends on a cell top, so the player can only
+        // ever come to rest on the grid. As a dynamic body the solver owned the transform
+        // between snaps — contact depenetration, friction and gravity each nudged it to a
+        // fractional position that nothing corrected until the command ended.
+        m_Rigidbody.bodyType = RigidbodyType2D.Kinematic;
+        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_Rigidbody.angularVelocity = 0f;
+
+        // REQUIRED. Kinematic bodies ignore static and other kinematic colliders by
+        // default, which silences OnTrigger/OnCollision callbacks against them. The door,
+        // collectables, key slots and touch triggers are all static — without this the
+        // level can't even be won.
+        m_Rigidbody.useFullKinematicContacts = true;
 
         // Cache the walkable layer union once — m_GroundLayers never changes at runtime.
         int combined = 0;
@@ -144,9 +251,24 @@ public class PlayerController : MonoBehaviour
         m_InteractFilter.SetLayerMask(m_InteractLayer);
     }
 
+    // The level's opening belongs to the entry door when the level has one: it fades the
+    // screen up, opens itself, and only then enables this player and calls
+    // EnterFromDoorRoutine. Nothing to do here in that case beyond standing down — and not
+    // even that once the door has already started the arrival, which is the normal order for
+    // a player left disabled in the scene, since Start runs a beat after being enabled.
+    //
+    // A level with no entry door still runs its own intro from here.
     private void Start()
     {
-        UIManager.Instance?.StartLevelFadeIn();
+        if (m_IsEnteringFromDoor) return;
+
+        if (SceneObjects.FindInActiveScene<LevelEntryDoor>() != null)
+        {
+            HideForArrival();
+            return;
+        }
+
+        StartCoroutine(SpawnPortalRoutine());
     }
 
     private void OnValidate()
@@ -157,9 +279,16 @@ public class PlayerController : MonoBehaviour
         if (m_JumpForwardDistance <= 0f) m_JumpForwardDistance = 2f;
         if (m_JumpDuration <= 0f) m_JumpDuration = 0.6f;
         if (m_BeatGapTime < 0f) m_BeatGapTime = 0f;
-        if (m_GroundCheckDistance < 0f) m_GroundCheckDistance = 0.05f;
-        if (m_GroundCheckRadius <= 0f) m_GroundCheckRadius = 0.15f;
+        if (m_FallGravity <= 0f) m_FallGravity = 40f;
+        if (m_MaxFallSpeed <= 0f) m_MaxFallSpeed = 25f;
+        if (m_FallTimeout <= 0f) m_FallTimeout = 6f;
+        if (m_LedgeHopHeight < 0f) m_LedgeHopHeight = 0f;
+        if (m_LedgeHopGravityScale <= 0f) m_LedgeHopGravityScale = 1f;
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
+        if (m_PortalDuration <= 0f) m_PortalDuration = 1f;
+        if (m_PortalSpins <= 0f) m_PortalSpins = 3f;
+        if (m_DoorEnterEffectScale <= 0f) m_DoorEnterEffectScale = 0.2f;
+        if (m_SpawnDoorLead < 0f) m_SpawnDoorLead = 0f;
     }
 
     // Animation-only update — movement is driven by coroutines, not Update
@@ -167,6 +296,10 @@ public class PlayerController : MonoBehaviour
     {
         // While dead the death animation owns the sprite; don't override it.
         if (m_IsDead) return;
+
+        // Same for the portal spin: it holds the player on the idle clip, and every check
+        // below reads a collider that is mid-spin and mid-scale.
+        if (m_IsPortalAnimating) return;
 
         // Animation runs even between turns so the player idles while standing.
         UpdateAnimationState();
@@ -176,7 +309,10 @@ public class PlayerController : MonoBehaviour
         // whether or not a command sequence happens to be running.
         if (m_IsHazardable) CheckSpikeOverlap();
 
-        if (!m_IsGamePlaying)
+        // m_IsWinning keeps the footstep loop running for the walk into the doorway —
+        // that walk happens after the turn was aborted, so m_IsGamePlaying is already
+        // false by then and this guard would otherwise mute it.
+        if (!m_IsGamePlaying && !m_IsWinning)
         {
             AudioManager.Instance?.SetWalking(false);
             return;
@@ -184,27 +320,65 @@ public class PlayerController : MonoBehaviour
         UpdateWalkAudio();
     }
 
-    // Chooses the animation clip from grounded state + velocity each frame:
-    // airborne → Jump, moving horizontally on the ground → Run, otherwise Idle.
+    // Keeps the player resting on a surface when no command is running. A kinematic
+    // body has no gravity of its own, so without this the player would hover in place
+    // when the ground leaves from under them — a moving platform sliding away, or a
+    // brick pushed out from beneath their feet between turns.
+    //
+    // Deliberately inert while a routine owns the body (m_IsScriptedMotion): two
+    // MovePosition calls in one physics step would fight each other.
+    private void FixedUpdate()
+    {
+        if (m_IsDead || m_IsScriptedMotion || m_IsPortalAnimating) { m_PassiveFallSpeed = 0f; return; }
+
+        if (CheckIsGrounded())
+        {
+            m_PassiveFallSpeed = 0f;
+            m_IsAirborne = false;
+            return;
+        }
+
+        m_PassiveFallSpeed = Mathf.Min(
+            m_PassiveFallSpeed + m_FallGravity * Time.fixedDeltaTime, m_MaxFallSpeed);
+
+        float step = m_PassiveFallSpeed * Time.fixedDeltaTime;
+        float drop = GroundDistanceBelow(step);
+
+        if (drop > 0f)
+        {
+            m_IsAirborne = true;
+            m_Rigidbody.MovePosition(m_Rigidbody.position + Vector2.down * drop);
+        }
+
+        // A surface stopped the fall short of the full step → landed. Settle on the cell.
+        if (drop < step)
+        {
+            m_PassiveFallSpeed = 0f;
+            m_IsAirborne = false;
+            SnapToGrid();
+        }
+    }
+
+    // Chooses the animation clip each frame. Reads the motion flags rather than
+    // linearVelocity, which is permanently zero on a kinematic body driven by
+    // MovePosition — velocity checks here used to leave the player idling mid-walk.
     private void UpdateAnimationState()
     {
         if (m_Animator == null) return;
 
-        if (!CheckIsGrounded())
+        if (m_IsAirborne || !CheckIsGrounded())
             m_Animator.Play(PlayerAnimState.Jump);
-        else if (Mathf.Abs(m_Rigidbody.linearVelocity.x) > 0.1f)
+        else if (m_IsWalking)
             m_Animator.Play(PlayerAnimState.Run);
         else
             m_Animator.Play(PlayerAnimState.Idle);
     }
 
-    // Drives the looping footstep sound: on while moving horizontally and roughly
-    // level (so it doesn't trigger during the airborne portion of a jump or a fall).
+    // Drives the looping footstep sound: on only while stepping along the ground, so
+    // it stays silent through the airborne portion of a jump or a fall.
     private void UpdateWalkAudio()
     {
-        Vector2 v = m_Rigidbody.linearVelocity;
-        bool walking = Mathf.Abs(v.x) > 0.1f && Mathf.Abs(v.y) < 0.5f;
-        AudioManager.Instance?.SetWalking(walking);
+        AudioManager.Instance?.SetWalking(m_IsWalking && !m_IsAirborne);
     }
 
     // ─── Public API ─────────────────────────────────────────────────────────────
@@ -222,9 +396,6 @@ public class PlayerController : MonoBehaviour
         }
 
         m_MaxTimeIndex = SequenceManager.Instance.SequenceLength;
-        // Safety: ensure gravity is at its normal value before the turn starts, in case a
-        // prior abort left it zeroed (gravity is temporarily disabled during edge-walks/jumps).
-        m_Rigidbody.gravityScale = m_OriginalGravityScale;
         m_IsGamePlaying = true;
         m_IsHazardable = true;
         m_ExecutionCoroutine = StartCoroutine(ExecutionLoop());
@@ -248,8 +419,11 @@ public class PlayerController : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
         // Do NOT update m_StartPosition � death and turn-end still reset to the
         // original spawn. The checkpoint only repositions the player for this turn.
-        m_Rigidbody.position = checkpointPosition;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        // Snapped, because the checkpoint is an authored scene transform and nothing
+        // guarantees the designer placed it exactly on a cell. Dropping the player onto a
+        // fractional X here would put every later command half a cell out of step.
+        m_Rigidbody.position = GridWorld.SnapToCell((Vector2)checkpointPosition);
+        m_PassiveFallSpeed = 0f;
         GameManager.Instance?.StopExecution();
     }
 
@@ -266,9 +440,7 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator WaypointTransportRoutine(Transform[] waypoints, float speed)
     {
-        float savedGravity = m_Rigidbody.gravityScale;
-        m_Rigidbody.gravityScale = 0f;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_IsScriptedMotion = true;
         // Hazards go quiet for the scripted ride: the collider is off, so their hit
         // tests would be reading a disabled collider's bounds.
         m_IsHazardable = false;
@@ -293,12 +465,11 @@ public class PlayerController : MonoBehaviour
             m_Rigidbody.MovePosition(target.position);
         }
 
-        m_Rigidbody.gravityScale = savedGravity;
-        m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
         // Back in the world under its own collider — a normal hittable body again,
         // whether the turn resumes below or ends.
         m_IsHazardable = true;
+        m_IsScriptedMotion = false;
 
         // Resume remaining commands; if none are left, end the turn normally
         int resumeIndex = m_CurrentCommandIndex + 1;
@@ -326,9 +497,7 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator WaypointTransportThenEndTurnRoutine(Transform[] waypoints, float speed)
     {
-        float savedGravity = m_Rigidbody.gravityScale;
-        m_Rigidbody.gravityScale = 0f;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_IsScriptedMotion = true;
         // Off for the scripted ride only: the collider is disabled below, so hazard hit
         // tests would be reading a disabled collider's bounds. Re-armed on arrival.
         m_IsHazardable = false;
@@ -352,11 +521,10 @@ public class PlayerController : MonoBehaviour
             m_Rigidbody.MovePosition(target.position);
         }
 
-        m_Rigidbody.gravityScale = savedGravity;
-        m_Rigidbody.linearVelocity = Vector2.zero;
         if (m_Collider != null) m_Collider.enabled = true;
         // Collider back on, so the player is a normal hittable body again.
         m_IsHazardable = true;
+        m_IsScriptedMotion = false;
 
         // End the turn — player resets to start position, just like wrong inputs.
         EndTurn();
@@ -394,6 +562,11 @@ public class PlayerController : MonoBehaviour
 
         if (m_IsGamePlaying)
             EndTurn();
+
+        // Cleared only on a loop that ran to completion. A loop killed by StopCoroutine
+        // never gets here, and its caller overwrites the handle anyway. WinRoutine watches
+        // this to know the command in flight has finished.
+        m_ExecutionCoroutine = null;
     }
 
     // ─── Public Command Methods ──────────────────────────────────────────────────
@@ -416,281 +589,233 @@ public class PlayerController : MonoBehaviour
 
     // ─── Movement Logic ──────────────────────────────────────────────────────────
 
-    // Moves the player horizontally by the given signed distance over m_MoveDuration seconds.
-    // Velocity is set directly each FixedUpdate (no AddForce, no momentum).
-    // Position is snapped to the exact target at completion for determinism.
+    /// <summary>
+    /// Duration of ONE cell of a Left/Right command — the walk's actual unit of motion.
+    ///
+    /// A command is not run as a single continuous slide; <see cref="MoveHorizontal"/>
+    /// breaks it into one-cell steps and hands each to <see cref="MoveOverTime"/>. So the
+    /// pace the player is SEEN to walk at is a cell per this duration, and anything else
+    /// that wants to move "at walking speed" has to step on the same clock rather than
+    /// divide the command's distance by its duration — those two are not the same number,
+    /// because each step also costs the fixed-step overshoot and the settle frame
+    /// MoveOverTime ends on.
+    /// </summary>
+    private float CommandStepDuration =>
+        m_MoveDuration / Mathf.Max(1, Mathf.RoundToInt(m_MoveDistancePerCommand / GridWorld.CellSize));
+
+    // Walks the player a whole number of cells in the direction of `distance`.
+    //
+    // The command is decomposed into 1-cell steps rather than run as one continuous
+    // velocity: every step begins and ends exactly on a cell centre, so no partial cell
+    // is ever left on the clock. That removes the whole class of special cases the
+    // velocity version needed - the flush wall stop, the ledge walk, and the two
+    // near-identical "finish this unit then fall" branches - and replaces them with a
+    // check between steps.
     private IEnumerator MoveHorizontal(float distance)
     {
         if (!m_IsGamePlaying) yield break;
 
-        float startX = m_Rigidbody.position.x;
-        float targetX = startX + distance;
-        float speed = distance / m_MoveDuration;
+        float sign = Mathf.Sign(distance);
+        int cells = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(distance) / GridWorld.CellSize));
+        float stepDuration = CommandStepDuration;
 
-        transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
+        transform.localScale = new Vector3(sign, 1f, 1f);
 
-        // Position-based loop: keep moving until targetX is reached.
-        // If the platform ends mid-move, stop, fall, land, then resume the remaining distance.
-        bool hitWall = false;
-        bool pushedBrick = false;
-        float commandElapsed = 0f;
-        while (!HasReachedTarget(m_Rigidbody.position.x, targetX, speed) && !hitWall)
-        {            // Push-brick check � must come before the regular wall check so the
-            // push fires instead of silently stopping the player.
-            PushBrick pushBrick = CheckPushBrick(speed);
-            if (pushBrick != null)
+        bool wasScripted = m_IsScriptedMotion;
+        m_IsScriptedMotion = true;
+
+        for (int i = 0; i < cells; i++)
+        {
+            if (!m_IsGamePlaying) break;
+
+            // A pushable brick in the destination cell takes priority over the blocked
+            // check, so the push fires instead of the player silently stopping short.
+            PushBrick brick = CheckPushBrick(sign);
+            if (brick != null)
             {
-                // Freeze the player in place while the brick slides and falls. The
-                // push coroutine can run for a while (the brick may fall several
-                // units), and leaving the body free lets contact depenetration drift
-                // it sideways — which surfaced as the player "teleporting" backwards
-                // the moment the brick landed. Restore the constraints afterward.
-                RigidbodyConstraints2D savedConstraints = m_Rigidbody.constraints;
-                m_Rigidbody.linearVelocity = Vector2.zero;
-                m_Rigidbody.constraints = savedConstraints | RigidbodyConstraints2D.FreezePositionX;
+                m_IsWalking = false;
 
-                yield return StartCoroutine(pushBrick.Push(Mathf.Sign(speed)));
-
-                m_Rigidbody.constraints = savedConstraints;
-                hitWall = true;
-                pushedBrick = true;
-                break;
-            }
-            // Wall on the path — stop flush and end this command.
-            if (CheckHorizontalWall(speed))
-            {
-                m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
-                hitWall = true;
+                // The brick's own routine drives it, and may drop it several cells. The
+                // player simply holds position for the whole of it - nothing moves this
+                // body, so there is no drift to undo afterwards. The dynamic version had
+                // to freeze the X axis here to stop depenetration sliding the player
+                // backwards while the brick fell.
+                yield return StartCoroutine(brick.Push(sign));
                 break;
             }
 
-            m_Rigidbody.linearVelocity = new Vector2(speed, m_Rigidbody.linearVelocity.y);
-            yield return new WaitForFixedUpdate();
-            commandElapsed += Time.fixedDeltaTime;
+            // Something solid fills the destination cell - stop, still on the grid.
+            if (IsCellBlocked(sign)) break;
 
-            // Safety net: if the command has been running too long the player is stuck.
-            // Abort execution and end the turn exactly like a wrong-input run.
-            if (commandElapsed >= m_CommandTimeout)
-            {
-                m_Rigidbody.linearVelocity = Vector2.zero;
-                AbortExecution();
-                StartCoroutine(WaitForEndStuff());
-                yield break;
-            }
+            Vector2 stepOffset = new Vector2(sign * GridWorld.CellSize, 0f);
+            Vector2 stepTarget = m_Rigidbody.position + stepOffset;
 
-            // Case 1 — early detection: front foot is off the edge but centre is still
-            //          over the platform. Walk the remaining unit first, then fall.
-            if (CheckIsGrounded() && !CheckGroundAhead(speed))
-            {
-                float sign = Mathf.Sign(speed);
+            // Nothing under the destination cell - this step walks off a ledge. Play it as
+            // a small hop across that same one-cell distance rather than a flat slide into
+            // thin air, then let the fall below carry the player the rest of the way down.
+            bool stepsOffLedge = m_LedgeHopHeight > 0f && !IsGroundedAfterOffset(stepOffset);
 
-                // Advance to the end of the current 1-unit segment relative to startX,
-                // then clamp so we never overshoot targetX.
-                // Works correctly whether the total command distance is 1, 2, or 3 units.
-                float fallEdgeX = sign > 0f
-                    ? startX + Mathf.Floor(m_Rigidbody.position.x - startX) + 1f
-                    : startX - Mathf.Floor(startX - m_Rigidbody.position.x) - 1f;
-                fallEdgeX = sign > 0f
-                    ? Mathf.Min(fallEdgeX, targetX)
-                    : Mathf.Max(fallEdgeX, targetX);
+            m_IsWalking = true;
+            if (stepsOffLedge)
+                yield return HopOverTime(stepTarget, m_LedgeHopHeight);
+            else
+                yield return MoveOverTime(stepTarget, stepDuration);
+            m_IsWalking = false;
 
-                // Disable gravity so the player walks the unit straight (no early fall).
-                float savedGravity = m_Rigidbody.gravityScale;
-                m_Rigidbody.gravityScale = 0f;
-
-                // Walk toward the cell boundary, but keep checking BOTH ground rays
-                // every physics step. The moment the player is fully over a gap
-                // (neither foot on ground) stop and fall from right here, instead of
-                // gliding across a one-unit gap because the far foot happens to catch
-                // the next platform mid-walk.
-                bool wentOffEdge = false;
-                bool stuck = false;
-                while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
-                {
-                    if (CheckHorizontalWall(speed))
-                    {
-                        m_Rigidbody.gravityScale = savedGravity;
-                        m_Rigidbody.linearVelocity = Vector2.zero;
-                        hitWall = true;
-                        break;
-                    }
-                    if (!CheckIsGrounded()) { wentOffEdge = true; break; }
-                    m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
-                    yield return new WaitForFixedUpdate();
-
-                    // The main loop's stuck timeout has to apply here too. This walk can
-                    // grind forever against an obstacle CheckHorizontalWall doesn't
-                    // recognise: the player stays grounded so the edge test never trips,
-                    // and position never advances so the target is never reached. Without
-                    // this the turn hangs and the level has to be restarted by hand.
-                    commandElapsed += Time.fixedDeltaTime;
-                    if (commandElapsed >= m_CommandTimeout) { stuck = true; break; }
-                }
-                if (stuck)
-                {
-                    m_Rigidbody.gravityScale = savedGravity;
-                    m_Rigidbody.linearVelocity = Vector2.zero;
-                    AbortExecution();
-                    StartCoroutine(WaitForEndStuff());
-                    yield break;
-                }
-                if (hitWall) break;
-                m_Rigidbody.linearVelocity = Vector2.zero;
-                if (!wentOffEdge)
-                {
-                    // Reached the boundary with support the whole way — snap exactly.
-                    // Direct assignment bypasses physics integration for an exact snap.
-                    m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
-                    yield return new WaitForFixedUpdate();
-                    m_Rigidbody.linearVelocity = Vector2.zero;
-                }
-                m_Rigidbody.gravityScale = savedGravity;
-
-                // Fall if there is no ground beneath the player now (either because the
-                // edge cell had none, or because we bailed out mid-walk over a gap).
-                if (!CheckIsGrounded())
-                {
-                    float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
-                    m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
-
-
-                    yield return WaitUntilGrounded();
-                    if (!CheckIsGrounded()) yield break;
-
-                    transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
-                }
-            }
-            // Case 2 — late detection: the centre has already crossed the edge in a
-            //          single physics step and CheckIsGrounded() is already false.
-            //          Require a clearly negative y-velocity (several frames of free-fall)
-            //          to avoid false-positives from single-frame ground-check flickers.
-            //          Still complete 1 unit to the next grid boundary before falling.
-            else if (!CheckIsGrounded() && m_Rigidbody.linearVelocity.y < -1f)
-            {
-                float sign = Mathf.Sign(speed);
-
-                // Same boundary logic as Case 1.
-                float fallEdgeX = sign > 0f
-                    ? startX + Mathf.Floor(m_Rigidbody.position.x - startX) + 1f
-                    : startX - Mathf.Floor(startX - m_Rigidbody.position.x) - 1f;
-                fallEdgeX = sign > 0f
-                    ? Mathf.Min(fallEdgeX, targetX)
-                    : Mathf.Max(fallEdgeX, targetX);
-
-                float savedGravity = m_Rigidbody.gravityScale;
-                m_Rigidbody.gravityScale = 0f;
-
-                // Walk toward the cell boundary, but keep checking BOTH ground rays
-                // every physics step. The moment the player is fully over a gap
-                // (neither foot on ground) stop and fall from right here, instead of
-                // gliding across a one-unit gap because the far foot happens to catch
-                // the next platform mid-walk.
-                bool wentOffEdge = false;
-                bool stuck = false;
-                while (!HasReachedTarget(m_Rigidbody.position.x, fallEdgeX, speed))
-                {
-                    if (CheckHorizontalWall(speed))
-                    {
-                        m_Rigidbody.gravityScale = savedGravity;
-                        m_Rigidbody.linearVelocity = Vector2.zero;
-                        hitWall = true;
-                        break;
-                    }
-                    if (!CheckIsGrounded()) { wentOffEdge = true; break; }
-                    m_Rigidbody.linearVelocity = new Vector2(speed, 0f);
-                    yield return new WaitForFixedUpdate();
-
-                    // Same stuck timeout as Case 1 — see the comment there.
-                    commandElapsed += Time.fixedDeltaTime;
-                    if (commandElapsed >= m_CommandTimeout) { stuck = true; break; }
-                }
-                if (stuck)
-                {
-                    m_Rigidbody.gravityScale = savedGravity;
-                    m_Rigidbody.linearVelocity = Vector2.zero;
-                    AbortExecution();
-                    StartCoroutine(WaitForEndStuff());
-                    yield break;
-                }
-                if (hitWall) break;
-                m_Rigidbody.linearVelocity = Vector2.zero;
-                if (!wentOffEdge)
-                {
-                    // Reached the boundary with support the whole way — snap exactly.
-                    // Direct assignment bypasses physics integration for an exact snap.
-                    m_Rigidbody.position = new Vector2(fallEdgeX, m_Rigidbody.position.y);
-                    yield return new WaitForFixedUpdate();
-                    m_Rigidbody.linearVelocity = Vector2.zero;
-                }
-                m_Rigidbody.gravityScale = savedGravity;
-
-                // Fall if there is no ground beneath the player now (either because the
-                // edge cell had none, or because we bailed out mid-walk over a gap).
-                if (!CheckIsGrounded())
-                {
-                    float g = Mathf.Abs(Physics2D.gravity.y) * m_Rigidbody.gravityScale;
-                    m_Rigidbody.linearVelocity = new Vector2(0f, -Mathf.Sqrt(2f * g * m_JumpHeight));
-
-
-                    yield return WaitUntilGrounded();
-                    if (!CheckIsGrounded()) yield break;
-
-                    transform.localScale = new Vector3(distance > 0f ? 1f : -1f, 1f, 1f);
-                }
-            }
+            // Stepped off a ledge - drop to the surface below before the next step. The hop
+            // hands over the speed it was already descending at, so the drop continues the
+            // arc instead of restarting it from a standstill.
+            if (!CheckIsGrounded())
+                yield return FallToGround(m_HopExitFallSpeed);
+            m_HopExitFallSpeed = 0f;
         }
 
-        // Snap X to a whole cell — the player must never rest at a fractional X.
-        m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
-        if (!hitWall)
-        {
-            m_Rigidbody.position = new Vector2(targetX, m_Rigidbody.position.y);
-        }
-        else if (pushedBrick)
-        {
-            // After a push the brick has moved away, so there's no obstacle to avoid
-            // rounding into. Snap to the NEAREST cell — the one the player occupies
-            // adjacent to where the brick was — instead of flooring back toward the
-            // start, which used to yank the player a full cell backwards.
-            m_Rigidbody.position = new Vector2(Mathf.Round(m_Rigidbody.position.x), m_Rigidbody.position.y);
-        }
-        else
-        {
-            float sign = Mathf.Sign(distance);
-            float blockedX = m_Rigidbody.position.x;
-            // Floor toward the start direction so we never snap forward into the
-            // obstacle: moving right → round down, moving left → round up.
-            float wholeX = sign > 0f ? Mathf.Floor(blockedX) : Mathf.Ceil(blockedX);
-            m_Rigidbody.position = new Vector2(wholeX, m_Rigidbody.position.y);
-        }
-        yield return new WaitForFixedUpdate();
-        m_Rigidbody.linearVelocity = new Vector2(0f, m_Rigidbody.linearVelocity.y);
-
-        // Safety: if the snap placed the player past a platform edge (center raycast
-        // returned true at fallEdgeX but the player is actually beyond the tile),
-        // wait for them to fall and land before the next command begins.
-        if (!hitWall && !CheckIsGrounded())
-        {
-            yield return WaitUntilGrounded();
-            m_Rigidbody.linearVelocity = Vector2.zero;
-        }
-
+        m_IsWalking = false;
+        m_IsScriptedMotion = wasScripted;
         SnapToGrid();
     }
 
-    // Returns true once the player has reached or passed targetX in the direction of travel.
-    private bool HasReachedTarget(float currentX, float targetX, float speed)
+    // Drives the body from where it is to `target` over `duration` seconds.
+    // MovePosition rather than a direct position write, so the body sweeps to its
+    // destination and still generates the trigger callbacks the door, collectables and
+    // key slots depend on.
+    private IEnumerator MoveOverTime(Vector2 target, float duration)
     {
-        return speed > 0f ? currentX >= targetX - 0.01f : currentX <= targetX + 0.01f;
+        Vector2 start = m_Rigidbody.position;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.fixedDeltaTime;
+            m_Rigidbody.MovePosition(Vector2.Lerp(start, target, Mathf.Clamp01(elapsed / duration)));
+            yield return new WaitForFixedUpdate();
+        }
+
+        m_Rigidbody.MovePosition(target);
+        yield return new WaitForFixedUpdate();
+    }
+
+    // Same one-cell step as MoveOverTime, but arced through a hop that peaks at `height`
+    // mid-step and comes back down to the target's height. Used for the step that walks off
+    // a ledge, so the player pushes off the edge instead of sliding flat off it and only
+    // then remembering to fall.
+    //
+    // The arc is a REAL ballistic curve under the fall's own gravity, not a decorative
+    // parabola fitted to a chosen duration. That is what makes the hand-off to FallToGround
+    // seamless: launching at v0 = sqrt(2gh) means the body is descending at exactly v0 again
+    // when it returns to the step's height, and the fall picks up from that speed under the
+    // same g. A fitted-duration arc had its own implied gravity, so it arrived moving at one
+    // speed while the fall restarted from zero - the body visibly stalled at the ledge edge
+    // and then re-accelerated. The duration is therefore DERIVED (2*v0/g), not a knob.
+    //
+    // Ends exactly on `target` - the hop is presentation on top of the same cell-to-cell
+    // step, so it cannot leave the body somewhere the flat version wouldn't have. The drop
+    // itself is still FallToGround's job, resumed at m_HopExitFallSpeed.
+    private IEnumerator HopOverTime(Vector2 target, float height)
+    {
+        Vector2 start = m_Rigidbody.position;
+        float dt = Time.fixedDeltaTime;
+
+        // Quantised to a WHOLE number of physics steps, then g and v0 are re-derived to hit
+        // `height` in exactly that many. Letting the natural duration run and clamping the
+        // final iteration to it left one truncated step at the end - a single frame that
+        // advanced half as far in both axes, landing exactly as the body cleared the edge,
+        // which read as a stutter at the ledge. Whole steps make every frame of the arc the
+        // same length and still land precisely on `target`.
+        float steps = Mathf.Max(1f, Mathf.Round(
+            2f * Mathf.Sqrt(2f * m_FallGravity * m_LedgeHopGravityScale * height) /
+            (m_FallGravity * m_LedgeHopGravityScale) / dt));
+
+        float duration = steps * dt;
+        float g = 8f * height / (duration * duration);
+        float v0 = 4f * height / duration;
+
+        m_IsAirborne = true;   // feet have left the ground - play the jump clip, mute footsteps
+        m_HopExitFallSpeed = 0f;
+
+        float elapsed = 0f;
+        for (int i = 1; i <= (int)steps; i++)
+        {
+            elapsed = i * dt;
+
+            // Ballistic in Y, linear across the cell in X.
+            Vector2 next = Vector2.Lerp(start, target, elapsed / duration);
+            next.y = start.y + v0 * elapsed - 0.5f * g * elapsed * elapsed;
+
+            // Nothing stops a kinematic body at a ceiling, so a low roof over the ledge has
+            // to be respected here rather than left to a solver: give up the hop's lift and
+            // cross flat instead. If even that is blocked, stop and let the caller settle.
+            if (IsBodyBlockedBetween(m_Rigidbody.position, next))
+            {
+                next.y = Mathf.Lerp(start.y, target.y, elapsed / duration);
+                if (IsBodyBlockedBetween(m_Rigidbody.position, next)) break;
+            }
+
+            m_Rigidbody.MovePosition(next);
+            yield return new WaitForFixedUpdate();
+        }
+
+        // Descent speed reached by the point the arc actually ended. Negative while still
+        // rising - a ceiling cut the hop short - which the fall reads as "start from rest".
+        m_HopExitFallSpeed = Mathf.Max(0f, g * elapsed - v0);
+
+        m_IsAirborne = false;
+        yield return new WaitForFixedUpdate();
+    }
+
+    // Drops the player to the first surface below, accelerating the way gravity would.
+    // Always ends with the feet resting on a surface, so a fall cannot leave the body at
+    // a fractional height the way a solver-driven landing could.
+    // `initialFallSpeed` lets a caller that was ALREADY descending hand over its speed, so
+    // the drop continues that motion rather than restarting from rest. The ledge hop uses
+    // it; everything else falls from a standstill, which is what the default means.
+    private IEnumerator FallToGround(float initialFallSpeed = 0f)
+    {
+        if (CheckIsGrounded()) yield break;
+
+        bool wasScripted = m_IsScriptedMotion;
+        m_IsScriptedMotion = true;
+        m_IsAirborne = true;
+
+        float fallSpeed = Mathf.Clamp(initialFallSpeed, 0f, m_MaxFallSpeed);
+        float elapsed = 0f;
+
+        while (!CheckIsGrounded() && elapsed < m_FallTimeout)
+        {
+            fallSpeed = Mathf.Min(fallSpeed + m_FallGravity * Time.fixedDeltaTime, m_MaxFallSpeed);
+
+            float step = fallSpeed * Time.fixedDeltaTime;
+
+            // Look for the surface INSIDE this step, so a fast fall lands on it instead
+            // of tunnelling through when the step is longer than the remaining gap.
+            float drop = GroundDistanceBelow(step);
+
+            if (drop > 0f)
+            {
+                m_Rigidbody.MovePosition(m_Rigidbody.position + Vector2.down * drop);
+                yield return new WaitForFixedUpdate();
+            }
+
+            elapsed += Time.fixedDeltaTime;
+
+            if (drop < step) break;   // a surface stopped the fall short - landed
+        }
+
+        m_IsAirborne = false;
+        m_IsScriptedMotion = wasScripted;
+        SnapToGrid();
     }
 
     // ─── Jump Logic ──────────────────────────────────────────────────────────────
 
     // Performs a jump with deterministic height and optional horizontal distance.
-    // Initial vertical velocity is derived from m_JumpHeight using kinematics: v = sqrt(2gh).
-    // Horizontal velocity is derived so the player reaches targetX exactly when they land —
-    // including elevated or lowered platforms. A downward raycast at targetX finds the landing
-    // surface height; kinematics then gives the exact air time to that height.
+    //
+    // The arc is EVALUATED, not simulated. The previous version already solved the whole
+    // parabola up front - effective gravity, launch velocity, and the exact air time to
+    // the landing surface - and then handed those numbers to the physics engine and hoped
+    // it reproduced the same curve, temporarily rewriting gravityScale for the duration.
+    // Sampling the closed form directly gives that curve exactly, with no solver in the
+    // loop to deflect it into a fractional landing.
     private IEnumerator PerformJump(float horizontalDistance)
     {
         if (!m_IsGamePlaying) yield break;
@@ -700,119 +825,399 @@ public class PlayerController : MonoBehaviour
         // Kick up dust at the take-off spot (player's grid position).
         SpawnGridEffect(m_JumpStartDust);
 
-        // Derive effective gravity so the arc peaks at m_JumpHeight in exactly half of m_JumpDuration.
-        // g_eff = 2h / t_half^2   →   v0y = g_eff * t_half = 2h / t_half
+        // Effective gravity that peaks at m_JumpHeight in exactly half of m_JumpDuration:
+        //   g = 2h / tHalf^2        v0y = g * tHalf
         float tHalf = m_JumpDuration * 0.5f;
         float gEff = 2f * m_JumpHeight / (tHalf * tHalf);
         float v0y = gEff * tHalf;
 
-        float savedGravityScale = m_Rigidbody.gravityScale;
-        m_Rigidbody.gravityScale = gEff / Mathf.Abs(Physics2D.gravity.y);
+        Vector2 start = m_Rigidbody.position;
+        float targetX = start.x + horizontalDistance;
 
-        float startX = m_Rigidbody.position.x;
-        float startY = m_Rigidbody.position.y;
-        float targetX = startX + horizontalDistance;
+        // The surface waiting under the destination column sets the air time, so the arc
+        // lands on an elevated or lowered platform at the right moment rather than
+        // overshooting it.
+        float landingY = start.y;
+        RaycastHit2D surface = Physics2D.Raycast(
+            new Vector2(targetX, start.y + m_JumpHeight + 1f),
+            Vector2.down,
+            m_JumpHeight + 20f,
+            WalkableMask);
 
-        // --- Compute vx accounting for elevated/lowered landing surface ---
-        float vx = 0f;
-        if (!Mathf.Approximately(horizontalDistance, 0f))
-        {
-            // footOffset = distance from rigidbody centre to bottom of collider.
-            // The player centre when standing on any surface = surfaceY + footOffset.
-            float footOffset = m_Collider != null
-                ? startY - m_Collider.bounds.min.y
-                : 0f;
+        // An empty destination column — a jump out over a pit or off the end of a platform.
+        // The arc below runs ON past its landing time in that case instead of stopping dead
+        // at the height it launched from, so the drop is the same curve carrying on rather
+        // than a straight fall starting where the jump gave up.
+        bool hasLandingSurface = surface.collider != null;
 
-            // Raycast straight down at targetX from just above the jump peak.
-            RaycastHit2D hit = Physics2D.Raycast(
-                new Vector2(targetX, startY + m_JumpHeight + 1f),
-                Vector2.down,
-                m_JumpHeight + 20f,
-                WalkableMask);
+        if (hasLandingSurface)
+            landingY = surface.point.y + FootOffset();
 
-            // dY = height difference between landing surface and current surface.
-            float dY = hit.collider != null
-                ? (hit.point.y + footOffset) - startY   // elevated (+) or lowered (-)
-                : 0f;                                    // no hit → assume flat ground
+        float dY = landingY - start.y;
 
-            // Solve for descending-arc landing time using effective gravity.
-            // dY = v0y*t - 0.5*gEff*t^2  →  t = (v0y + sqrt(v0y^2 - 2*gEff*dY)) / gEff
-            float disc = v0y * v0y - 2f * gEff * dY;
-            if (disc >= 0f)
-            {
-                float tLand = (v0y + Mathf.Sqrt(disc)) / gEff;
-                vx = tLand > 0f ? horizontalDistance / tLand : horizontalDistance / m_JumpDuration;
-            }
-            else
-            {
-                // Jump height can't reach dY — fallback to flat-ground vx
-                vx = horizontalDistance / m_JumpDuration;
-            }
-        }
+        // Descending-arc solution of  dY = v0y*t - 0.5*g*t^2.
+        // A negative discriminant means the jump cannot reach that height at all; fall
+        // back to the flat-ground duration.
+        float disc = v0y * v0y - 2f * gEff * dY;
+        float tLand = disc >= 0f ? (v0y + Mathf.Sqrt(disc)) / gEff : m_JumpDuration;
+        float vx = tLand > 0f ? horizontalDistance / tLand : 0f;
 
         // Face direction for lateral jumps
         if (!Mathf.Approximately(horizontalDistance, 0f))
             transform.localScale = new Vector3(horizontalDistance > 0f ? 1f : -1f, 1f, 1f);
 
-        // Apply initial velocity — set once, physics handles the arc naturally
-        m_Rigidbody.linearVelocity = new Vector2(vx, v0y);
+        bool wasScripted = m_IsScriptedMotion;
+        m_IsScriptedMotion = true;
+        m_IsAirborne = true;
 
-        // Allow two physics steps before polling for landing
-        yield return new WaitForFixedUpdate();
-        yield return new WaitForFixedUpdate();
+        float t = 0f;
 
-        yield return WaitUntilGrounded();
+        // Latched the moment a wall stops the arc's forward run, and never cleared: the rest
+        // of THIS jump is vertical only.
+        //
+        // Re-testing the block each step instead let the arc resume its forward run as soon
+        // as the body rose clear of whatever stopped it, so a JumpRight into a wall three
+        // cells tall climbed the face and then carried on right off the top of it — the arc
+        // does not have the horizontal reach to get over that wall, and letting the pinned
+        // distance be spent later is what made it look like it did. A wall means the jump
+        // goes straight up and comes back down on the cell it launched from.
+        //
+        // Low obstacles are unaffected: the arc leaves the ground far faster than it travels
+        // sideways (v0y is several times vx), so a one-cell step is already cleared in Y
+        // before the body reaches its face and never latches this at all.
+        bool horizontalBlocked = false;
 
-        m_Rigidbody.gravityScale = savedGravityScale;
-        m_Rigidbody.linearVelocity = Vector2.zero;
-
-        // Only snap to targetX if the player landed close to it (normal arc).
-        // If the arc was disrupted by a ceiling collision the player falls back to
-        // a completely different X; snapping there would look like a teleport.
-        // With the corrected vx a normal arc lands within ~0.1 units of targetX,
-        // so a 0.5-unit tolerance cleanly distinguishes the two cases.
-        if (Mathf.Abs(m_Rigidbody.position.x - targetX) < 0.5f)
+        // Past tLand only when the destination column was empty, and then only while the
+        // curve is still accelerating within the game's own fall speed. Once it reaches
+        // m_MaxFallSpeed the arc has nothing left to add — every fall in the game is capped
+        // there — so FallToGround below takes over at exactly that speed and the handover is
+        // invisible. Bounding it this way also keeps the body from sailing off across the
+        // level on the way down.
+        while (t < tLand ||
+               (!hasLandingSurface && gEff * t - v0y < m_MaxFallSpeed))
         {
-            m_Rigidbody.MovePosition(new Vector2(targetX, m_Rigidbody.position.y));
+            float previousT = t;
+            t = hasLandingSurface
+                ? Mathf.Min(t + Time.fixedDeltaTime, tLand)
+                : t + Time.fixedDeltaTime;
+
+            // Y is still the closed form evaluated at t, so the deterministic landing
+            // height is untouched. X advances INCREMENTALLY from where the body actually
+            // is, instead of being re-evaluated as start.x + vx*t. Re-evaluating let the
+            // parabola's x run on while a wall pinned the body, so the first sample whose
+            // probe read clear teleported the body across the entire accumulated gap —
+            // through the wall's face and into its interior.
+            Vector2 current = m_Rigidbody.position;
+            float arcY = start.y + v0y * t - 0.5f * gEff * t * t;
+            float stepX = horizontalBlocked ? 0f : vx * (t - previousT);
+            Vector2 next = new Vector2(current.x + stepX, arcY);
+
+            // Nothing stops a kinematic body at a wall, so the arc has to respect walls
+            // itself: drop the horizontal component and slide straight up or down the
+            // face, and if even that is blocked (a ceiling, or an inside corner) abandon
+            // the arc and let the fall below settle the player.
+            if (IsBodyBlockedBetween(current, next))
+            {
+                Vector2 slide = new Vector2(current.x, arcY);
+                if (IsBodyBlockedBetween(current, slide)) break;
+
+                // The vertical-only move is clear, so what blocked the diagonal was the
+                // horizontal component. Give up the forward run for the WHOLE remaining arc
+                // (see horizontalBlocked) and ride the curve up and back down this face.
+                next = slide;
+                horizontalBlocked = true;
+            }
+
+            m_Rigidbody.MovePosition(next);
             yield return new WaitForFixedUpdate();
+
+            // Landed on something the destination-column ray never saw - a brick pushed
+            // into the path, or a platform that moved under the arc. Tested only past the
+            // apex so it cannot trip on the ground the jump launched from.
+            if (t > tHalf && CheckIsGrounded()) break;
         }
-        m_Rigidbody.linearVelocity = Vector2.zero;
+
+        m_IsAirborne = false;
+        m_IsScriptedMotion = wasScripted;
+
+        // Settle if the arc finished above a surface, because a wall cut it short or the
+        // destination column turned out to be empty.
+        //
+        // Handed the speed the arc was ALREADY descending at, the same way the ledge hop
+        // hands over its own. Falling from rest here is what made the drop off a platform
+        // read as a snap: the body arrived travelling at the jump's full landing speed and
+        // then hung there while the fall accelerated it back up from zero. Negative while
+        // still rising — a ceiling cut the arc short — which the fall reads as "from rest".
+        yield return FallToGround(Mathf.Max(0f, gEff * t - v0y));
+
         SnapToGrid();
 
         // Puff of dust at the landing spot (player's settled grid position).
         SpawnGridEffect(m_JumpEndDust);
     }
 
-    // Instantiates a one-shot effect prefab at the player's grid position (rounded to the
-    // same 0.5-unit grid as SnapToGrid). No-op when the prefab is unassigned. The prefab's
-    // OneShotEffect destroys itself when done.
+    // Distance from the body origin to the bottom of the collider - how far above a
+    // surface the origin sits when the player is standing on it.
+    private float FootOffset() =>
+        m_Collider != null ? m_Rigidbody.position.y - m_Collider.bounds.min.y : GridWorld.HalfCell;
+
+    // Instantiates a one-shot effect prefab at the centre of the cell the player occupies
+    // (the same grid SnapToGrid settles them onto). No-op when the prefab is unassigned.
+    // The prefab's OneShotEffect destroys itself when done.
     private void SpawnGridEffect(GameObject prefab)
     {
         if (prefab == null) return;
 
         Vector2 gp = m_Rigidbody != null ? m_Rigidbody.position : (Vector2)transform.position;
-        Vector3 pos = new Vector3(Mathf.Round(gp.x * 2f) / 2f, Mathf.Round(gp.y * 2f) / 2f, transform.position.z);
+        Vector2 cell = GridWorld.SnapToCell(gp);
 
-        Instantiate(prefab, pos, Quaternion.identity);
+        Instantiate(prefab, new Vector3(cell.x, cell.y, transform.position.z), Quaternion.identity);
     }
 
-    // Waits until the player is grounded on the DESCENDING side of the arc.
-    // Checking linearVelocity.y <= 0 prevents false triggers when the raycast
-    // detects a platform below while the player is still ascending through it
-    // (Physics2D raycasts ignore one-way platform direction).
-    private IEnumerator WaitUntilGrounded(float timeout = 6f)
+    // Instantiates a particle effect prefab at `position`, at the player's own depth so it
+    // draws with them rather than at z 0, shrunk by `scale`. ParticleEffectSpawner owns the
+    // cleanup, and the scale is REQUIRED rather than defaulted: every prefab these come from
+    // is authored more than a dozen world units across, so an unscaled one swamps the level.
+    private void SpawnParticleEffect(GameObject prefab, Vector2 position, float scale) =>
+        ParticleEffectSpawner.Spawn(
+            prefab, new Vector3(position.x, position.y, transform.position.z), scale);
+
+    // ─── Portal Spawn / Exit Animation ───────────────────────────────────────────
+
+    /// <summary>
+    /// The player's arrival, called by <see cref="LevelEntryDoor"/> once its door has opened:
+    /// the body appears on `doorPoint`, spins in out of the doorway — from zero size, spinning
+    /// fast, winding down into its normal upright pose — and moves to the level's start cell
+    /// as it does, leaving the player standing there at full size.
+    ///
+    /// The door awaits this before closing itself behind them, and calls it in the same breath
+    /// as enabling this object, so everything that hides the body runs before anything renders.
+    /// </summary>
+    public IEnumerator EnterFromDoorRoutine(Vector2 doorPoint)
     {
-        yield return new WaitForSeconds(0.15f);
+        // Deliberately NOT an iterator method: with no yield of its own, the hide below runs
+        // the moment the door calls this, rather than being deferred until the door's
+        // coroutine first steps the returned enumerator. That is what keeps a player enabled
+        // at full size from rendering for a frame in the doorway before it is shrunk away.
+        HideForArrival();
+        return ArriveRoutine(doorPoint);
+    }
+
+    // The level intro for a level with NO entry door: fade up from black on an empty level and
+    // spin the player in on their start cell. Levels with an entry door never run this — the
+    // door owns their opening, fade included.
+    private IEnumerator SpawnPortalRoutine()
+    {
+        // Shrunk away BEFORE the fade rather than when the spin starts. The fade reveals
+        // the level, so a full-size player standing there would be visible through it and
+        // then pop out of existence the moment the spin began.
+        HideForArrival();
+
+        if (UIManager.Instance != null)
+            yield return UIManager.Instance.FadeRoutine(1f, 0f);
+
+        yield return ArriveRoutine(m_StartPosition);
+    }
+
+    // Shared by both openings: the body materialises at `from`, spins in, and moves to the
+    // level's start cell.
+    //
+    // The destination is m_StartPosition, not wherever the body currently sits — that is the
+    // snapped cell every reset and death returns the player to, so the arrival leaves them
+    // exactly where the rest of the game agrees the level starts, even if the scene transform
+    // was nudged off-grid.
+    //
+    // Input is held off for all of it, so a queued command can't start writing the facing
+    // scale the animation is driving, and so the level doesn't begin under a player who is
+    // still on their way out of the doorway.
+    private IEnumerator ArriveRoutine(Vector2 from)
+    {
+        // Awake caches the body; a null one means Awake never finished on this object — it
+        // was destroyed as a duplicate by the singleton guard, or the Rigidbody2D the
+        // component requires is missing. Either way the arrival cannot move anything, and
+        // driving it would throw one UnassignedReferenceException per level load. Said out
+        // loud rather than swallowed: it means the level is misconfigured.
+        if (m_Rigidbody == null)
+        {
+            Debug.LogError(
+                $"[PlayerController] '{name}' has no Rigidbody2D to move — its Awake did not " +
+                "complete, so the level's arrival is being skipped.", this);
+            yield break;
+        }
+
+        HideForArrival();
+
+        // Into the doorway before the spin, so the player materialises in the door rather
+        // than on the cell they are about to move to. Safe to write directly: the body is at
+        // zero scale and m_IsPortalAnimating has the passive settle stood down.
+        m_Rigidbody.position = from;
+
+        if (m_SpawnDoorLead > 0f)
+            yield return new WaitForSecondsRealtime(m_SpawnDoorLead);
+
+        // Spin and travel TOGETHER — the mirror of the win's spin-and-travel out of the exit
+        // door. The player unwinds and grows on the way across, instead of completing the
+        // whole spin in the doorway and only then moving to the start cell as a separate step.
+        //
+        // The spin owns the scale, the rotation and the motion flags — including
+        // m_IsPortalAnimating, which it clears on its way out, handing the body back to
+        // normal play. The move underneath it only moves the body.
+        //
+        // Unlike the win's pair, these two ARE fitted to a shared duration: an arrival ends
+        // at full size, so a move that outran its spin would arrive half-grown and finish
+        // spinning on the spot. Both are awaited even so — the spin runs on unscaled time
+        // and the move on the physics clock, so whichever is left simply finishes.
+        Coroutine spin = StartCoroutine(PortalRoutine(0f, 1f, spinIn: true));
+        yield return MoveFromEntryDoorRoutine(m_StartPosition, m_PortalDuration);
+        yield return spin;
+
+        DeviceInputProvider.Instance?.SetEnabled(true);
+    }
+
+    // Takes the player off the screen and out of play for the wait before their arrival.
+    // Runs synchronously — the door calls into the arrival on the same frame it enables this
+    // object, and the body must be shrunk away before that frame renders.
+    //
+    // m_IsPortalAnimating covers the wait as well as the spin: it is what stands the passive
+    // settle in FixedUpdate and the hazard sweep in Update down, and neither has any business
+    // running on a player who is currently nothing but a spawn point.
+    private void HideForArrival()
+    {
+        m_IsEnteringFromDoor = true;
+        DeviceInputProvider.Instance?.SetEnabled(false);
+        m_IsPortalAnimating = true;
+        ApplyPortalPose(FacingSign(), 0f, 0f);
+    }
+
+    // Carries the player out of the entry doorway onto the level's start position over
+    // `duration`, accelerating the whole way so the arrival has some weight to it rather than
+    // gliding in at a constant crawl.
+    //
+    // Position ONLY — the spin running alongside owns the scale, the rotation and the sprite,
+    // exactly as the win's travel leaves those to the exit portal. Nor does this manage the
+    // motion flags: m_IsPortalAnimating is set for the whole of it, which is what holds the
+    // passive settle in FixedUpdate off the body, and the spin has hazards off for its own run.
+    //
+    // Fitted to `duration` rather than walked at the command pace the win's travel uses. The
+    // two doorways are not the same problem: the exit is caught from wherever the player
+    // happened to touch the door, so its travel has to keep the pace it was already moving
+    // at, while the entry always starts from the same doorway and has to be finished — at
+    // full size, upright — by the time the spin is. The easing is quadratic, the shape a fall
+    // traces under constant gravity.
+    //
+    // Deliberately NOT FallToGround, for a door placed above the start cell: that one asks the
+    // collider what is underneath and stops at the first surface it finds, which on a doorway
+    // tucked under an overhang would strand the player on the roof instead of on their start
+    // cell. The target here is known, so the move is driven straight to it and cannot end
+    // anywhere else.
+    private IEnumerator MoveFromEntryDoorRoutine(Vector2 target, float duration)
+    {
+        Vector2 from = m_Rigidbody.position;
+
+        if (duration <= 0f || Vector2.Distance(from, target) < 0.01f)
+        {
+            m_Rigidbody.position = target;
+            yield break;
+        }
 
         float elapsed = 0f;
-        while (elapsed < timeout)
-        {
-            if (m_Rigidbody.linearVelocity.y <= 0f && CheckIsGrounded())
-                yield break;
 
+        while (elapsed < duration)
+        {
             elapsed += Time.fixedDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            m_Rigidbody.MovePosition(Vector2.Lerp(from, target, t * t));
             yield return new WaitForFixedUpdate();
         }
+
+        m_Rigidbody.position = target;
+        m_PassiveFallSpeed = 0f;
+
+        // Puff of dust at the arrival spot, the same one a jump lands with — the player has
+        // just put their feet down on the start cell.
+        SpawnGridEffect(m_JumpEndDust);
+    }
+
+    /// <summary>
+    /// Spins the player out of the level — the mirror of the spawn arrival. Called by
+    /// <see cref="WinRoutine"/> once the player is standing on the door's interaction
+    /// point. Ends with the player at zero size; nothing restores it, because the scene
+    /// is on its way out behind this.
+    /// </summary>
+    public IEnumerator PlayExitPortalRoutine() => PortalRoutine(1f, 0f, spinIn: false);
+
+    // The shared spin. `spinIn` decides which end of the animation the fast part sits at:
+    // an arrival decelerates into the still pose, a departure accelerates out of it, so in
+    // both cases the player is whirling while they are small and settled while they are
+    // full size. The total turn is a whole number of revolutions, so the pose the
+    // animation lands on is upright either way.
+    private IEnumerator PortalRoutine(float fromScale, float toScale, bool spinIn)
+    {
+        m_IsPortalAnimating = true;
+
+        // Restored rather than forced back on: the spawn arrives with hazards armed and
+        // wants them armed again, while the win has already disarmed them for good and a
+        // blind re-arm here would put the player back in reach of a beam on their way out.
+        bool wasHazardable = m_IsHazardable;
+        bool wasScripted = m_IsScriptedMotion;
+        m_IsHazardable = false;
+        m_IsScriptedMotion = true;
+
+        m_IsWalking = false;
+        m_IsAirborne = false;
+        AudioManager.Instance?.SetWalking(false);
+        m_Animator?.Play(PlayerAnimState.Idle);
+
+        // Captured once instead of re-read each frame: the scale the animation writes has
+        // no usable sign at the zero end, so the facing has to come from before it started.
+        float facing = FacingSign();
+        float totalSpin = m_PortalSpins * 360f;
+        float elapsed = 0f;
+
+        // Unscaled, so a level that ended while some slow-motion effect was still winding
+        // down doesn't play the exit spin in slow motion too.
+        while (elapsed < m_PortalDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / m_PortalDuration);
+
+            float spinT = spinIn ? 1f - (1f - t) * (1f - t) : t * t;
+            float angle = -totalSpin * (spinIn ? 1f - spinT : spinT);
+
+            ApplyPortalPose(facing, Mathf.Lerp(fromScale, toScale, Mathf.SmoothStep(0f, 1f, t)), angle);
+            yield return null;
+        }
+
+        ApplyPortalPose(facing, toScale, 0f);
+
+        m_IsScriptedMotion = wasScripted;
+        m_IsHazardable = wasHazardable;
+        m_IsPortalAnimating = false;
+    }
+
+    // Writes one frame of the portal pose. `scale` is a 0..1 fraction of the spawn scale,
+    // and the facing is applied on top of it, so the animation only ever changes how big
+    // the player is — never which way they look.
+    private void ApplyPortalPose(float facing, float scale, float angleDegrees)
+    {
+        transform.localScale = new Vector3(
+            facing * Mathf.Abs(m_OriginalScale.x) * scale,
+            m_OriginalScale.y * scale,
+            m_OriginalScale.z);
+
+        transform.rotation = Quaternion.Euler(0f, 0f, angleDegrees);
+    }
+
+    // Which way the player is currently facing, as the ±1 the movement code writes into
+    // localScale.x. Falls back to the spawn facing when the current scale is mid-portal
+    // and its sign says nothing.
+    private float FacingSign()
+    {
+        if (!Mathf.Approximately(transform.localScale.x, 0f))
+            return Mathf.Sign(transform.localScale.x);
+
+        return m_OriginalScale.x < 0f ? -1f : 1f;
     }
 
     // ─── Interact Command ────────────────────────────────────────────────────────
@@ -848,25 +1253,29 @@ public class PlayerController : MonoBehaviour
     {
         if (!m_IsHazardable) return;
 
-        if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
+        if (IsLethalSpike(other))
         {
             AbortExecution();
             StartCoroutine(DeathRoutine());
         }
     }
+
     private void CheckSpikeOverlap()
     {
         if (m_Collider == null) return;
 
+        // Broad phase only. The overlap just gathers candidates cheaply; IsLethalSpike
+        // decides, and it decides on grid cells rather than on this box.
+        Bounds b = m_Collider.bounds;
+
         int count = Physics2D.OverlapBox(
-            m_Collider.bounds.center, m_Collider.bounds.size, 0f, m_NoFilter, m_OverlapResults);
+            b.center, b.size * k_ProbeShrink, 0f, m_NoFilter, m_OverlapResults);
 
         for (int i = 0; i < count; i++)
         {
             Collider2D hit = m_OverlapResults[i];
             if (hit.gameObject == gameObject) continue;
-            if (!hit.CompareTag("Spike")) continue;
-            if (hit.TryGetComponent(out EnemyMovement _)) continue; // enemy, not a spike
+            if (!IsLethalSpike(hit)) continue;
 
             AbortExecution();
             StartCoroutine(DeathRoutine());
@@ -874,160 +1283,191 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private bool CheckIsGrounded()
+    /// <summary>
+    /// True when <paramref name="other"/> is a spike the player has actually moved INTO —
+    /// meaning the two occupy the same grid cell.
+    ///
+    /// The test is deliberately not "do the colliders touch". A spike owns one cell, so
+    /// entering that cell is what kills; clipping a corner of its art collider while
+    /// passing through a neighbouring cell is a near miss and must not. Overlap-based
+    /// tests cannot tell those apart — they read a grazing jump exactly the same as
+    /// standing on the spike, which killed players who never reached it.
+    ///
+    /// A cell holds the player once their centre is inside it, so a body more than
+    /// half-way into the spike's cell dies and anything shallower survives.
+    /// </summary>
+    private bool IsLethalSpike(Collider2D other)
     {
-        // Two downward rays — one from the left foot, one from the right foot.
-        // Grounded if EITHER ray hits, so the player stays grounded when only one
-        // corner rests on a platform (the center-based check used to read empty
-        // space in that case, since Z-rotation is frozen and the body stays level).
-        if (m_LeftGroundCheck != null || m_RightGroundCheck != null)
-        {
-            bool leftHit = m_LeftGroundCheck != null &&
-                Physics2D.Raycast(m_LeftGroundCheck.position, Vector2.down, m_GroundRayLength, WalkableMask);
-            if (leftHit) return true;
+        if (other == null) return false;
+        if (!other.CompareTag("Spike")) return false;
+        if (other.TryGetComponent(out EnemyMovement _)) return false; // enemy, not a spike
 
-            bool rightHit = m_RightGroundCheck != null &&
-                Physics2D.Raycast(m_RightGroundCheck.position, Vector2.down, m_GroundRayLength, WalkableMask);
-            if (rightHit) return true;
+        Vector2 playerCell = GridWorld.SnapToCell(m_Rigidbody.position);
+        Vector2 spikeCell = GridWorld.SnapToCell((Vector2)other.transform.position);
 
-            // Neither foot ray found ground — but the foot transforms sit slightly
-            // INSIDE the collider's side faces, while the solver keeps holding the
-            // player up until the two boxes are further apart than their contact
-            // offsets. Inside that band this check reports thin air for a body that
-            // is still resting on a ledge: the move code then orders a fall the body
-            // physically cannot perform, and the player hangs at the lip until
-            // WaitUntilGrounded times out six seconds later.
-            //
-            // Whether a walk ever samples a position inside the band is pure luck of
-            // the fixed step, which is why a 3.0-wide platform collider froze the
-            // player and a 2.9-wide one did not. Probe the collider's real support
-            // width so the ground check and the physics engine agree.
-            return CheckLedgeSupport();
-        }
-
-        // Fallback (foot transforms not assigned): OverlapCircle centred just
-        // below the collider bottom — wider than a single ray, still detects
-        // ground when the collider is partially embedded after snapping.
-        float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
-        Vector2 centre = new Vector2(transform.position.x, bottom - m_GroundCheckDistance);
-        return Physics2D.OverlapCircle(centre, m_GroundCheckRadius, WalkableMask);
+        return Mathf.Approximately(playerCell.x, spikeCell.x)
+            && Mathf.Approximately(playerCell.y, spikeCell.y);
     }
 
-    // Casts down from just outside each bottom corner of the collider — the widest
-    // point at which physics can still be resting the player on a surface. Both
-    // colliders in a contact pair are inflated by Physics2D.defaultContactOffset,
-    // so the contact (and the support it provides) survives a gap of two of them.
-    // Same origin height and ray length as the foot rays, so only the horizontal
-    // reach changes — the player does not become "grounded" any higher above a
-    // surface than before.
-    private bool CheckLedgeSupport()
+    // True when a walkable surface sits directly under the player's footprint. A thin
+    // probe just below the collider's bottom edge, narrowed slightly so a wall the player
+    // is pressed flush against is never mistaken for a floor. Deliberately the same shape
+    // as PushBrick's support probe, so a brick and the player can never disagree about
+    // whether the same cell is supported.
+    //
+    // This replaces the pair of foot rays plus the CheckLedgeSupport fallback. That
+    // fallback existed only to paper over dynamic-body behaviour: the solver kept holding
+    // the player up while the two colliders were still within their contact offsets, so
+    // the rays reported thin air for a body physics considered supported, and the move
+    // code would order a fall the body could not perform. A kinematic body is held up by
+    // nothing, so the honest question is simply "is there a surface under my footprint".
+    private bool CheckIsGrounded()
     {
         if (m_Collider == null) return false;
 
-        Bounds bounds = m_Collider.bounds;
-        float reach = Physics2D.defaultContactOffset * 2f;
-        float originY = m_LeftGroundCheck != null ? m_LeftGroundCheck.position.y
-                      : m_RightGroundCheck != null ? m_RightGroundCheck.position.y
-                      : bounds.min.y;
+        Bounds b = m_Collider.bounds;
+        Vector2 size = new Vector2(b.size.x * k_ProbeShrink, k_GroundProbeThickness);
+        Vector2 centre = new Vector2(b.center.x, b.min.y - k_GroundProbeThickness * 0.5f);
 
-        return HasFloorBelow(new Vector2(bounds.min.x - reach, originY))
-            || HasFloorBelow(new Vector2(bounds.max.x + reach, originY));
+        return Physics2D.OverlapBox(centre, size, 0f, WalkableMask) != null;
     }
 
-    // A hit at distance 0 means the ray started inside the collider it hit. Because
-    // these origins sit outside the player's own side faces, that only happens for a
-    // wall the player is pressed against — which is not a floor, and must not read as
-    // ground while the player is falling past it.
-    private bool HasFloorBelow(Vector2 origin)
+    // CheckIsGrounded asked one step early: would a surface sit under the player's
+    // footprint if the body were displaced by `offset`? Same probe shape and same
+    // WalkableMask, just moved - so "the next cell has nothing under it" is decided by
+    // exactly the rule that will judge the player once they get there.
+    private bool IsGroundedAfterOffset(Vector2 offset)
     {
-        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, m_GroundRayLength, WalkableMask);
-        return hit.collider != null && hit.distance > 0f;
+        if (m_Collider == null) return false;
+
+        Bounds b = m_Collider.bounds;
+        Vector2 size = new Vector2(b.size.x * k_ProbeShrink, k_GroundProbeThickness);
+        Vector2 centre = new Vector2(
+            b.center.x + offset.x, b.min.y + offset.y - k_GroundProbeThickness * 0.5f);
+
+        return Physics2D.OverlapBox(centre, size, 0f, WalkableMask) != null;
     }
 
-#if UNITY_EDITOR
-    // Visualises the two ground-check rays in the Scene view so the foot
-    // transforms can be positioned at the player's left/right corners.
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.green;
-        if (m_LeftGroundCheck != null)
-            Gizmos.DrawLine(m_LeftGroundCheck.position,
-                m_LeftGroundCheck.position + Vector3.down * m_GroundRayLength);
-        if (m_RightGroundCheck != null)
-            Gizmos.DrawLine(m_RightGroundCheck.position,
-                m_RightGroundCheck.position + Vector3.down * m_GroundRayLength);
-    }
-#endif
-
-    // Settles the player onto the grid after every move/jump, eliminating the
-    // floating-point drift that causes colliders to slightly intersect surfaces when
-    // Z-rotation is frozen (preventing the physics solver from self-correcting).
+    // How far the player can drop before landing, capped at maxDistance. Returns
+    // maxDistance when nothing is in reach.
     //
-    //   X → nearest WHOLE unit: horizontal travel is always an integer number of
-    //       cells, so the player must never rest at a fractional X (e.g. 2.681).
-    //   Y → nearest 0.5 unit: keeps the drift correction but still lets the player
-    //       sit flush on platforms placed on the half grid, rather than being forced
-    //       to an integer height it may float above or sink into.
-    private void SnapToGrid()
+    // The probe is a THIN box swept down from the FOOT PLANE - the same shape
+    // CheckIsGrounded uses - not the whole body swept down from its centre. A full-height
+    // box starts out overlapping anything the body is already touching, and Physics2D
+    // reports a cast that begins inside a collider at distance 0. The ceiling was the case
+    // that mattered: IsBodyBlockedBetween shrinks its sweep by k_ProbeShrink, so a jump
+    // that ends against a roof leaves the head up to 5% of the body's height inside it,
+    // and from there this returned 0 for every fall. FallToGround and the passive settle
+    // both read that as "landed", so the player hung under the platform and the next Left/
+    // Right command walked that hovering body along the underside of it.
+    //
+    // Starting at the feet means only geometry the player could actually fall onto can
+    // answer. Distances are unchanged for a genuine surface below: a downward box cast
+    // measures how far the box's leading face travels, and that face is the feet either way.
+    private float GroundDistanceBelow(float maxDistance)
     {
-        Vector2 pos = m_Rigidbody.position;
-        pos.x = Mathf.Round(pos.x);
-        pos.y = Mathf.Round(pos.y * 2f) / 2f;
-        m_Rigidbody.position = pos;
+        if (m_Collider == null) return maxDistance;
+
+        Bounds b = m_Collider.bounds;
+        Vector2 size = new Vector2(b.size.x * k_ProbeShrink, k_GroundProbeThickness);
+        Vector2 origin = new Vector2(b.center.x, b.min.y + k_GroundProbeThickness * 0.5f);
+
+        RaycastHit2D hit = Physics2D.BoxCast(
+            origin, size, 0f, Vector2.down, maxDistance, WalkableMask);
+
+        return hit.collider != null ? Mathf.Min(hit.distance, maxDistance) : maxDistance;
     }
 
-    // Casts downward from the leading edge of the collider (front foot) in the
-    // direction of travel. Returns false when that foot steps off a platform.
-    private bool CheckGroundAhead(float moveDirection)
+    // True when the cell one step away in `sign` is filled by something solid.
+    //
+    // Stepping cell to cell means an obstacle has to be seen BEFORE the step, while it is
+    // still a full cell away - so the question is about the destination cell, not about
+    // the thin sliver just outside the player's side face the way it was when velocity
+    // drove the body into walls before anything noticed.
+    //
+    // SWEPT, not a static overlap of that cell. The levels build their collision as a
+    // CompositeCollider2D with Outlines geometry, which is hollow: it carries edges along
+    // the surface of the level and nothing at all in the interior. A box parked inside the
+    // destination cell touches none of those edges - it stops 0.05 short of the boundary
+    // the wall's outline runs along - so every wall read as empty air and the player
+    // walked straight through it. A cast crosses that face, which is where the geometry
+    // actually is, and keeps working unchanged if the composite is ever rebuilt as solid
+    // polygons instead.
+    private bool IsCellBlocked(float sign)
     {
-        float sign = Mathf.Sign(moveDirection);
-        float bottom = m_Collider != null ? m_Collider.bounds.min.y : transform.position.y;
-        float frontX = transform.position.x + sign * (m_Collider != null ? m_Collider.bounds.extents.x : 0.5f);
-        return Physics2D.Raycast(new Vector2(frontX, bottom), Vector2.down, m_GroundCheckDistance, WalkableMask);
+        if (m_Collider == null || Mathf.Approximately(sign, 0f)) return false;
+
+        Bounds b = m_Collider.bounds;
+
+        // Vertically shrunk so the floor the player is standing on - which runs on into
+        // the destination cell - is never read as a wall. Horizontally thin because it is
+        // the sweep, not the box, that has to reach across the cell boundary.
+        Vector2 size = new Vector2(GridWorld.CellSize * 0.1f, b.size.y * 0.8f);
+
+        // Reaches to just inside the FAR edge of the destination cell. Stopping short of
+        // that edge matters on outline geometry: it doubles as the near face of the cell
+        // beyond, so a sweep that touched it would halt the player a full cell early in
+        // front of every wall.
+        float distance = GridWorld.CellSize * 1.5f - size.x * 0.5f - 0.05f;
+
+        return Physics2D.BoxCast(
+            b.center, size, 0f, new Vector2(Mathf.Sign(sign), 0f),
+            distance, WalkableMask).collider != null;
     }
 
-    // BoxCasts horizontally to detect a wall in the direction of travel.
-    // Returns true if something in m_GroundLayer blocks the next step.
-    private bool CheckHorizontalWall(float signedSpeed)
+    // True when sweeping the body from `from` to `to` would cross something solid. Used by
+    // the jump arc, which has no solver to stop it at a wall.
+    //
+    // SWEPT, for exactly the reason IsCellBlocked is. The levels build their collision as a
+    // CompositeCollider2D with Outlines geometry, which is hollow: it carries edges along
+    // the surface of the level and nothing at all in the interior. A box tested statically
+    // at `to` touches none of those edges once it sits fully inside a wall, so it reported
+    // clear air from inside solid rock — and because the probe is shrunk by k_ProbeShrink,
+    // there was a 0.05-wide band just past every wall face where that happened. The body
+    // crossed the face in one step and kept going, ending up a full cell deep in the wall.
+    // A cast crosses the face, which is where the geometry actually is.
+    private bool IsBodyBlockedBetween(Vector2 from, Vector2 to)
     {
-        if (m_Collider == null || Mathf.Approximately(signedSpeed, 0f)) return false;
+        if (m_Collider == null) return false;
 
-        float sign = Mathf.Sign(signedSpeed);
-        // OverlapBox on a thin slice just outside the player's side face.
-        // Unlike BoxCast, OverlapBox detects walls the player is already touching.
-        Vector2 sideCenter = new Vector2(
-            m_Collider.bounds.center.x + sign * (m_Collider.bounds.extents.x + 0.04f),
-            m_Collider.bounds.center.y);
-        Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
+        Bounds b = m_Collider.bounds;
+        Vector2 colliderOffset = (Vector2)b.center - m_Rigidbody.position;
+        Vector2 size = b.size * k_ProbeShrink;
+        Vector2 delta = to - from;
+        float distance = delta.magnitude;
 
-        return Physics2D.OverlapBox(sideCenter, sideSize, 0f, WalkableMask) != null;
+        // Nothing to sweep (a purely vertical step at the apex, say) — ask about the
+        // destination itself, which is all a zero-length cast could report anyway.
+        if (distance < Mathf.Epsilon)
+            return Physics2D.OverlapBox(to + colliderOffset, size, 0f, WalkableMask) != null;
+
+        return Physics2D.BoxCast(
+            from + colliderOffset, size, 0f, delta / distance, distance, WalkableMask).collider != null;
     }
 
-    // Returns the PushBrick at the player's side face, or null if none is present.
-    // Uses all layers so the brick does not need to be on the Ground layer.
-    private PushBrick CheckPushBrick(float signedSpeed)
+    // Returns the PushBrick occupying the cell one step away in `signedDirection`, or
+    // null. Queries every layer so the brick does not have to sit on the Ground layer.
+    private PushBrick CheckPushBrick(float signedDirection)
     {
-        if (m_Collider == null || Mathf.Approximately(signedSpeed, 0f)) return null;
+        if (m_Collider == null || Mathf.Approximately(signedDirection, 0f)) return null;
 
-        float sign = Mathf.Sign(signedSpeed);
-        Vector2 sideCenter = new Vector2(
-            m_Collider.bounds.center.x + sign * (m_Collider.bounds.extents.x + 0.04f),
-            m_Collider.bounds.center.y);
-        Vector2 sideSize = new Vector2(0.08f, m_Collider.bounds.size.y * 0.8f);
+        Bounds b = m_Collider.bounds;
+        Vector2 size = new Vector2(b.size.x * k_ProbeShrink, b.size.y * 0.8f);
+        Vector2 centre = new Vector2(
+            b.center.x + Mathf.Sign(signedDirection) * GridWorld.CellSize, b.center.y);
 
-        int count = Physics2D.OverlapBox(sideCenter, sideSize, 0f, m_NoFilter, m_OverlapResults);
+        int count = Physics2D.OverlapBox(centre, size, 0f, m_NoFilter, m_OverlapResults);
         for (int i = 0; i < count; i++)
         {
             Collider2D hit = m_OverlapResults[i];
             if (hit == m_Collider || hit.isTrigger) continue;
+
             PushBrick brick = hit.GetComponentInParent<PushBrick>();
             if (brick == null) continue;
 
-            // Ignore a brick the player is standing ON: its top sits at (or below)
-            // the player's feet, so it's a floor — not a wall to push. This stops
-            // the brick being shoved sideways out from under the player when they
-            // land on top of it mid-move (walk/fall off an edge onto the brick).
-            // A genuinely pushable brick rises beside the body, presenting a side face.
+            // Ignore a brick the player is standing ON: its top sits at or below the
+            // player's feet, so it is a floor, not a wall to push. Without this the brick
+            // gets shoved out from under the player the moment they land on top of it.
             if (hit.bounds.max.y <= m_Collider.bounds.min.y + 0.1f) continue;
 
             return brick;
@@ -1035,12 +1475,55 @@ public class PlayerController : MonoBehaviour
         return null;
     }
 
+#if UNITY_EDITOR
+    // Draws the ground probe (green) and the two destination-cell probes (cyan) so the
+    // collider size and the cell alignment can be checked in the Scene view.
+    private void OnDrawGizmosSelected()
+    {
+        Collider2D col = m_Collider != null ? m_Collider : GetComponent<Collider2D>();
+        if (col == null) return;
+
+        Bounds b = col.bounds;
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireCube(
+            new Vector3(b.center.x, b.min.y - k_GroundProbeThickness * 0.5f, 0f),
+            new Vector3(b.size.x * k_ProbeShrink, k_GroundProbeThickness, 0f));
+
+        // The blocked-cell sweeps: drawn as the region each cast covers, so the reach can
+        // be checked against the cell boundaries it has to land between.
+        Gizmos.color = Color.cyan;
+        float span = GridWorld.CellSize * 1.5f - 0.05f + GridWorld.CellSize * 0.05f;
+        for (int sign = -1; sign <= 1; sign += 2)
+        {
+            Gizmos.DrawWireCube(
+                new Vector3(b.center.x + sign * span * 0.5f, b.center.y, 0f),
+                new Vector3(span, b.size.y * 0.8f, 0f));
+        }
+    }
+#endif
+
+    // Settles the player onto the grid after every move/jump, eliminating the
+    // floating-point drift that accumulates over a command.
+    //
+    // BOTH axes snap to a whole unit, because cell centres are at integer world
+    // coordinates (see GridWorld). Y used to snap to the 0.5 grid to "sit flush on
+    // platforms placed on the half grid" - but a half-integer Y is exactly a body
+    // straddling two rows, which is the drift this method exists to remove. It made the
+    // snap preserve the fractional positions the physics solver produced instead of
+    // correcting them. Any platform that genuinely needs a half-unit surface must be
+    // moved onto the cell grid instead.
+    private void SnapToGrid()
+    {
+        m_Rigidbody.position = GridWorld.SnapToCell(m_Rigidbody.position);
+    }
+
     // ─── Turn End / Abort ────────────────────────────────────────────────────────
 
     private void EndTurn()
     {
         m_IsGamePlaying = false;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_IsWalking = false;
         m_EndTurnCoroutine = StartCoroutine(WaitForEndStuff());
     }
 
@@ -1061,13 +1544,14 @@ public class PlayerController : MonoBehaviour
             m_EndTurnCoroutine = null;
         }
 
-        m_Rigidbody.linearVelocity = Vector2.zero;
-
-        // StopCoroutine above can kill MoveHorizontal/PerformJump/waypoint transport while
-        // they have gravity temporarily zeroed (edge-walk, jump arc), so their restore line
-        // never runs. Reset to the original here, otherwise the player keeps drifting
-        // horizontally through the air on the next turn (gravityScale stuck at 0).
-        m_Rigidbody.gravityScale = m_OriginalGravityScale;
+        // StopCoroutine above can kill MoveHorizontal / PerformJump / a waypoint transport
+        // part-way through, so the lines that would have cleared these never run. Left set,
+        // m_IsScriptedMotion would permanently disable the passive settle in FixedUpdate
+        // and the player would hover the next time the ground went away.
+        m_IsScriptedMotion = false;
+        m_IsWalking = false;
+        m_IsAirborne = false;
+        m_PassiveFallSpeed = 0f;
     }
 
     // Short delay before resetting position and unlocking UI
@@ -1086,7 +1570,7 @@ public class PlayerController : MonoBehaviour
 
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_PassiveFallSpeed = 0f;
         transform.localScale = m_OriginalScale;   // restore spawn facing
         m_EndTurnCoroutine = null;
 
@@ -1104,28 +1588,71 @@ public class PlayerController : MonoBehaviour
     {
         if (!m_IsHazardable || GameManager.Instance == null) return;
 
-        if (other.CompareTag("Spike") && !other.TryGetComponent(out EnemyMovement _))
+        if (IsLethalSpike(other))
         {
             AbortExecution();
             StartCoroutine(DeathRoutine());
         }
         else if (other.CompareTag("Door"))
         {
-            if (GameManager.Instance.IsKeyCollected)
+            // The door's collider spans the whole doorway, so this fires again on every
+            // step the player takes into it. Only the first touch owns the win.
+            if (GameManager.Instance.IsKeyCollected && !m_IsWinning)
             {
-                AbortExecution();
-                StartCoroutine(WinRoutine());
+                m_IsWinning = true;
+                StartCoroutine(WinRoutine(other));
             }
         }
     }
 
-    private System.Collections.IEnumerator WinRoutine()
+    private IEnumerator WinRoutine(Collider2D door)
     {
-        // The level is won — don't let a hazard kill the player during the fade out.
+        // The level is won — don't let a hazard kill the player during the entry or
+        // the fade out.
         m_IsHazardable = false;
+
+        // The door interrupts whatever was running outright: the command in flight is
+        // dropped where it stands, mid-arc if need be, and the portal takes over from that
+        // exact spot. Also cancels a pending end-of-turn reset, which would otherwise yank
+        // the player back to spawn in the middle of the win.
+        AbortExecution();
 
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayWin();
+
+        // Spin and travel TOGETHER, rather than walking in and then spinning on the spot.
+        // The exit portal animation owns the spin and the shrink; the travel underneath it
+        // only moves the body, at the pace the player walks — the two are no longer fitted
+        // to a shared duration, so whichever finishes first simply waits for the other.
+        // Both are awaited, so the outro below starts only once the player is standing on
+        // the interaction point AND fully spun out.
+        Coroutine spin = StartCoroutine(PlayExitPortalRoutine());
+        yield return TravelToDoorInteractionPoint(door);
+        yield return spin;
+
+        // The player is now inside the door — on its interaction point and spun down to
+        // nothing. The burst goes off there, punctuating the moment they vanish. Spawned
+        // from the resolved point rather than the body's position, so a travel that hit its
+        // timeout still puts the effect in the doorway where it belongs.
+        SpawnParticleEffect(
+            m_DoorEnterEffect, ResolveDoorInteractionPoint(door), m_DoorEnterEffectScale);
+
+        // Parks the body for the rest of the outro. The portal hands the motion flags back
+        // when it finishes — correct for the spawn spin, which returns the player to normal
+        // play — but here the player has just been deposited on the door's interaction
+        // point, and a doorway point is usually in mid-air. Handed back, the passive settle
+        // in FixedUpdate immediately starts dropping them: invisible at zero scale, but the
+        // camera follows the player and would sink with them through the doctor reaction and
+        // the fade. Never restored, because the scene is on its way out behind this.
+        m_IsScriptedMotion = true;
+
+        // The door shuts behind them. Awaited rather than fired and forgotten, so the doctor's
+        // reaction and the fade play over a closed doorway instead of starting while it is
+        // still swinging shut. The door owns the animation and its doorway effect; all this
+        // knows is that the player is in and the level is over.
+        LevelExitDoor exit = door != null ? door.GetComponentInParent<LevelExitDoor>() : null;
+        if (exit != null)
+            yield return exit.CloseRoutine();
 
         // Doctor reacts (sad) — wait for the full reaction before leaving the level.
         if (EvilDoctorAnimationController.Instance != null)
@@ -1134,9 +1661,80 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
-        GameManager.Instance.LoadNextLevel();
-        LevelManager.Instance.CompleteLevel(SceneManager.GetActiveScene().buildIndex, 0);
+        // Recorded BEFORE the scene load is requested, and null-guarded: LevelManager is a
+        // menu-scene singleton, so it simply doesn't exist when a level scene is played
+        // directly. Unguarded and ordered the other way round, this threw a
+        // NullReferenceException on every win and the completion was never saved.
+        if (LevelManager.Instance != null)
+            LevelManager.Instance.CompleteLevel(SceneManager.GetActiveScene().buildIndex, 0);
 
+        GameManager.Instance.LoadNextLevel();
+    }
+
+    // Carries the player from wherever the door caught them to the doorway's interaction
+    // point. Position ONLY — the exit portal animation running alongside owns the spin, the
+    // shrink and the sprite, so this must not touch the transform's scale or rotation.
+    //
+    // Deliberately does NOT settle the player on the ground first, and does not wait for the
+    // command in flight to finish. The walk-in this replaced did both: a win taken mid-jump
+    // had its arc cut off in the air and then dropped the player straight down the door's
+    // face before the walk across could even start. Travelling from the exact spot the door
+    // was touched is what makes it read as the door pulling them in.
+    //
+    // Travels at exactly the pace a Left/Right command walks, in the SAME one-cell steps
+    // through the SAME MoveOverTime — so the last stretch into the doorway is
+    // frame-for-frame the motion the player was already watching, not a separate glide.
+    //
+    // It is therefore NOT fitted to the spin's duration. Fitting it was what made the pace
+    // arbitrary: the same one-second lerp covered whatever distance the door happened to be
+    // away, so a win taken from two cells out crawled and one taken from across the doorway
+    // shot across. The spin runs alongside on its own clock and simply carries on spinning
+    // on the spot once the player arrives — which is the common case, since the door is
+    // normally caught a cell or two from its interaction point.
+    //
+    // Nothing here manages m_IsScriptedMotion: m_IsPortalAnimating is already set for the
+    // whole of this, which is what holds the passive settle in FixedUpdate off the body.
+    // Position ONLY — the portal alongside owns the scale and the rotation.
+    //
+    // The step loop is capped by k_DoorApproachTimeout so a mis-placed interaction point
+    // can't leave the player travelling forever at a door that ends the level.
+    private IEnumerator TravelToDoorInteractionPoint(Collider2D door)
+    {
+        Vector2 target = ResolveDoorInteractionPoint(door);
+        float startTime = Time.time;
+
+        while (Vector2.Distance(m_Rigidbody.position, target) > 0.01f &&
+               Time.time - startTime < k_DoorApproachTimeout)
+        {
+            Vector2 toTarget = target - m_Rigidbody.position;
+            float remaining = toTarget.magnitude;
+
+            // A whole cell per step, at the command's per-cell duration. The interaction
+            // point is normally a whole number of cells away, so every step is a full one;
+            // the short final step only exists for a point placed off-grid, and it takes
+            // proportionally less time so even that fragment travels at the same speed.
+            float stepDistance = Mathf.Min(remaining, GridWorld.CellSize);
+
+            yield return MoveOverTime(
+                m_Rigidbody.position + toTarget * (stepDistance / remaining),
+                CommandStepDuration * (stepDistance / GridWorld.CellSize));
+        }
+
+        m_Rigidbody.position = target;
+    }
+
+    // A door carrying LevelExitDoor names its own interaction point. Anything else — a
+    // level authored before that component existed — falls back to the middle of the
+    // doorway at the height the player is already standing at, so the walk-in still
+    // happens without every door needing to be re-wired.
+    private Vector2 ResolveDoorInteractionPoint(Collider2D door)
+    {
+        if (door == null) return m_Rigidbody.position;
+
+        LevelExitDoor exit = door.GetComponentInParent<LevelExitDoor>();
+        if (exit != null) return exit.InteractionPosition;
+
+        return new Vector2(door.bounds.center.x, m_Rigidbody.position.y);
     }
 
     private System.Collections.IEnumerator DeathRoutine()
@@ -1171,7 +1769,7 @@ public class PlayerController : MonoBehaviour
 
         GameManager.Instance?.SoftResetLevel();
         m_Rigidbody.position = m_StartPosition;
-        m_Rigidbody.linearVelocity = Vector2.zero;
+        m_PassiveFallSpeed = 0f;
         transform.localScale = m_OriginalScale;   // restore spawn facing
 
         // Death done — hand the sprite back to the normal idle/run/jump animation.

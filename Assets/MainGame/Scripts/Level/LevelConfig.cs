@@ -35,6 +35,12 @@ public class LevelConfig : ScriptableObject
         [Min(1)] public int maxSequenceLength = 6;
         [Tooltip("When true the player must fill every slot before Enter.")]
         public bool requireFullSequence = false;
+
+        [Tooltip("This level's solution, played back by the Auto Play test button. " +
+                 "Every entry must be a concrete action — Any is not playable. " +
+                 "Leave empty to fall back to the level's correct sequence, which only " +
+                 "works when that sequence has no Any (wildcard) slots.")]
+        public ActionTypeEnum[] autoPlaySequence = new ActionTypeEnum[0];
     }
 
     [Header("Identity")]
