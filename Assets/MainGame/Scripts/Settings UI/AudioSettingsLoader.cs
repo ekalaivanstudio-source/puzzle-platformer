@@ -41,11 +41,9 @@ namespace Setting.Menu
 
             Debug.Log("Saved audio settings applied.");
 
-            audioMixer.SetFloat(AudioMixerParameters.MusicVolumeParameter, SliderToMixer(settings.MasterVolume));
-
             audioMixer.GetFloat(AudioMixerParameters.MusicVolumeParameter, out float value);
 
-            Debug.Log($"Saved:{settings.MasterVolume}  Applied:{value}");
+            Debug.Log($"Saved Music:{settings.MusicVolume}  Applied Music:{value}");
         }
 
         private float SliderToMixer(float sliderValue)
@@ -55,7 +53,8 @@ namespace Setting.Menu
             if (sliderValue <= 0f)
                 return AudioMixerParameters.MinMixerVolume;
 
-            return Mathf.Lerp(AudioMixerParameters.MinMixerVolume, AudioMixerParameters.MaxMixerVolume, sliderValue);
+            // Logarithmic conversion to match human hearing (maps 0.0001-1.0 to -80dB-0dB)
+            return Mathf.Log10(sliderValue) * 20f;
         }
     }
 }
