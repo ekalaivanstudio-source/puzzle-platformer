@@ -9,6 +9,7 @@ namespace LevelSelection
     public class ArcData : ScriptableObject
     {
         public string arcName = "ARC 1";
+        public Sprite arcTitleSprite; // Custom header sprite for this arc
         public int totalLevelsInArc = 15;
 
         [Header("Grid Layout Settings")]

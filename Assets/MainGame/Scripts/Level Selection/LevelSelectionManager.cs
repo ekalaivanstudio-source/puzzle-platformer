@@ -1,11 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace LevelSelection
 {
     /// <summary>
-    /// Coordinates path generation, node setup, and progression unlocking.
+    /// Coordinates path generation, node setup, progression unlocking, and multi-arc page switching.
     /// </summary>
     [DisallowMultipleComponent]
     public class LevelSelectionManager : MonoBehaviour
@@ -18,12 +20,18 @@ namespace LevelSelection
         [Header("Animation Settings")]
         [SerializeField] private float fillDuration = 0.5f;
 
+        [Header("Arc Navigation Buttons")]
+        [SerializeField] private Button nextArcButton;
+        [SerializeField] private Button prevArcButton;
+        [SerializeField] private Image arcTitleImage;
+
         #endregion
 
         #region Private Fields
 
         private List<LevelNodeUI> levelNodes = new List<LevelNodeUI>();
         private List<UIPathSegment> pathSegments = new List<UIPathSegment>();
+        private int currentArcIndex = 0;
 
         #endregion
 
@@ -31,16 +39,24 @@ namespace LevelSelection
 
         private void Start()
         {
+            // Set up navigation listeners
+            if (nextArcButton != null)
+            {
+                nextArcButton.onClick.AddListener(OnNextArcClicked);
+            }
+            if (prevArcButton != null)
+            {
+                prevArcButton.onClick.AddListener(OnPrevArcClicked);
+            }
+
             if (arcGenerator != null)
             {
                 int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
                 
-                // 1. Generate the arc nodes and paths dynamically
-                arcGenerator.GenerateArc(highestUnlockedLevel, highestUnlockedLevel);
+                // Initialize at the arc containing the highest unlocked level
+                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
                 
-                // 2. Fetch references to spawned UI elements
-                levelNodes = arcGenerator.SpawnedNodes;
-                pathSegments = arcGenerator.GeneratedSegments;
+                RefreshArcDisplay();
             }
         }
 
@@ -60,6 +76,54 @@ namespace LevelSelection
         #endregion
 
         #region Private Methods
+
+        private void RefreshArcDisplay()
+        {
+            if (arcGenerator == null) return;
+
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+
+            // 1. Generate the specific arc nodes and paths
+            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel);
+            
+            // 2. Fetch references to spawned UI elements
+            levelNodes = arcGenerator.SpawnedNodes;
+            pathSegments = arcGenerator.GeneratedSegments;
+
+            // 3. Update navigation buttons
+            if (prevArcButton != null)
+            {
+                prevArcButton.interactable = currentArcIndex > 0;
+            }
+            if (nextArcButton != null)
+            {
+                nextArcButton.interactable = currentArcIndex < arcGenerator.ArcCount - 1;
+            }
+
+            // 4. Update Arc Title image
+            if (arcTitleImage != null)
+            {
+                arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
+            }
+        }
+
+        private void OnNextArcClicked()
+        {
+            if (arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1)
+            {
+                currentArcIndex++;
+                RefreshArcDisplay();
+            }
+        }
+
+        private void OnPrevArcClicked()
+        {
+            if (arcGenerator != null && currentArcIndex > 0)
+            {
+                currentArcIndex--;
+                RefreshArcDisplay();
+            }
+        }
 
         private IEnumerator UnlockSequence(int completedLevelIndex)
         {

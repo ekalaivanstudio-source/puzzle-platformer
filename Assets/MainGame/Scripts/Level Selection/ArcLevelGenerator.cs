@@ -6,7 +6,7 @@ namespace LevelSelection
 {
     /// <summary>
     /// Spawns level nodes automatically in S-curve winding grids across multiple arcs/worlds,
-    /// connects them, and ensures correct rendering order.
+    /// connects them, and ensures correct rendering order. Supports generating a single active arc page.
     /// </summary>
     [DisallowMultipleComponent]
     public class ArcLevelGenerator : MonoBehaviour
@@ -52,14 +52,16 @@ namespace LevelSelection
         public List<LevelNodeUI> SpawnedNodes => spawnedNodes;
         public List<UIPathSegment> GeneratedSegments => generatedSegments;
 
+        public int ArcCount => (arcs != null && arcs.Count > 0) ? arcs.Count : 1;
+
         #endregion
 
         #region Public Methods
 
         /// <summary>
-        /// Instantiates the level nodes and path lines for all configured arcs.
+        /// Instantiates the level nodes and path lines for a specific arc index.
         /// </summary>
-        public void GenerateArc(int highestUnlockedLevel, int currentSelectedLevelIndex)
+        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex)
         {
             // Clear existing elements
             if (nodesContainer != null)
@@ -79,152 +81,169 @@ namespace LevelSelection
                 return;
             }
 
-            // Ensure path lines are rendered behind the level nodes (first sibling = back, last sibling = front)
-            linesContainer.SetAsFirstSibling();
-            nodesContainer.SetAsLastSibling();
-
-            // Prepare the list of arcs to generate
-            List<ArcConfig> activeConfigs = new List<ArcConfig>();
+            // 1. Get the target arc config
+            ArcConfig config = new ArcConfig();
+            bool hasPreviousArc = false;
+            bool hasNextArc = false;
 
             if (arcs != null && arcs.Count > 0)
             {
-                int currentStartLevel = 1;
-                foreach (var arcData in arcs)
+                if (arcIndex < 0 || arcIndex >= arcs.Count) arcIndex = 0;
+                
+                // Calculate start level number by summing up previous arcs
+                int startLevel = 1;
+                for (int i = 0; i < arcIndex; i++)
                 {
-                    if (arcData == null) continue;
-                    activeConfigs.Add(new ArcConfig
-                    {
-                        arcName = arcData.arcName,
-                        totalLevelsInArc = arcData.totalLevelsInArc,
-                        startLevelNumber = currentStartLevel,
-                        columns = arcData.columns,
-                        horizontalSpacing = arcData.horizontalSpacing,
-                        verticalSpacing = arcData.verticalSpacing,
-                        startOffset = arcData.startOffset
-                    });
-                    currentStartLevel += arcData.totalLevelsInArc;
+                    startLevel += arcs[i].totalLevelsInArc;
                 }
+
+                var arcData = arcs[arcIndex];
+                config.arcName = arcData.arcName;
+                config.totalLevelsInArc = arcData.totalLevelsInArc;
+                config.startLevelNumber = startLevel;
+                config.columns = arcData.columns;
+                config.horizontalSpacing = arcData.horizontalSpacing;
+                config.verticalSpacing = arcData.verticalSpacing;
+                config.startOffset = arcData.startOffset;
+
+                hasPreviousArc = arcIndex > 0;
+                hasNextArc = arcIndex < arcs.Count - 1;
             }
             else
             {
                 // Fallback to inspector fields
-                activeConfigs.Add(new ArcConfig
-                {
-                    arcName = arcName,
-                    totalLevelsInArc = totalLevelsInArc,
-                    startLevelNumber = startLevelNumber,
-                    columns = columns,
-                    horizontalSpacing = horizontalSpacing,
-                    verticalSpacing = verticalSpacing,
-                    startOffset = startOffset
-                });
+                config.arcName = arcName;
+                config.totalLevelsInArc = totalLevelsInArc;
+                config.startLevelNumber = startLevelNumber;
+                config.columns = columns;
+                config.horizontalSpacing = horizontalSpacing;
+                config.verticalSpacing = verticalSpacing;
+                config.startOffset = startOffset;
+
+                hasPreviousArc = config.startLevelNumber > 1;
+                hasNextArc = false; // single arc fallback has no next arc
             }
 
-            LevelNodeUI lastNodeOfPreviousArc = null;
-
-            for (int k = 0; k < activeConfigs.Count; k++)
+            // 2. Spawn Level Nodes in S-curve layout
+            for (int i = 0; i < config.totalLevelsInArc; i++)
             {
-                var config = activeConfigs[k];
-                List<LevelNodeUI> arcSpawnedNodes = new List<LevelNodeUI>();
+                int levelNum = config.startLevelNumber + i;
 
-                // 1. Spawn Level Nodes in S-curve layout
-                for (int i = 0; i < config.totalLevelsInArc; i++)
+                // Calculate S-curve grid position
+                int row = i / config.columns;
+                int col = i % config.columns;
+
+                // Reverse direction on odd rows (winding S-curve layout)
+                if (row % 2 != 0)
                 {
-                    int levelNum = config.startLevelNumber + i;
-
-                    // Calculate S-curve grid position
-                    int row = i / config.columns;
-                    int col = i % config.columns;
-
-                    // Reverse direction on odd rows (winding S-curve layout)
-                    if (row % 2 != 0)
-                    {
-                        col = (config.columns - 1) - col;
-                    }
-
-                    float posX = config.startOffset.x + (col * config.horizontalSpacing);
-                    float posY = config.startOffset.y - (row * config.verticalSpacing);
-
-                    GameObject nodeObj = Instantiate(levelNodePrefab, nodesContainer);
-                    nodeObj.name = $"LevelNode_{levelNum}";
-
-                    RectTransform nodeRect = nodeObj.GetComponent<RectTransform>();
-                    if (nodeRect != null)
-                    {
-                        nodeRect.anchorMin = new Vector2(0.5f, 0.5f);
-                        nodeRect.anchorMax = new Vector2(0.5f, 0.5f);
-                        nodeRect.pivot = new Vector2(0.5f, 0.5f);
-                        nodeRect.anchoredPosition = new Vector2(posX, posY);
-                    }
-
-                    LevelNodeUI nodeScript = nodeObj.GetComponent<LevelNodeUI>();
-                    if (nodeScript == null)
-                    {
-                        nodeScript = nodeObj.AddComponent<LevelNodeUI>();
-                    }
-
-                    nodeScript.levelNumber = levelNum;
-
-                    // Apply progression state
-                    bool isUnlocked = levelNum <= highestUnlockedLevel;
-                    bool isCompleted = levelNum < highestUnlockedLevel;
-                    bool isSelected = levelNum == currentSelectedLevelIndex;
-                    nodeScript.SetupNode(isUnlocked, isCompleted, isSelected);
-
-                    spawnedNodes.Add(nodeScript);
-                    arcSpawnedNodes.Add(nodeScript);
+                    col = (config.columns - 1) - col;
                 }
 
-                // 2. Generate Paths between sequential nodes
-                for (int i = 0; i < arcSpawnedNodes.Count - 1; i++)
-                {
-                    RectTransform startNode = arcSpawnedNodes[i].GetComponent<RectTransform>();
-                    RectTransform endNode = arcSpawnedNodes[i + 1].GetComponent<RectTransform>();
+                float posX = config.startOffset.x + (col * config.horizontalSpacing);
+                float posY = config.startOffset.y - (row * config.verticalSpacing);
 
-                    if (startNode != null && endNode != null)
-                    {
-                        CreatePathSegment(startNode, endNode, arcSpawnedNodes[i + 1].levelNumber, highestUnlockedLevel);
-                    }
+                GameObject nodeObj = Instantiate(levelNodePrefab, nodesContainer);
+                nodeObj.name = $"LevelNode_{levelNum}";
+
+                RectTransform nodeRect = nodeObj.GetComponent<RectTransform>();
+                if (nodeRect != null)
+                {
+                    nodeRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    nodeRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    nodeRect.pivot = new Vector2(0.5f, 0.5f);
+                    nodeRect.anchoredPosition = new Vector2(posX, posY);
                 }
 
-                // 3. Connect to previous Arc directly
-                if (lastNodeOfPreviousArc != null && arcSpawnedNodes.Count > 0)
+                LevelNodeUI nodeScript = nodeObj.GetComponent<LevelNodeUI>();
+                if (nodeScript == null)
                 {
-                    RectTransform prevNodeRect = lastNodeOfPreviousArc.GetComponent<RectTransform>();
-                    RectTransform currNodeRect = arcSpawnedNodes[0].GetComponent<RectTransform>();
-                    if (prevNodeRect != null && currNodeRect != null)
-                    {
-                        CreatePathSegment(prevNodeRect, currNodeRect, arcSpawnedNodes[0].levelNumber, highestUnlockedLevel);
-                    }
+                    nodeScript = nodeObj.AddComponent<LevelNodeUI>();
                 }
 
-                // 4. Connect entrance line only if config starts at level > 1 (e.g. not the absolute start of path)
-                if (k == 0 && config.startLevelNumber > 1 && arcSpawnedNodes.Count > 0)
-                {
-                    RectTransform firstNode = arcSpawnedNodes[0].GetComponent<RectTransform>();
-                    if (firstNode != null)
-                    {
-                        CreateEntranceLine(firstNode, highestUnlockedLevel, config.startLevelNumber);
-                    }
-                }
+                nodeScript.levelNumber = levelNum;
 
-                // Cache last node to connect to next arc
-                if (arcSpawnedNodes.Count > 0)
+                // Apply progression state
+                bool isUnlocked = levelNum <= highestUnlockedLevel;
+                bool isCompleted = levelNum < highestUnlockedLevel;
+                bool isSelected = levelNum == currentSelectedLevelIndex;
+                nodeScript.SetupNode(isUnlocked, isCompleted, isSelected);
+
+                spawnedNodes.Add(nodeScript);
+            }
+
+            // 3. Generate Paths between sequential nodes
+            for (int i = 0; i < spawnedNodes.Count - 1; i++)
+            {
+                RectTransform startNode = spawnedNodes[i].GetComponent<RectTransform>();
+                RectTransform endNode = spawnedNodes[i + 1].GetComponent<RectTransform>();
+
+                if (startNode != null && endNode != null)
                 {
-                    lastNodeOfPreviousArc = arcSpawnedNodes[arcSpawnedNodes.Count - 1];
+                    CreatePathSegment(startNode, endNode, spawnedNodes[i + 1].levelNumber, highestUnlockedLevel);
                 }
             }
 
-            // Create exit line for the last node of the final arc
-            if (activeConfigs.Count > 0 && lastNodeOfPreviousArc != null)
+            // 4. Connect entrance line if there is a previous arc
+            if (hasPreviousArc && spawnedNodes.Count > 0)
             {
-                var finalConfig = activeConfigs[activeConfigs.Count - 1];
-                RectTransform lastNode = lastNodeOfPreviousArc.GetComponent<RectTransform>();
+                RectTransform firstNode = spawnedNodes[0].GetComponent<RectTransform>();
+                if (firstNode != null)
+                {
+                    CreateEntranceLine(firstNode, highestUnlockedLevel, config.startLevelNumber);
+                }
+            }
+
+            // 5. Create exit line if there is a next arc
+            if (hasNextArc && spawnedNodes.Count > 0)
+            {
+                RectTransform lastNode = spawnedNodes[spawnedNodes.Count - 1].GetComponent<RectTransform>();
                 if (lastNode != null)
                 {
-                    CreateExitLine(lastNode, highestUnlockedLevel, finalConfig.startLevelNumber, finalConfig.totalLevelsInArc);
+                    CreateExitLine(lastNode, highestUnlockedLevel, config.startLevelNumber, config.totalLevelsInArc);
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns which arc index contains the given level number.
+        /// </summary>
+        public int GetArcIndexForLevel(int levelNumber)
+        {
+            if (arcs == null || arcs.Count == 0) return 0;
+            int startLevel = 1;
+            for (int i = 0; i < arcs.Count; i++)
+            {
+                if (levelNumber >= startLevel && levelNumber < startLevel + arcs[i].totalLevelsInArc)
+                {
+                    return i;
+                }
+                startLevel += arcs[i].totalLevelsInArc;
+            }
+            return arcs.Count - 1; // Default to last arc if beyond
+        }
+
+        /// <summary>
+        /// Returns the name of the arc at the given index.
+        /// </summary>
+        public string GetArcName(int arcIndex)
+        {
+            if (arcs != null && arcIndex >= 0 && arcIndex < arcs.Count)
+            {
+                return arcs[arcIndex].arcName;
+            }
+            return arcName;
+        }
+
+        /// <summary>
+        /// Returns the custom header sprite of the arc at the given index.
+        /// </summary>
+        public Sprite GetArcSprite(int arcIndex)
+        {
+            if (arcs != null && arcIndex >= 0 && arcIndex < arcs.Count)
+            {
+                return arcs[arcIndex].arcTitleSprite;
+            }
+            return null;
         }
 
         #endregion
@@ -272,11 +291,11 @@ namespace LevelSelection
             
             if (lineRect != null)
             {
-                lineRect.pivot = new Vector2(0.5f, 0f); // Pivot at bottom-middle to draw upwards
+                lineRect.pivot = new Vector2(0f, 0.5f); // Pivot at start to draw outwards
                 lineRect.anchorMin = new Vector2(0.5f, 0.5f);
                 lineRect.anchorMax = new Vector2(0.5f, 0.5f);
                 lineRect.anchoredPosition = firstNode.anchoredPosition;
-                lineRect.sizeDelta = new Vector2(lineThickness, 200f);
+                lineRect.sizeDelta = new Vector2(200f, lineThickness);
                 lineRect.localRotation = Quaternion.Euler(0, 0, 90f); // Pointing straight up
             }
 
@@ -297,11 +316,11 @@ namespace LevelSelection
             
             if (lineRect != null)
             {
-                lineRect.pivot = new Vector2(0.5f, 0f); // Pivot at top-middle to draw downwards
+                lineRect.pivot = new Vector2(0f, 0.5f); // Pivot at start to draw outwards
                 lineRect.anchorMin = new Vector2(0.5f, 0.5f);
                 lineRect.anchorMax = new Vector2(0.5f, 0.5f);
                 lineRect.anchoredPosition = lastNode.anchoredPosition;
-                lineRect.sizeDelta = new Vector2(lineThickness, 200f);
+                lineRect.sizeDelta = new Vector2(200f, lineThickness);
                 lineRect.localRotation = Quaternion.Euler(0, 0, -90f); // Pointing straight down
             }
 
