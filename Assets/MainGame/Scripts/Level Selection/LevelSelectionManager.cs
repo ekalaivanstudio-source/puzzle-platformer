@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using MainGame.UI.Unified;
 
 namespace LevelSelection
 {
@@ -25,6 +27,10 @@ namespace LevelSelection
         [SerializeField] private Button prevArcButton;
         [SerializeField] private Image arcTitleImage;
 
+        [Header("Global Input Settings")]
+        [Tooltip("Reference to the input actions asset to listen to PageLeft / PageRight events.")]
+        [SerializeField] private InputActionAsset m_UIInputActionAsset;
+
         #endregion
 
         #region Private Fields
@@ -32,6 +38,8 @@ namespace LevelSelection
         private List<LevelNodeUI> levelNodes = new List<LevelNodeUI>();
         private List<UIPathSegment> pathSegments = new List<UIPathSegment>();
         private int currentArcIndex = 0;
+        private InputAction m_PageLeftAction;
+        private InputAction m_PageRightAction;
 
         #endregion
 
@@ -49,6 +57,28 @@ namespace LevelSelection
                 prevArcButton.onClick.AddListener(OnPrevArcClicked);
             }
 
+            // Wire up Page/Tab actions for Q/E and LB/RB controls
+            if (m_UIInputActionAsset != null)
+            {
+                InputActionMap uiMap = m_UIInputActionAsset.FindActionMap("UI", throwIfNotFound: false);
+                if (uiMap != null)
+                {
+                    m_PageLeftAction = uiMap.FindAction("PageLeft", throwIfNotFound: false);
+                    m_PageRightAction = uiMap.FindAction("PageRight", throwIfNotFound: false);
+
+                    if (m_PageLeftAction != null)
+                    {
+                        m_PageLeftAction.performed += handlePageLeft;
+                        m_PageLeftAction.Enable();
+                    }
+                    if (m_PageRightAction != null)
+                    {
+                        m_PageRightAction.performed += handlePageRight;
+                        m_PageRightAction.Enable();
+                    }
+                }
+            }
+
             if (arcGenerator != null)
             {
                 int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
@@ -58,6 +88,28 @@ namespace LevelSelection
                 
                 RefreshArcDisplay();
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (m_PageLeftAction != null)
+            {
+                m_PageLeftAction.performed -= handlePageLeft;
+            }
+            if (m_PageRightAction != null)
+            {
+                m_PageRightAction.performed -= handlePageRight;
+            }
+        }
+
+        private void handlePageLeft(InputAction.CallbackContext context)
+        {
+            OnPrevArcClicked();
+        }
+
+        private void handlePageRight(InputAction.CallbackContext context)
+        {
+            OnNextArcClicked();
         }
 
         #endregion
@@ -104,6 +156,25 @@ namespace LevelSelection
             if (arcTitleImage != null)
             {
                 arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
+            }
+
+            // 5. Restore EventSystem focus to the highest unlocked level node on startup
+            if (UINavigationManager.Instance != null && levelNodes != null && levelNodes.Count > 0)
+            {
+                // Find the node corresponding to the highest unlocked level in the current arc list
+                LevelNodeUI targetNode = null;
+                foreach (var node in levelNodes)
+                {
+                    if (node != null && node.levelNumber == highestUnlockedLevel)
+                    {
+                        targetNode = node;
+                        break;
+                    }
+                }
+
+                // Fallback to the first node in the arc if the highest unlocked is in another arc page
+                GameObject selectTarget = targetNode != null ? targetNode.gameObject : levelNodes[0].gameObject;
+                UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
             }
         }
 

@@ -202,6 +202,101 @@ namespace LevelSelection
                     CreateExitLine(lastNode, highestUnlockedLevel, config.startLevelNumber, config.totalLevelsInArc);
                 }
             }
+
+            // 6. Build Winding S-Curve Explicit Button Navigation links
+            BuildLevelButtonNavigation(config.columns);
+        }
+
+        /// <summary>
+        /// Explicitly binds the UI buttons in a winding snake navigation mesh (S-curve path).
+        /// </summary>
+        private void BuildLevelButtonNavigation(int columnsCount)
+        {
+            int total = spawnedNodes.Count;
+            if (total <= 1) return;
+
+            for (int i = 0; i < total; i++)
+            {
+                Button btn = spawnedNodes[i].GetComponent<Button>();
+                if (btn == null)
+                {
+                    btn = spawnedNodes[i].GetComponentInChildren<Button>();
+                }
+                if (btn == null) continue;
+
+                Navigation nav = btn.navigation;
+                nav.mode = Navigation.Mode.Explicit;
+
+                int row = i / columnsCount;
+                int col = i % columnsCount;
+                bool isOddRow = (row % 2 != 0);
+
+                // --- HORIZONTAL (LEFT / RIGHT) MOVEMENT ---
+                // In winding layout:
+                // Even rows (0, 2): left-to-right (0 -> 1 -> 2 -> 3 -> 4)
+                // Odd rows (1, 3): right-to-left (9 <- 8 <- 7 <- 6 <- 5)
+                
+                Button prevSequential = (i > 0) ? GetButton(spawnedNodes[i - 1]) : null;
+                Button nextSequential = (i < total - 1) ? GetButton(spawnedNodes[i + 1]) : null;
+
+                if (!isOddRow)
+                {
+                    // Even row: Left goes to previous index, Right goes to next index
+                    nav.selectOnLeft = prevSequential;
+                    nav.selectOnRight = nextSequential;
+                }
+                else
+                {
+                    // Odd row: Left goes to next index, Right goes to previous index
+                    nav.selectOnLeft = nextSequential;
+                    nav.selectOnRight = prevSequential;
+                }
+
+                // --- VERTICAL (UP / DOWN) MOVEMENT ---
+                // Vertical bridges are created at row boundaries (winding joints)
+                // Col 4 (ends row 0): Down goes to Col 4 (starts row 1, index 5)
+                // Col 0 (ends row 1): Down goes to Col 0 (starts row 2, index 10)
+                
+                nav.selectOnUp = null;
+                nav.selectOnDown = null;
+
+                // Bind bridge to row below if we are at the row ends
+                if (isOddRow)
+                {
+                    // Odd row: ends at column 0 (which is index i where i % col == 0)
+                    if (col == 0 && i < total - 1)
+                    {
+                        nav.selectOnDown = nextSequential;
+                    }
+                    if (col == (columnsCount - 1) && i > 0)
+                    {
+                        nav.selectOnUp = prevSequential;
+                    }
+                }
+                else
+                {
+                    // Even row: ends at columnsCount - 1 (which is index i where i % col == columnsCount - 1)
+                    if (col == (columnsCount - 1) && i < total - 1)
+                    {
+                        nav.selectOnDown = nextSequential;
+                    }
+                    if (col == 0 && i > 0 && row > 0)
+                    {
+                        nav.selectOnUp = prevSequential;
+                    }
+                }
+
+                btn.navigation = nav;
+            }
+
+            Debug.Log($"[ArcLevelGenerator] Winding navigation built for {total} level nodes.");
+        }
+
+        private Button GetButton(LevelNodeUI node)
+        {
+            if (node == null) return null;
+            Button b = node.GetComponent<Button>();
+            return b != null ? b : node.GetComponentInChildren<Button>();
         }
 
         /// <summary>

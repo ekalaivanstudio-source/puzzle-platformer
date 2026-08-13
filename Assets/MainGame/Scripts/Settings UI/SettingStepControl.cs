@@ -1,15 +1,17 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Setting.Menu
 {
     /// <summary>
     /// UI component for a settings row using 10 images to show values instead of a slider.
     /// Handles increase and decrease buttons and updates box sprites/colors accordingly.
+    /// Implements IMoveHandler to capture horizontal EventSystem movements when selected.
     /// </summary>
     [DisallowMultipleComponent]
-    public class SettingStepControl : MonoBehaviour
+    public class SettingStepControl : MonoBehaviour, IMoveHandler
     {
         #region Inspector Fields
 
@@ -69,6 +71,32 @@ namespace Setting.Menu
             if (increaseButton != null)
             {
                 increaseButton.onClick.AddListener(IncreaseValue);
+            }
+        }
+
+        #endregion
+
+        #region IMoveHandler Implementation
+
+        /// <summary>
+        /// Intercepts navigation inputs. If the direction is horizontal, changes values and consumes the event.
+        /// If the direction is vertical, lets the event continue so that EventSystem moves focus to other UI elements.
+        /// </summary>
+        public void OnMove(AxisEventData eventData)
+        {
+            switch (eventData.moveDir)
+            {
+                case MoveDirection.Left:
+                    DecreaseValue();
+                    eventData.Use(); // Consume event
+                    break;
+                case MoveDirection.Right:
+                    IncreaseValue();
+                    eventData.Use(); // Consume event
+                    break;
+                // Up and Down are NOT consumed, allowing them to naturally transition focus.
+                default:
+                    break;
             }
         }
 

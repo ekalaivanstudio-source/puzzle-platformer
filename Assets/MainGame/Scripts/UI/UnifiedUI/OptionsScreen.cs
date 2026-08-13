@@ -1,0 +1,33 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace MainGame.UI.Unified
+{
+    /// <summary>
+    /// Unified Options Screen controller.
+    /// </summary>
+    public class OptionsScreen : UIScreen
+    {
+        [Header("Controls")]
+        [SerializeField] private Button m_BackButton;
+
+        private void OnEnable()
+        {
+            if (m_BackButton != null) m_BackButton.onClick.AddListener(HandleBackClicked);
+        }
+
+        private void OnDisable()
+        {
+            if (m_BackButton != null) m_BackButton.onClick.RemoveListener(HandleBackClicked);
+        }
+
+        private void HandleBackClicked()
+        {
+            AudioManager.Instance?.PlayButton();
+            if (UINavigationManager.Instance != null)
+            {
+                UINavigationManager.Instance.PopScreen();
+            }
+        }
+    }
+}

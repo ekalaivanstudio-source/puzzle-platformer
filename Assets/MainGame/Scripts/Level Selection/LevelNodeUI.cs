@@ -1,13 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections;
 
 namespace LevelSelection
 {
     /// <summary>
     /// Component representing a single level node in the level selection screen UI.
+    /// Supports dynamic selection arrow toggles on focus.
     /// </summary>
     [DisallowMultipleComponent]
-    public class LevelNodeUI : MonoBehaviour
+    public class LevelNodeUI : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
     {
         #region Inspector Fields
 
@@ -39,6 +42,85 @@ namespace LevelSelection
         }
 
         #endregion
+
+        private Coroutine m_PulseCoroutine;
+
+        public void OnSelect(BaseEventData eventData)
+        {
+            SetArrowActive(true);
+        }
+
+        public void OnDeselect(BaseEventData eventData)
+        {
+            SetArrowActive(false);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            // Hovering sets selection in EventSystem
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(gameObject);
+            }
+            else
+            {
+                SetArrowActive(true);
+            }
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+            else
+            {
+                SetArrowActive(false);
+            }
+        }
+
+        private void SetArrowActive(bool active)
+        {
+            if (m_PulseCoroutine != null)
+            {
+                StopCoroutine(m_PulseCoroutine);
+                m_PulseCoroutine = null;
+            }
+
+            if (selectionArrow != null)
+            {
+                selectionArrow.SetActive(active);
+                if (active)
+                {
+                    m_PulseCoroutine = StartCoroutine(ArrowPulseRoutine());
+                }
+            }
+        }
+
+        private IEnumerator ArrowPulseRoutine()
+        {
+            if (selectionArrow == null) yield break;
+
+            Vector3 originalScale = selectionArrow.transform.localScale;
+            Vector3 originalLocalPos = selectionArrow.transform.localPosition;
+            float elapsed = 0f;
+
+            while (true)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                
+                // Gentle pulse: sine wave oscillating scale between 95% and 105% at 6Hz frequency
+                float scaleOffset = Mathf.Sin(elapsed * 6f) * 0.05f;
+                selectionArrow.transform.localScale = originalScale * (1f + scaleOffset);
+
+                // Bobbing: vertical shift up and down by 8 units using sine wave
+                float bobOffset = Mathf.Sin(elapsed * 6f) * 8f;
+                selectionArrow.transform.localPosition = new Vector3(originalLocalPos.x, originalLocalPos.y + bobOffset, originalLocalPos.z);
+
+                yield return null;
+            }
+        }
 
         #region Public Methods
 
