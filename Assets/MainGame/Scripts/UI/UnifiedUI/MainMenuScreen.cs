@@ -38,6 +38,19 @@ namespace MainGame.UI.Unified
             }
         }
 
+        private void Start()
+        {
+            // If returning from pause menu to Level Selection, auto open it immediately
+            if (PauseMenuScreen.AutoOpenLevelSelection)
+            {
+                PauseMenuScreen.AutoOpenLevelSelection = false; // Reset flag
+                if (m_LevelSelectionScreen != null && UINavigationManager.Instance != null)
+                {
+                    UINavigationManager.Instance.PushScreen(m_LevelSelectionScreen);
+                }
+            }
+        }
+
         private void OnEnable()
         {
             if (m_ContinueButton != null) m_ContinueButton.onClick.AddListener(HandleContinueClicked);
@@ -113,6 +126,15 @@ namespace MainGame.UI.Unified
             AudioManager.Instance?.PlayButton();
             if (m_ConfirmationPopupScreen != null && UINavigationManager.Instance != null)
             {
+                ConfirmationPopupScreen confirmPopup = m_ConfirmationPopupScreen as ConfirmationPopupScreen;
+                if (confirmPopup != null)
+                {
+                    confirmPopup.SetupAction(() =>
+                    {
+                        Debug.Log("[MainMenuScreen] Exiting application...");
+                        Application.Quit();
+                    }, null);
+                }
                 UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
             }
             else

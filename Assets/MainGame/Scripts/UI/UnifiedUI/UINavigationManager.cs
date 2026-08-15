@@ -96,6 +96,13 @@ namespace MainGame.UI.Unified
         {
             if (newScreen == null) return;
 
+            // Failsafe: If the screen history contains destroyed objects (due to scene changes), clear it
+            while (m_ScreenHistory.Count > 0 && m_ScreenHistory.Peek() == null)
+            {
+                m_ScreenHistory.Pop();
+                if (m_SelectionHistory.Count > 0) m_SelectionHistory.Pop();
+            }
+
             Debug.Log($"[UINavigationManager] Pushing screen: {newScreen.gameObject.name}");
 
             // Remember what was selected on the current screen before pushing the new one
@@ -103,7 +110,12 @@ namespace MainGame.UI.Unified
             {
                 GameObject lastSelected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
                 m_SelectionHistory.Push(lastSelected);
-                m_ScreenHistory.Peek().Close();
+                
+                UIScreen currentTop = m_ScreenHistory.Peek();
+                if (currentTop != null)
+                {
+                    currentTop.Close();
+                }
             }
 
             m_ScreenHistory.Push(newScreen);
@@ -116,6 +128,13 @@ namespace MainGame.UI.Unified
         /// </summary>
         public void PopScreen()
         {
+            // Clean up any destroyed screen references from the stack
+            while (m_ScreenHistory.Count > 0 && m_ScreenHistory.Peek() == null)
+            {
+                m_ScreenHistory.Pop();
+                if (m_SelectionHistory.Count > 0) m_SelectionHistory.Pop();
+            }
+
             if (m_ScreenHistory.Count <= 1)
             {
                 Debug.Log("[UINavigationManager] Cannot pop the base screen.");
@@ -123,13 +142,26 @@ namespace MainGame.UI.Unified
             }
 
             UIScreen poppedScreen = m_ScreenHistory.Pop();
-            poppedScreen.Close();
-            Debug.Log($"[UINavigationManager] Popped screen: {poppedScreen.gameObject.name}");
+            if (poppedScreen != null)
+            {
+                poppedScreen.Close();
+            }
+            Debug.Log($"[UINavigationManager] Popped screen: {(poppedScreen != null ? poppedScreen.gameObject.name : "NullScreen")}");
+
+            // Clean up subsequent references if destroyed
+            while (m_ScreenHistory.Count > 0 && m_ScreenHistory.Peek() == null)
+            {
+                m_ScreenHistory.Pop();
+                if (m_SelectionHistory.Count > 0) m_SelectionHistory.Pop();
+            }
 
             if (m_ScreenHistory.Count > 0)
             {
                 UIScreen previousScreen = m_ScreenHistory.Peek();
-                previousScreen.Open();
+                if (previousScreen != null)
+                {
+                    previousScreen.Open();
+                }
 
                 // Retrieve and restore the specific button that opened this submenu
                 GameObject previousSelection = null;
@@ -141,7 +173,7 @@ namespace MainGame.UI.Unified
                 // Fallback to the screen's default selected object if nothing was stored
                 if (previousSelection == null || !previousSelection.activeInHierarchy)
                 {
-                    previousSelection = previousScreen.DefaultSelectedObject;
+                    previousSelection = previousScreen != null ? previousScreen.DefaultSelectedObject : null;
                 }
 
                 RestoreSelectedElement(previousSelection);
