@@ -360,6 +360,7 @@ MonoBehaviour:
   nextArcButton: {fileID: 0}
   prevArcButton: {fileID: 0}
   arcTitleImage: {fileID: 0}
+  m_UIInputActionAsset: {fileID: 0}
 --- !u!114 &69557474
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1090,6 +1091,7 @@ GameObject:
   - component: {fileID: 142441495}
   - component: {fileID: 142441494}
   - component: {fileID: 142441493}
+  - component: {fileID: 142441496}
   m_Layer: 0
   m_Name: Button
   m_TagString: Untagged
@@ -1198,6 +1200,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 142441491}
   m_CullTransparentMesh: 1
+--- !u!114 &142441496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 142441491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 272f6f0c285a4554b9addcf1fd044827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UISelectableVisualFeedback
+  m_TargetImage: {fileID: 142441494}
+  m_SelectedSprite: {fileID: 21300000, guid: f594cd1bacb329343a1857fe7960b67a, type: 3}
+  m_NormalSprite: {fileID: 21300000, guid: 471cfa3044f685e4aa9c05aa8116c255, type: 3}
+  m_LeftPointer: {fileID: 0}
 --- !u!1 &170958021
 GameObject:
   m_ObjectHideFlags: 0
@@ -1594,8 +1612,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 968000933}
-  increaseButton: {fileID: 439331609}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 1855821522}
   - {fileID: 1795999057}
@@ -1611,6 +1658,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 0}
+  labelSelectedSprite: {fileID: 0}
+  labelNormalSprite: {fileID: 0}
 --- !u!114 &199960139
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2544,8 +2594,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 1037427421}
-  increaseButton: {fileID: 416431289}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 294387340}
   - {fileID: 1305554484}
@@ -2561,6 +2640,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 1322554130}
+  labelSelectedSprite: {fileID: 21300000, guid: 3f2375e31b9a0d74b81a628c8047653e, type: 3}
+  labelNormalSprite: {fileID: 21300000, guid: 4b18cd08610747b4f831493f07776efb, type: 3}
 --- !u!114 &313827871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3781,8 +3863,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 1290420061}
-  increaseButton: {fileID: 1721023933}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 1732506884}
   - {fileID: 2135031276}
@@ -3798,6 +3909,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 2147092768}
+  labelSelectedSprite: {fileID: 21300000, guid: 10efe6c43caf8e84397915c0cf802979, type: 3}
+  labelNormalSprite: {fileID: 21300000, guid: 044bf701baeb56843a35409cdfa186c7, type: 3}
 --- !u!114 &451215191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5695,6 +5809,7 @@ GameObject:
   - component: {fileID: 682859046}
   - component: {fileID: 682859045}
   - component: {fileID: 682859044}
+  - component: {fileID: 682859047}
   m_Layer: 0
   m_Name: Button
   m_TagString: Untagged
@@ -5803,6 +5918,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 682859042}
   m_CullTransparentMesh: 1
+--- !u!114 &682859047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 682859042}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 272f6f0c285a4554b9addcf1fd044827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UISelectableVisualFeedback
+  m_TargetImage: {fileID: 682859045}
+  m_SelectedSprite: {fileID: 21300000, guid: 78fe89eb949642444aad14762cc40abc, type: 3}
+  m_NormalSprite: {fileID: 21300000, guid: 192e3d4611bb6b24094487c26e0ed7cd, type: 3}
+  m_LeftPointer: {fileID: 0}
 --- !u!1 &683431959
 GameObject:
   m_ObjectHideFlags: 0
@@ -6286,8 +6417,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 1067146176}
-  increaseButton: {fileID: 414072026}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 1853551186}
   - {fileID: 592527165}
@@ -6303,6 +6463,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 142441494}
+  labelSelectedSprite: {fileID: 21300000, guid: f594cd1bacb329343a1857fe7960b67a, type: 3}
+  labelNormalSprite: {fileID: 21300000, guid: 471cfa3044f685e4aa9c05aa8116c255, type: 3}
 --- !u!1 &738513311
 GameObject:
   m_ObjectHideFlags: 0
@@ -7466,6 +7629,7 @@ MonoBehaviour:
   nextArcButton: {fileID: 101580057}
   prevArcButton: {fileID: 95075222}
   arcTitleImage: {fileID: 16258780}
+  m_UIInputActionAsset: {fileID: -944628639613478452, guid: 67607d93eacdd344e8ca1bddc27209e4, type: 3}
 --- !u!225 &953909471
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -7490,7 +7654,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53ac09d63b79279479b706ad7034bfb2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.LevelSelectionScreen
-  m_DefaultSelectedObject: {fileID: 1134092944}
+  m_DefaultSelectedObject: {fileID: 0}
   m_BackButton: {fileID: 2096284960}
 --- !u!1 &968000931
 GameObject:
@@ -7892,8 +8056,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 1173056865}
-  increaseButton: {fileID: 1516712951}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 1108820979}
   - {fileID: 379090469}
@@ -7909,6 +8102,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 0}
+  labelSelectedSprite: {fileID: 0}
+  labelNormalSprite: {fileID: 0}
 --- !u!114 &1020159840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8253,7 +8449,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8aabe35ba101dfe469b9492a9481017e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UINavigationManager
-  m_InitialScreen: {fileID: 0}
+  m_InitialScreen: {fileID: 1134092947}
   m_UIInputActionAsset: {fileID: -944628639613478452, guid: 67607d93eacdd344e8ca1bddc27209e4, type: 3}
 --- !u!114 &1084002685
 MonoBehaviour:
@@ -8635,13 +8831,15 @@ GameObject:
   m_Component:
   - component: {fileID: 1134092945}
   - component: {fileID: 1134092946}
+  - component: {fileID: 1134092947}
+  - component: {fileID: 1134092948}
   m_Layer: 0
   m_Name: HomeScreenPanel  New
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1134092945
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8675,6 +8873,50 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &1134092947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134092944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73a5731b267e58042963f84e4d487744, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.MainMenuScreen
+  m_DefaultSelectedObject: {fileID: 1134092944}
+  m_ContinueButton: {fileID: 1722940595}
+  m_NewGameButton: {fileID: 602387702}
+  m_CollectButton: {fileID: 1958619470}
+  m_OptionsButton: {fileID: 1097428296}
+  m_CreditsButton: {fileID: 1805191251}
+  m_ExitButton: {fileID: 517168284}
+  m_LevelSelectionScreen: {fileID: 953909472}
+  m_CollectionScreen: {fileID: 308255809}
+  m_OptionsScreen: {fileID: 1522255095}
+  m_CreditsScreen: {fileID: 1637794852}
+  m_ConfirmationPopupScreen: {fileID: 8756601930611816591}
+--- !u!114 &1134092948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134092944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ed3ad8682324514e99311933552782e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIVerticalNavigationLinker
+  m_Buttons:
+  - {fileID: 1722940595}
+  - {fileID: 602387702}
+  - {fileID: 1958619470}
+  - {fileID: 1097428296}
+  - {fileID: 1805191251}
+  - {fileID: 517168284}
+  m_LoopNavigation: 0
 --- !u!1 &1136308578
 GameObject:
   m_ObjectHideFlags: 0
@@ -9939,6 +10181,7 @@ GameObject:
   - component: {fileID: 1322554131}
   - component: {fileID: 1322554130}
   - component: {fileID: 1322554129}
+  - component: {fileID: 1322554132}
   m_Layer: 0
   m_Name: Button
   m_TagString: Untagged
@@ -10047,6 +10290,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1322554127}
   m_CullTransparentMesh: 1
+--- !u!114 &1322554132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1322554127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 272f6f0c285a4554b9addcf1fd044827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UISelectableVisualFeedback
+  m_TargetImage: {fileID: 1322554130}
+  m_SelectedSprite: {fileID: 21300000, guid: 3f2375e31b9a0d74b81a628c8047653e, type: 3}
+  m_NormalSprite: {fileID: 21300000, guid: 4b18cd08610747b4f831493f07776efb, type: 3}
+  m_LeftPointer: {fileID: 0}
 --- !u!1 &1351286168
 GameObject:
   m_ObjectHideFlags: 0
@@ -10902,8 +11161,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2e8c0ca1f6676943947735974219a03, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.OptionsScreen
-  m_DefaultSelectedObject: {fileID: 1134092944}
+  m_DefaultSelectedObject: {fileID: 734673920}
   m_BackButton: {fileID: 1217661461}
+  m_SettingsRows:
+  - {fileID: 734673923}
+  - {fileID: 313827870}
+  - {fileID: 1745892979}
+  - {fileID: 451215190}
 --- !u!1 &1547383952
 GameObject:
   m_ObjectHideFlags: 0
@@ -12153,8 +12417,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daec39dd61623c1419bd8ecb1eb9cdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Setting.Menu.SettingStepControl
-  decreaseButton: {fileID: 797610803}
-  increaseButton: {fileID: 187712661}
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  decreaseButtonTransform: {fileID: 0}
+  increaseButtonTransform: {fileID: 0}
   stepImages:
   - {fileID: 1303305157}
   - {fileID: 1997893525}
@@ -12170,6 +12463,9 @@ MonoBehaviour:
   inactiveSprite: {fileID: 21300000, guid: 31d9881adfdb24e4aa9056b579fdc593, type: 3}
   activeColor: {r: 1, g: 1, b: 1, a: 1}
   inactiveColor: {r: 1, g: 1, b: 1, a: 1}
+  labelImage: {fileID: 682859045}
+  labelSelectedSprite: {fileID: 21300000, guid: 78fe89eb949642444aad14762cc40abc, type: 3}
+  labelNormalSprite: {fileID: 21300000, guid: 192e3d4611bb6b24094487c26e0ed7cd, type: 3}
 --- !u!114 &1745892980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12791,8 +13087,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1805697725}
   - component: {fileID: 1805697728}
-  - component: {fileID: 1805697727}
-  - component: {fileID: 1805697726}
   m_Layer: 0
   m_Name: Menu manager
   m_TagString: Untagged
@@ -12815,50 +13109,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1805697726
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1805697723}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ed3ad8682324514e99311933552782e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIVerticalNavigationLinker
-  m_Buttons:
-  - {fileID: 1722940595}
-  - {fileID: 602387702}
-  - {fileID: 1958619470}
-  - {fileID: 1097428296}
-  - {fileID: 1805191251}
-  - {fileID: 517168284}
-  m_LoopNavigation: 0
---- !u!114 &1805697727
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1805697723}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73a5731b267e58042963f84e4d487744, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.MainMenuScreen
-  m_DefaultSelectedObject: {fileID: 1134092944}
-  m_ContinueButton: {fileID: 1722940595}
-  m_NewGameButton: {fileID: 602387702}
-  m_CollectButton: {fileID: 1958619470}
-  m_OptionsButton: {fileID: 1097428296}
-  m_CreditsButton: {fileID: 1805191251}
-  m_ExitButton: {fileID: 517168284}
-  m_LevelSelectionScreen: {fileID: 953909472}
-  m_CollectionScreen: {fileID: 308255809}
-  m_OptionsScreen: {fileID: 1522255095}
-  m_CreditsScreen: {fileID: 1637794852}
-  m_ConfirmationPopupScreen: {fileID: 8756601930611816591}
 --- !u!225 &1805697728
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -14898,6 +15148,7 @@ GameObject:
   - component: {fileID: 2147092769}
   - component: {fileID: 2147092768}
   - component: {fileID: 2147092767}
+  - component: {fileID: 2147092770}
   m_Layer: 0
   m_Name: Button
   m_TagString: Untagged
@@ -15006,6 +15257,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2147092765}
   m_CullTransparentMesh: 1
+--- !u!114 &2147092770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2147092765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 272f6f0c285a4554b9addcf1fd044827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UISelectableVisualFeedback
+  m_TargetImage: {fileID: 2147092768}
+  m_SelectedSprite: {fileID: 21300000, guid: 10efe6c43caf8e84397915c0cf802979, type: 3}
+  m_NormalSprite: {fileID: 21300000, guid: 044bf701baeb56843a35409cdfa186c7, type: 3}
+  m_LeftPointer: {fileID: 0}
 --- !u!225 &185302048581771470
 CanvasGroup:
   m_ObjectHideFlags: 0

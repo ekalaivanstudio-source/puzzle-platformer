@@ -71,6 +71,23 @@ namespace MainGame.UI.Unified
             }
         }
 
+        private GameObject m_LastLoggedSelection = null;
+        private void Update()
+        {
+            if (EventSystem.current != null)
+            {
+                GameObject currentSel = EventSystem.current.currentSelectedGameObject;
+                if (currentSel != m_LastLoggedSelection)
+                {
+                    m_LastLoggedSelection = currentSel;
+                    Debug.Log($"[UINavigationManager Focus Tracker] Selected GameObject changed to: {(currentSel != null ? currentSel.name : "NULL")}");
+                }
+            }
+        }
+
+        // Tracks the GameObject that had selection focus on the previous screen
+        private readonly Stack<GameObject> m_SelectionHistory = new Stack<GameObject>();
+
         /// <summary>
         /// Pushes a new screen onto the history stack and opens it.
         /// </summary>
@@ -81,9 +98,11 @@ namespace MainGame.UI.Unified
 
             Debug.Log($"[UINavigationManager] Pushing screen: {newScreen.gameObject.name}");
 
-            // Deactivate the current screen in stack if any
+            // Remember what was selected on the current screen before pushing the new one
             if (m_ScreenHistory.Count > 0)
             {
+                GameObject lastSelected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+                m_SelectionHistory.Push(lastSelected);
                 m_ScreenHistory.Peek().Close();
             }
 
@@ -111,7 +130,21 @@ namespace MainGame.UI.Unified
             {
                 UIScreen previousScreen = m_ScreenHistory.Peek();
                 previousScreen.Open();
-                RestoreSelectedElement(previousScreen.DefaultSelectedObject);
+
+                // Retrieve and restore the specific button that opened this submenu
+                GameObject previousSelection = null;
+                if (m_SelectionHistory.Count > 0)
+                {
+                    previousSelection = m_SelectionHistory.Pop();
+                }
+
+                // Fallback to the screen's default selected object if nothing was stored
+                if (previousSelection == null || !previousSelection.activeInHierarchy)
+                {
+                    previousSelection = previousScreen.DefaultSelectedObject;
+                }
+
+                RestoreSelectedElement(previousSelection);
             }
         }
 

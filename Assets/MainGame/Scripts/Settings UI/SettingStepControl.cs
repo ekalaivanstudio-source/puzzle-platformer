@@ -7,17 +7,16 @@ namespace Setting.Menu
 {
     /// <summary>
     /// UI component for a settings row using 10 images to show values instead of a slider.
-    /// Handles increase and decrease buttons and updates box sprites/colors accordingly.
-    /// Implements IMoveHandler to capture horizontal EventSystem movements when selected.
+    /// Inherits from Selectable to support EventSystem selection focus (WASD/Controller).
     /// </summary>
     [DisallowMultipleComponent]
-    public class SettingStepControl : MonoBehaviour, IMoveHandler
+    public class SettingStepControl : Selectable, IMoveHandler, IPointerClickHandler
     {
         #region Inspector Fields
 
-        [Header("Controls")]
-        [SerializeField] private Button decreaseButton;
-        [SerializeField] private Button increaseButton;
+        [Header("Controls (Optional/Visual only)")]
+        [SerializeField] private RectTransform decreaseButtonTransform;
+        [SerializeField] private RectTransform increaseButtonTransform;
 
         [Header("Visual Blocks")]
         [Tooltip("Exactly 10 image components representing the steps.")]
@@ -32,6 +31,14 @@ namespace Setting.Menu
         [Header("Colors (Optional tint fallback)")]
         [SerializeField] private Color activeColor = Color.white;
         [SerializeField] private Color inactiveColor = Color.white;
+
+        [Header("Header Label Sprite Swap")]
+        [Tooltip("The stylized label Image on the left (e.g. Button name).")]
+        [SerializeField] private Image labelImage;
+        [Tooltip("Sprite used for the label when this setting row is selected/focused.")]
+        [SerializeField] private Sprite labelSelectedSprite;
+        [Tooltip("Sprite used for the label in normal state.")]
+        [SerializeField] private Sprite labelNormalSprite;
 
         #endregion
 
@@ -61,16 +68,89 @@ namespace Setting.Menu
 
         #region Unity Lifecycle
 
-        private void Awake()
+        protected override void Awake()
         {
-            if (decreaseButton != null)
+            base.Awake();
+
+            // Ensure there is a graphic on this GameObject so it can receive focus
+            if (targetGraphic == null)
             {
-                decreaseButton.onClick.AddListener(DecreaseValue);
+                Image img = GetComponent<Image>();
+                if (img == null)
+                {
+                    img = gameObject.AddComponent<Image>();
+                    // Make it fully transparent so it doesn't block the visual design
+                    img.color = new Color(1f, 1f, 1f, 0f);
+                }
+                img.raycastTarget = true;
+                targetGraphic = img;
             }
 
-            if (increaseButton != null)
+            // Set default navigation mode to explicit/vertical
+            navigation = new Navigation { mode = Navigation.Mode.Automatic };
+
+            // Ensure start visual matches normal state
+            UpdateLabelSprite(false);
+        }
+
+        #endregion
+
+        #region Selection Visual Feedback Override
+
+        public override void OnSelect(BaseEventData eventData)
+        {
+            base.OnSelect(eventData);
+            UpdateLabelSprite(true);
+        }
+
+        public override void OnDeselect(BaseEventData eventData)
+        {
+            base.OnDeselect(eventData);
+            UpdateLabelSprite(false);
+        }
+
+        public override void OnPointerEnter(PointerEventData eventData)
+        {
+            base.OnPointerEnter(eventData);
+            // Select on mouse hover
+            Select();
+        }
+
+        private void UpdateLabelSprite(bool selected)
+        {
+            if (labelImage != null)
             {
-                increaseButton.onClick.AddListener(IncreaseValue);
+                Sprite targetSprite = selected ? labelSelectedSprite : labelNormalSprite;
+                if (targetSprite != null)
+                {
+                    labelImage.sprite = targetSprite;
+                }
+            }
+        }
+
+        #endregion
+
+        #region IPointerClickHandler Implementation
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            // Calculate if the click was on the left half or right half of this UI element
+            RectTransform rectTransform = transform as RectTransform;
+            if (rectTransform != null)
+            {
+                Vector2 localPoint;
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, eventData.position, eventData.pressEventCamera, out localPoint))
+                {
+                    // If clicked on the left side of the row center, decrease. Otherwise, increase.
+                    if (localPoint.x < 0)
+                    {
+                        DecreaseValue();
+                    }
+                    else
+                    {
+                        IncreaseValue();
+                    }
+                }
             }
         }
 
@@ -94,8 +174,9 @@ namespace Setting.Menu
                     IncreaseValue();
                     eventData.Use(); // Consume event
                     break;
-                // Up and Down are NOT consumed, allowing them to naturally transition focus.
+                // Let the base Selectable handle Up and Down directions to move focus
                 default:
+                    base.OnMove(eventData);
                     break;
             }
         }
