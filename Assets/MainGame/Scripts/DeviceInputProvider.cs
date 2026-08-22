@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 ///   Submit (Enter / Gamepad Start)  → triggers execution via GameManager
 ///   Undo (Backspace / Gamepad B)    → removes last queued action
 ///   Clear (Delete / Gamepad Select) → clears entire queue
-///   Restart (R)                     → opens the restart confirmation dialog
+///   Restart (R)                     → reloads the level immediately (no confirmation)
 /// </summary>
 public class DeviceInputProvider : MonoBehaviour
 {
@@ -175,6 +175,12 @@ public class DeviceInputProvider : MonoBehaviour
 
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }
     private void OnClear(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.ClearSequence(); AudioManager.Instance?.PlayClear(); } }
-    private void OnRestart(InputAction.CallbackContext c) { RestartConfirmationUI.ShowRestart(); }
+    // R restarts straight away - no confirmation dialog. Skipped while the home-screen
+    // confirmation is up so R cannot reload the level from underneath it.
+    private void OnRestart(InputAction.CallbackContext c)
+    {
+        if (RestartConfirmationUI.IsOpen) return;
+        GameManager.Instance?.RestartLevel();
+    }
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }
 }

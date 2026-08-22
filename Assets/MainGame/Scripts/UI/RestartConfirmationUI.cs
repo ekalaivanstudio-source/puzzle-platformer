@@ -1,8 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Runtime restart confirmation used by the Restart input action.
+/// Runtime confirmation dialog used by the Escape / home-screen flow.
+/// The Restart input action (R) reloads immediately and does not open this.
 /// It installs itself automatically, so existing level scenes need no changes.
 /// </summary>
 public sealed class RestartConfirmationUI : MonoBehaviour
