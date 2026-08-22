@@ -23,8 +23,20 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     // Optional correct sequence â€” when set, CanExecute also requires an exact match.
     private ActionTypeEnum[] m_CorrectSequence;
 
+    // The sequence submitted on the turn that has most recently ended. Survives the clear
+    // below so the player can still see what they tried while entering their next attempt.
+    private readonly List<ActionTypeEnum> m_PreviousSequence = new List<ActionTypeEnum>();
+
     /// <summary>Read-only view of the current queued command sequence.</summary>
     public IReadOnlyList<ActionTypeEnum> Sequence => m_Sequence;
+
+    /// <summary>
+    /// Read-only view of the sequence the player submitted on the last turn that ended —
+    /// their previous attempt. Empty until a turn has actually ended, and never emptied
+    /// afterwards: each finished attempt replaces the one before it.
+    /// Drawn by <see cref="PreviousInputDisplay"/>.
+    /// </summary>
+    public IReadOnlyList<ActionTypeEnum> PreviousSequence => m_PreviousSequence;
 
     // â”€â”€â”€ ISequenceSource â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -83,6 +95,12 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
 
     /// <summary>Fired whenever the sequence is modified (add, remove, or clear).</summary>
     public event Action OnSequenceChanged;
+
+    /// <summary>
+    /// Fired when a finished turn's sequence has been recorded into
+    /// <see cref="PreviousSequence"/>, i.e. once per attempt that actually ran.
+    /// </summary>
+    public event Action OnPreviousSequenceChanged;
 
     // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -143,8 +161,30 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         OnSequenceChanged?.Invoke();
     }
 
-    /// <summary>Clears the queue at turn end. Called by <see cref="GameManager.PlayEnded"/>.</summary>
-    public void OnTurnEnded() => ClearSequence();
+    /// <summary>
+    /// Records the attempt and clears the queue at turn end. Called by
+    /// <see cref="GameManager.StopExecution"/>, which every way a turn can finish runs
+    /// through — a completed run, a death, a checkpoint, or a trap.
+    /// </summary>
+    public void OnTurnEnded()
+    {
+        RecordAttempt();
+        ClearSequence();
+    }
+
+    // Snapshots the queue as the player's previous attempt, just before it is cleared.
+    //
+    // An empty queue is deliberately NOT recorded: it means no attempt ran (the turn was
+    // ended by something other than the player submitting a sequence), and blanking the
+    // recap in that case would take away the very thing the player is re-reading.
+    private void RecordAttempt()
+    {
+        if (IsEmpty) return;
+
+        m_PreviousSequence.Clear();
+        m_PreviousSequence.AddRange(m_Sequence);
+        OnPreviousSequenceChanged?.Invoke();
+    }
 
 }
 
