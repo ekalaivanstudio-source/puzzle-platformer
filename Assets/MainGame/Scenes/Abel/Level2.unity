@@ -293,6 +293,10 @@ CompositeCollider2D:
       - X: 210000000
         Y: -130000000
       - X: 210000000
+        Y: -120000000
+      - X: 220000000
+        Y: -120000000
+      - X: 220000000
         Y: -110000000
       - X: 250000000
         Y: -110000000
@@ -413,7 +417,9 @@ CompositeCollider2D:
       - {x: 20, y: -13.999971}
       - {x: 20.000029, y: -13}
       - {x: 21, y: -12.99997}
-      - {x: 21.000029, y: -11}
+      - {x: 21.000029, y: -12}
+      - {x: 22, y: -11.99997}
+      - {x: 22.000029, y: -11}
       - {x: 25, y: -10.99997}
       - {x: 25.000029, y: 3}
       - {x: 26, y: 3.0000293}
@@ -2243,6 +2249,16 @@ Tilemap:
       dummyAlignment: 0
       m_AllTileFlags: 1073741825
   - first: {x: 20, y: -12, z: 0}
+    second:
+      serializedVersion: 2
+      m_TileIndex: 7
+      m_TileSpriteIndex: 7
+      m_TileMatrixIndex: 0
+      m_TileColorIndex: 0
+      m_TileObjectToInstantiateIndex: 65535
+      dummyAlignment: 0
+      m_AllTileFlags: 1073741825
+  - first: {x: 21, y: -12, z: 0}
     second:
       serializedVersion: 2
       m_TileIndex: 7
@@ -11986,7 +12002,7 @@ Tilemap:
     m_RefCount: 15
     m_Data: {fileID: 11400000, guid: 22bfc47ba6478d2418843ea87b5ceb71, type: 2}
   - serializedVersion: 2
-    m_RefCount: 1040
+    m_RefCount: 1041
     m_Data: {fileID: 11400000, guid: 793f7b7f5b030b04e8cceb408505469f, type: 2}
   - serializedVersion: 2
     m_RefCount: 2
@@ -12014,14 +12030,14 @@ Tilemap:
     m_RefCount: 15
     m_Data: {fileID: -1187994964, guid: cfc6ec2a2c7a17c41b80f618d0fb5602, type: 3}
   - serializedVersion: 2
-    m_RefCount: 1040
+    m_RefCount: 1041
     m_Data: {fileID: -1565253360, guid: cfc6ec2a2c7a17c41b80f618d0fb5602, type: 3}
   - serializedVersion: 2
     m_RefCount: 2
     m_Data: {fileID: -317685761, guid: cfc6ec2a2c7a17c41b80f618d0fb5602, type: 3}
   m_TileMatrixArray:
   - serializedVersion: 2
-    m_RefCount: 1136
+    m_RefCount: 1137
     m_Data:
       e00: 1
       e01: 0
@@ -12041,7 +12057,7 @@ Tilemap:
       e33: 1
   m_TileColorArray:
   - serializedVersion: 2
-    m_RefCount: 1136
+    m_RefCount: 1137
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   - serializedVersion: 2
     m_RefCount: 0
