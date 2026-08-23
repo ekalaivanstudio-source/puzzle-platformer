@@ -11,14 +11,7 @@ public class TutorialAnimationController : MonoBehaviour
     }
     public void PlayAnimation(TutorialAnimType type)
     {
-        foreach (TutorialAnim tutorialAnim in tutorialAnims)
-        {
-            if (tutorialAnim.pcAnim != null)
-                tutorialAnim.pcAnim.gameObject.SetActive(false);
-
-            if (tutorialAnim.xboxAnim != null)
-                tutorialAnim.xboxAnim.gameObject.SetActive(false);
-        }
+        TurnOffAllAnimations();
 
         TutorialAnim selectedAnim = tutorialAnims.Find(x => x.name == type);
 
@@ -36,7 +29,17 @@ public class TutorialAnimationController : MonoBehaviour
                 selectedAnim.pcAnim.gameObject.SetActive(true);
         }
     }
+    public void TurnOffAllAnimations()
+    {
+        foreach (TutorialAnim tutorialAnim in tutorialAnims)
+        {
+            if (tutorialAnim.pcAnim != null)
+                tutorialAnim.pcAnim.gameObject.SetActive(false);
 
+            if (tutorialAnim.xboxAnim != null)
+                tutorialAnim.xboxAnim.gameObject.SetActive(false);
+        }
+    }
     private bool IsXbox()
     {
 #if UNITY_GAMECORE
