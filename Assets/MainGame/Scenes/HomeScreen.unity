@@ -9396,19 +9396,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1217661459}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: MenuManager, Assembly-CSharp
-        m_MethodName: OpenPanel
-        m_Mode: 5
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: Home
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &1236514258
 GameObject:
   m_ObjectHideFlags: 0
@@ -16025,6 +16013,7 @@ GameObject:
   - component: {fileID: 6308151998254311142}
   - component: {fileID: 8151305092634145943}
   - component: {fileID: 8756601930611816591}
+  - component: {fileID: 8756601930611816592}
   m_Layer: 0
   m_Name: ConfirmationPopup
   m_TagString: Untagged
@@ -16048,6 +16037,22 @@ MonoBehaviour:
   m_ConfirmButton: {fileID: 8896834327853880349}
   m_CancelButton: {fileID: 7230709549614784832}
   m_TitleImage: {fileID: 5777721010709304678}
+--- !u!114 &8756601930611816592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8756601930611816590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ed3ad8682324514e99311933552782e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIVerticalNavigationLinker
+  m_Buttons:
+  - {fileID: 8896834327853880349}
+  - {fileID: 7230709549614784832}
+  m_LoopNavigation: 1
 --- !u!114 &8896834327853880349
 MonoBehaviour:
   m_ObjectHideFlags: 0

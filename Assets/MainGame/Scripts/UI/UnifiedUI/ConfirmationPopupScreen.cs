@@ -22,14 +22,49 @@ namespace MainGame.UI.Unified
 
         private void OnEnable()
         {
-            if (m_ConfirmButton != null) m_ConfirmButton.onClick.AddListener(HandleConfirmClicked);
-            if (m_CancelButton != null) m_CancelButton.onClick.AddListener(HandleCancelClicked);
+            if (m_ConfirmButton != null)
+            {
+                m_ConfirmButton.onClick.AddListener(HandleConfirmClicked);
+                m_ConfirmButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            }
+            if (m_CancelButton != null)
+            {
+                m_CancelButton.onClick.AddListener(HandleCancelClicked);
+                m_CancelButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            }
         }
 
         private void OnDisable()
         {
             if (m_ConfirmButton != null) m_ConfirmButton.onClick.RemoveListener(HandleConfirmClicked);
             if (m_CancelButton != null) m_CancelButton.onClick.RemoveListener(HandleCancelClicked);
+        }
+
+        private void Update()
+        {
+            // Submit key triggers Confirm
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space))
+            {
+                HandleConfirmClicked();
+            }
+            // Cancel key triggers Cancel
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                HandleCancelClicked();
+            }
+
+            // Gamepad triggers
+            if (UnityEngine.InputSystem.Gamepad.current != null)
+            {
+                if (UnityEngine.InputSystem.Gamepad.current.buttonSouth.wasPressedThisFrame)
+                {
+                    HandleConfirmClicked();
+                }
+                else if (UnityEngine.InputSystem.Gamepad.current.buttonEast.wasPressedThisFrame)
+                {
+                    HandleCancelClicked();
+                }
+            }
         }
 
         /// <summary>
