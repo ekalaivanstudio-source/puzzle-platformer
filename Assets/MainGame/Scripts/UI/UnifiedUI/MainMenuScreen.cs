@@ -23,6 +23,10 @@ namespace MainGame.UI.Unified
         [SerializeField] private UIScreen m_CreditsScreen;
         [SerializeField] private UIScreen m_ConfirmationPopupScreen;
 
+        [Header("Confirmation Visuals")]
+        [Tooltip("Sprite showing 'EXIT?'")]
+        [SerializeField] private Sprite m_ExitTitleSprite;
+
         /// <summary>
         /// Dynamically selects the Continue button if it is active and enabled, otherwise falls back to New Game.
         /// </summary>
@@ -149,7 +153,7 @@ namespace MainGame.UI.Unified
                     {
                         Debug.Log("[MainMenuScreen] Exiting application...");
                         Application.Quit();
-                    }, null);
+                    }, m_ExitTitleSprite);
                 }
                 UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
             }

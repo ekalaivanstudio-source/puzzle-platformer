@@ -25,12 +25,36 @@ namespace MainGame.UI.Unified
             if (m_ConfirmButton != null)
             {
                 m_ConfirmButton.onClick.AddListener(HandleConfirmClicked);
-                m_ConfirmButton.navigation = new Navigation { mode = Navigation.Mode.None };
             }
             if (m_CancelButton != null)
             {
                 m_CancelButton.onClick.AddListener(HandleCancelClicked);
-                m_CancelButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            }
+
+            // Set up explicit horizontal loop navigation between Yes and No
+            if (m_ConfirmButton != null && m_CancelButton != null)
+            {
+                Navigation confirmNav = m_ConfirmButton.navigation;
+                confirmNav.mode = Navigation.Mode.Explicit;
+                confirmNav.selectOnRight = m_CancelButton;
+                confirmNav.selectOnLeft = m_CancelButton; // loop
+                confirmNav.selectOnUp = null;
+                confirmNav.selectOnDown = null;
+                m_ConfirmButton.navigation = confirmNav;
+
+                Navigation cancelNav = m_CancelButton.navigation;
+                cancelNav.mode = Navigation.Mode.Explicit;
+                cancelNav.selectOnLeft = m_ConfirmButton;
+                cancelNav.selectOnRight = m_ConfirmButton; // loop
+                cancelNav.selectOnUp = null;
+                cancelNav.selectOnDown = null;
+                m_CancelButton.navigation = cancelNav;
+            }
+
+            // Force focus to the NO (Cancel) button by default as a safety measure
+            if (UINavigationManager.Instance != null && m_CancelButton != null)
+            {
+                UINavigationManager.Instance.RestoreSelectedElement(m_CancelButton.gameObject);
             }
         }
 
@@ -42,25 +66,16 @@ namespace MainGame.UI.Unified
 
         private void Update()
         {
-            // Submit key triggers Confirm
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space))
-            {
-                HandleConfirmClicked();
-            }
-            // Cancel key triggers Cancel
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            // Cancel key triggers Cancel (Submit key is handled natively by EventSystem based on selection)
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
                 HandleCancelClicked();
             }
 
-            // Gamepad triggers
+            // Gamepad Cancel trigger
             if (UnityEngine.InputSystem.Gamepad.current != null)
             {
-                if (UnityEngine.InputSystem.Gamepad.current.buttonSouth.wasPressedThisFrame)
-                {
-                    HandleConfirmClicked();
-                }
-                else if (UnityEngine.InputSystem.Gamepad.current.buttonEast.wasPressedThisFrame)
+                if (UnityEngine.InputSystem.Gamepad.current.buttonEast.wasPressedThisFrame)
                 {
                     HandleCancelClicked();
                 }

@@ -7654,7 +7654,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53ac09d63b79279479b706ad7034bfb2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.LevelSelectionScreen
-  m_DefaultSelectedObject: {fileID: 0}
+  m_DefaultSelectedObject: {fileID: 1134092944}
   m_BackButton: {fileID: 2096284960}
 --- !u!1 &968000931
 GameObject:
@@ -8972,6 +8972,7 @@ MonoBehaviour:
   m_OptionsScreen: {fileID: 1522255095}
   m_CreditsScreen: {fileID: 1637794852}
   m_ConfirmationPopupScreen: {fileID: 8756601930611816591}
+  m_ExitTitleSprite: {fileID: 0}
 --- !u!114 &1134092948
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15511,6 +15512,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8225018092391710798, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -16044,7 +16049,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8756601930611816590}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ed3ad8682324514e99311933552782e, type: 3}
   m_Name: 

@@ -13,11 +13,7 @@ namespace MainGame.UI.Unified
 
         private void OnEnable()
         {
-            if (m_BackButton != null)
-            {
-                m_BackButton.onClick.AddListener(HandleBackClicked);
-                m_BackButton.navigation = new Navigation { mode = Navigation.Mode.None };
-            }
+            if (m_BackButton != null) m_BackButton.onClick.AddListener(HandleBackClicked);
         }
 
         private void OnDisable()

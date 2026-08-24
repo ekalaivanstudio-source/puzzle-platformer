@@ -51,8 +51,8 @@ namespace MainGame.UI.Unified
                 }
                 else
                 {
-                    // Loop back to the bottom settings row from the top row
-                    nav.selectOnUp = m_SettingsRows[totalRows - 1];
+                    // Loop back to Back Button from the top row
+                    nav.selectOnUp = m_BackButton;
                 }
 
                 // Bind SelectOnDown
@@ -62,18 +62,25 @@ namespace MainGame.UI.Unified
                 }
                 else
                 {
-                    // Loop back to the top settings row from the bottom row
-                    nav.selectOnDown = m_SettingsRows[0];
+                    // Last settings row goes down to Back Button
+                    nav.selectOnDown = m_BackButton;
                 }
 
                 current.navigation = nav;
             }
 
-            // Explicitly bind the Back Button to None
+            // Explicitly bind the Back Button
             if (m_BackButton != null)
             {
                 Navigation backNav = m_BackButton.navigation;
-                backNav.mode = Navigation.Mode.None;
+                backNav.mode = Navigation.Mode.Explicit;
+
+                // Up on Back Button goes to the last settings row
+                backNav.selectOnUp = m_SettingsRows[totalRows - 1];
+
+                // Down on Back Button loops to the top settings row
+                backNav.selectOnDown = m_SettingsRows[0];
+
                 m_BackButton.navigation = backNav;
             }
 
