@@ -11,15 +11,28 @@ namespace MainGame.UI.Unified
         [Header("Controls")]
         [SerializeField] private Button m_BackButton;
 
+        public override GameObject DefaultSelectedObject
+        {
+            get
+            {
+                LevelSelection.LevelSelectionManager manager = GetComponent<LevelSelection.LevelSelectionManager>();
+                if (manager == null) manager = GetComponentInChildren<LevelSelection.LevelSelectionManager>();
+                if (manager != null)
+                {
+                    manager.InitializeAndFocusCurrentLevel();
+                    GameObject selectTarget = manager.GetCurrentUnlockedLevelNodeObject();
+                    if (selectTarget != null)
+                    {
+                        return selectTarget;
+                    }
+                }
+                return base.DefaultSelectedObject;
+            }
+        }
+
         public override void Open()
         {
             base.Open();
-            LevelSelection.LevelSelectionManager manager = GetComponent<LevelSelection.LevelSelectionManager>();
-            if (manager == null) manager = GetComponentInChildren<LevelSelection.LevelSelectionManager>();
-            if (manager != null)
-            {
-                manager.InitializeAndFocusCurrentLevel();
-            }
         }
 
         private void OnEnable()

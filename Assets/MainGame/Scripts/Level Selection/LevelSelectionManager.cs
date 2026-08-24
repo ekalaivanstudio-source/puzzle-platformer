@@ -131,6 +131,20 @@ namespace LevelSelection
             }
         }
 
+        public GameObject GetCurrentUnlockedLevelNodeObject()
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return null;
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+            foreach (var node in levelNodes)
+            {
+                if (node != null && node.levelNumber == highestUnlockedLevel)
+                {
+                    return node.gameObject;
+                }
+            }
+            return levelNodes[0].gameObject;
+        }
+
         public bool IsFirstLevelOfCurrentArc(int levelNum)
         {
             if (levelNodes == null || levelNodes.Count == 0) return false;
