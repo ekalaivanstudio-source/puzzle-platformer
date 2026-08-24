@@ -23,6 +23,7 @@ namespace MainGame.UI.Unified
 
         private readonly Stack<UIScreen> m_ScreenHistory = new Stack<UIScreen>();
         private InputAction m_CancelAction;
+        private InputAction m_NavigateAction;
 
         private void Awake()
         {
@@ -42,9 +43,10 @@ namespace MainGame.UI.Unified
                 {
                     uiMap.Enable();
                     m_CancelAction = uiMap.FindAction("Cancel", throwIfNotFound: false);
+                    m_NavigateAction = uiMap.FindAction("Navigate", throwIfNotFound: false);
                 }
             }
-            Debug.Log("[UINavigationManager] Awake completed. Cancel action found: " + (m_CancelAction != null));
+            Debug.Log("[UINavigationManager] Awake completed. Cancel action found: " + (m_CancelAction != null) + ", Navigate action found: " + (m_NavigateAction != null));
         }
 
         private void OnEnable()
@@ -81,6 +83,35 @@ namespace MainGame.UI.Unified
                 {
                     m_LastLoggedSelection = currentSel;
                     Debug.Log($"[UINavigationManager Focus Tracker] Selected GameObject changed to: {(currentSel != null ? currentSel.name : "NULL")}");
+                }
+
+                if (currentSel == null)
+                {
+                    bool hasNavigationInput = false;
+                    if (m_NavigateAction != null && m_NavigateAction.triggered)
+                    {
+                        hasNavigationInput = true;
+                    }
+                    else
+                    {
+                        hasNavigationInput = Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow) ||
+                                               Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow) ||
+                                               Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.S) ||
+                                               Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D) ||
+                                               Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.1f || Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f;
+                    }
+
+                    if (hasNavigationInput)
+                    {
+                        if (m_ScreenHistory.Count > 0)
+                        {
+                            UIScreen currentScreen = m_ScreenHistory.Peek();
+                            if (currentScreen != null)
+                            {
+                                RestoreSelectedElement(currentScreen.DefaultSelectedObject);
+                            }
+                        }
+                    }
                 }
             }
         }

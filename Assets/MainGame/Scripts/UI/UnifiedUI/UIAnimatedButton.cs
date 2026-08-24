@@ -86,15 +86,7 @@ namespace MainGame.UI.Unified
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            // Deselect if mouse leaves and it is currently the selected object
-            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
-            {
-                EventSystem.current.SetSelectedGameObject(null);
-            }
-            else
-            {
-                SetFocused(false);
-            }
+            // Do not clear selection when the mouse leaves, keeping the highlight on the last hovered button
         }
 
         private void SetFocused(bool focused)
