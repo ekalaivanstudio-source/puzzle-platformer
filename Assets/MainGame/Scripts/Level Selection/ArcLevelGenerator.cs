@@ -61,7 +61,7 @@ namespace LevelSelection
         /// <summary>
         /// Instantiates the level nodes and path lines for a specific arc index.
         /// </summary>
-        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex)
+        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex, Button prevArcButton, Button nextArcButton)
         {
             // Clear existing elements
             if (nodesContainer != null)
@@ -204,13 +204,13 @@ namespace LevelSelection
             }
 
             // 6. Build Winding S-Curve Explicit Button Navigation links
-            BuildLevelButtonNavigation(config.columns);
+            BuildLevelButtonNavigation(config.columns, prevArcButton, nextArcButton);
         }
 
         /// <summary>
         /// Explicitly binds the UI buttons in a winding snake navigation mesh (S-curve path).
         /// </summary>
-        private void BuildLevelButtonNavigation(int columnsCount)
+        private void BuildLevelButtonNavigation(int columnsCount, Button prevArcButton, Button nextArcButton)
         {
             int total = spawnedNodes.Count;
             if (total <= 1) return;
@@ -232,59 +232,21 @@ namespace LevelSelection
                 bool isOddRow = (row % 2 != 0);
 
                 // --- HORIZONTAL (LEFT / RIGHT) MOVEMENT ---
-                // In winding layout:
-                // Even rows (0, 2): left-to-right (0 -> 1 -> 2 -> 3 -> 4)
-                // Odd rows (1, 3): right-to-left (9 <- 8 <- 7 <- 6 <- 5)
-                
+                // Right Arrow always progresses to the next level (index i + 1)
+                // Left Arrow always reverts to the previous level (index i - 1)
                 Button prevSequential = (i > 0) ? GetButton(spawnedNodes[i - 1]) : null;
                 Button nextSequential = (i < total - 1) ? GetButton(spawnedNodes[i + 1]) : null;
 
-                if (!isOddRow)
-                {
-                    // Even row: Left goes to previous index, Right goes to next index
-                    nav.selectOnLeft = prevSequential;
-                    nav.selectOnRight = nextSequential;
-                }
-                else
-                {
-                    // Odd row: Left goes to next index, Right goes to previous index
-                    nav.selectOnLeft = nextSequential;
-                    nav.selectOnRight = prevSequential;
-                }
+                nav.selectOnLeft = prevSequential;
+                nav.selectOnRight = nextSequential;
 
                 // --- VERTICAL (UP / DOWN) MOVEMENT ---
-                // Vertical bridges are created at row boundaries (winding joints)
-                // Col 4 (ends row 0): Down goes to Col 4 (starts row 1, index 5)
-                // Col 0 (ends row 1): Down goes to Col 0 (starts row 2, index 10)
-                
+                // Removed all vertical bridges so player can only navigate horizontally.
                 nav.selectOnUp = null;
                 nav.selectOnDown = null;
 
-                // Bind bridge to row below if we are at the row ends
-                if (isOddRow)
-                {
-                    // Odd row: ends at column 0 (which is index i where i % col == 0)
-                    if (col == 0 && i < total - 1)
-                    {
-                        nav.selectOnDown = nextSequential;
-                    }
-                    if (col == (columnsCount - 1) && i > 0)
-                    {
-                        nav.selectOnUp = prevSequential;
-                    }
-                }
-                else
-                {
-                    // Even row: ends at columnsCount - 1 (which is index i where i % col == columnsCount - 1)
-                    if (col == (columnsCount - 1) && i < total - 1)
-                    {
-                        nav.selectOnDown = nextSequential;
-                    }
-                    if (col == 0 && i > 0 && row > 0)
-                    {
-                        nav.selectOnUp = prevSequential;
-                    }
-                }
+                // --- BOUNDARY ARC CONNECTIONS ---
+                // Left on first node and Right on last node will stay on the node (selectOnLeft/Right are set to null/prev/next sequential).
 
                 btn.navigation = nav;
             }

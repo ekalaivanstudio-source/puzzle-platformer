@@ -11,6 +11,17 @@ namespace MainGame.UI.Unified
         [Header("Controls")]
         [SerializeField] private Button m_BackButton;
 
+        public override void Open()
+        {
+            base.Open();
+            LevelSelection.LevelSelectionManager manager = GetComponent<LevelSelection.LevelSelectionManager>();
+            if (manager == null) manager = GetComponentInChildren<LevelSelection.LevelSelectionManager>();
+            if (manager != null)
+            {
+                manager.InitializeAndFocusCurrentLevel();
+            }
+        }
+
         private void OnEnable()
         {
             if (m_BackButton != null) m_BackButton.onClick.AddListener(HandleBackClicked);

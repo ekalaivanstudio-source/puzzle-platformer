@@ -10,7 +10,7 @@ namespace LevelSelection
     /// Supports dynamic selection arrow toggles on focus.
     /// </summary>
     [DisallowMultipleComponent]
-    public class LevelNodeUI : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
+    public class LevelNodeUI : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler, IMoveHandler
     {
         #region Inspector Fields
 
@@ -70,14 +70,7 @@ namespace LevelSelection
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
-            {
-                EventSystem.current.SetSelectedGameObject(null);
-            }
-            else
-            {
-                SetArrowActive(false);
-            }
+            // Do not clear the selected GameObject on hover exit to keep focus persistent (like main menu buttons)
         }
 
         private void SetArrowActive(bool active)
@@ -130,6 +123,16 @@ namespace LevelSelection
         public void SetupNode(bool isUnlocked, bool isCompleted, bool isSelected)
         {
             m_IsUnlocked = isUnlocked;
+
+            Button button = GetComponent<Button>();
+            if (button == null)
+            {
+                button = GetComponentInChildren<Button>();
+            }
+            if (button != null)
+            {
+                button.interactable = true;
+            }
 
             if (selectionArrow != null)
             {
@@ -187,6 +190,34 @@ namespace LevelSelection
         }
 
         #endregion
+
+        public void OnMove(AxisEventData eventData)
+        {
+            if (eventData.moveDir == MoveDirection.Right)
+            {
+                LevelSelectionManager manager = FindAnyObjectByType<LevelSelectionManager>();
+                if (manager != null && manager.IsLastLevelOfCurrentArc(levelNumber))
+                {
+                    if (manager.CanGoToNextArc())
+                    {
+                        manager.GoToNextArc();
+                        eventData.Use();
+                    }
+                }
+            }
+            else if (eventData.moveDir == MoveDirection.Left)
+            {
+                LevelSelectionManager manager = FindAnyObjectByType<LevelSelectionManager>();
+                if (manager != null && manager.IsFirstLevelOfCurrentArc(levelNumber))
+                {
+                    if (manager.CanGoToPrevArc())
+                    {
+                        manager.GoToPrevArc();
+                        eventData.Use();
+                    }
+                }
+            }
+        }
 
         #region Private Methods
 

@@ -79,15 +79,8 @@ namespace LevelSelection
                 }
             }
 
-            if (arcGenerator != null)
-            {
-                int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
-                
-                // Initialize at the arc containing the highest unlocked level
-                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
-                
-                RefreshArcDisplay();
-            }
+            // Fallback initial load
+            InitializeAndFocusCurrentLevel();
         }
 
         private void OnDestroy()
@@ -125,18 +118,63 @@ namespace LevelSelection
             StartCoroutine(UnlockSequence(completedLevelIndex));
         }
 
+        /// <summary>
+        /// Generates the arc nodes and sets selection focus directly on the player's highest unlocked level.
+        /// </summary>
+        public void InitializeAndFocusCurrentLevel()
+        {
+            if (arcGenerator != null)
+            {
+                int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
+                RefreshArcDisplay();
+            }
+        }
+
+        public bool IsFirstLevelOfCurrentArc(int levelNum)
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return false;
+            return levelNum == levelNodes[0].levelNumber;
+        }
+
+        public bool IsLastLevelOfCurrentArc(int levelNum)
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return false;
+            return levelNum == levelNodes[levelNodes.Count - 1].levelNumber;
+        }
+
+        public bool CanGoToNextArc()
+        {
+            return arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1;
+        }
+
+        public bool CanGoToPrevArc()
+        {
+            return arcGenerator != null && currentArcIndex > 0;
+        }
+
+        public void GoToNextArc()
+        {
+            OnNextArcClicked();
+        }
+
+        public void GoToPrevArc()
+        {
+            OnPrevArcClicked();
+        }
+
         #endregion
 
         #region Private Methods
 
-        private void RefreshArcDisplay()
+        private void RefreshArcDisplay(int focusTargetNodeIndex = -1)
         {
             if (arcGenerator == null) return;
 
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
 
-            // 1. Generate the specific arc nodes and paths
-            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel);
+            // 1. Generate the specific arc nodes and paths passing the buttons for layout links
+            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel, prevArcButton, nextArcButton);
             
             // 2. Fetch references to spawned UI elements
             levelNodes = arcGenerator.SpawnedNodes;
@@ -158,22 +196,32 @@ namespace LevelSelection
                 arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
             }
 
-            // 5. Restore EventSystem focus to the highest unlocked level node on startup
+            // 5. Restore EventSystem focus
             if (UINavigationManager.Instance != null && levelNodes != null && levelNodes.Count > 0)
             {
-                // Find the node corresponding to the highest unlocked level in the current arc list
-                LevelNodeUI targetNode = null;
-                foreach (var node in levelNodes)
+                GameObject selectTarget = null;
+                
+                if (focusTargetNodeIndex == -1)
                 {
-                    if (node != null && node.levelNumber == highestUnlockedLevel)
+                    // Find node for highest unlocked level
+                    LevelNodeUI targetNode = null;
+                    foreach (var node in levelNodes)
                     {
-                        targetNode = node;
-                        break;
+                        if (node != null && node.levelNumber == highestUnlockedLevel)
+                        {
+                            targetNode = node;
+                            break;
+                        }
                     }
+                    selectTarget = targetNode != null ? targetNode.gameObject : levelNodes[0].gameObject;
+                }
+                else
+                {
+                    // Select specified index
+                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
+                    selectTarget = levelNodes[targetIdx].gameObject;
                 }
 
-                // Fallback to the first node in the arc if the highest unlocked is in another arc page
-                GameObject selectTarget = targetNode != null ? targetNode.gameObject : levelNodes[0].gameObject;
                 UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
             }
         }
@@ -183,7 +231,7 @@ namespace LevelSelection
             if (arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1)
             {
                 currentArcIndex++;
-                RefreshArcDisplay();
+                RefreshArcDisplay(0); // Focus the first node of the new arc
             }
         }
 
@@ -192,7 +240,7 @@ namespace LevelSelection
             if (arcGenerator != null && currentArcIndex > 0)
             {
                 currentArcIndex--;
-                RefreshArcDisplay();
+                RefreshArcDisplay(999); // Focus the last node of the new arc (clamped)
             }
         }
 
