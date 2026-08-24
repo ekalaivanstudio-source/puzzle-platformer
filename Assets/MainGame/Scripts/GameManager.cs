@@ -130,7 +130,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by the Restart UI button. Fires <see cref="OnFullReset"/> then reloads
+    /// Called by the Restart UI button and the R key. Fires <see cref="OnFullReset"/> then reloads
     /// the scene — use this instead of ReloadLevel() so both paths share the event.
     /// </summary>
     public void RestartLevel() => ReloadLevel();
