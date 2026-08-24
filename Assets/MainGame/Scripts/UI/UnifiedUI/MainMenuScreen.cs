@@ -38,8 +38,28 @@ namespace MainGame.UI.Unified
             }
         }
 
+        public override void Open()
+        {
+            base.Open();
+            RefreshContinueButtonState();
+        }
+
+        private void RefreshContinueButtonState()
+        {
+            if (m_ContinueButton != null)
+            {
+                bool hasSave = PlayerPrefs.HasKey("MLS_HighestUnlocked") || ModernLevelSelection.SaveManager.GetHighestUnlocked() > 1;
+                m_ContinueButton.gameObject.SetActive(hasSave);
+                m_ContinueButton.interactable = hasSave;
+                
+                GetComponent<UIVerticalNavigationLinker>()?.RefreshNavigationLinks();
+                GetComponentInChildren<UIVerticalNavigationLinker>()?.RefreshNavigationLinks();
+            }
+        }
+
         private void Start()
         {
+            RefreshContinueButtonState();
             // If returning from pause menu to Level Selection, auto open it immediately
             if (PauseMenuScreen.AutoOpenLevelSelection)
             {
@@ -84,14 +104,10 @@ namespace MainGame.UI.Unified
         private void HandleNewGameClicked()
         {
             AudioManager.Instance?.PlayButton();
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.OnPlayClicked();
-            }
-            else
-            {
-                Debug.LogWarning("[MainMenuScreen] GameManager instance not found, unable to play.");
-            }
+            ModernLevelSelection.SaveManager.ResetProgress();
+            Collectables.CollectableSaveSystem.ResetAll();
+            ModernLevelSelection.SaveManager.SetHighestUnlocked(1);
+            UnityEngine.SceneManagement.SceneManager.LoadScene(1);
         }
 
         private void HandleCollectClicked()

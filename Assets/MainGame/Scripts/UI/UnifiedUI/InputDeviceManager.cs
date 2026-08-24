@@ -80,7 +80,25 @@ namespace MainGame.UI.Unified
             }
             else if (device is Gamepad)
             {
-                UpdateDevice(DeviceType.Xbox);
+                // Detect PlayStation controllers (DualShock, DualSense, etc.)
+                string deviceName = device.name != null ? device.name.ToLower() : "";
+                string deviceProduct = device.description.product != null ? device.description.product.ToLower() : "";
+                string deviceInterface = device.description.interfaceName != null ? device.description.interfaceName.ToLower() : "";
+
+                if (deviceName.Contains("dualshock") || deviceName.Contains("dualsense") || deviceName.Contains("playstation") || deviceName.Contains("sony") || deviceName.Contains("ps4") || deviceName.Contains("ps5") ||
+                    deviceProduct.Contains("dualshock") || deviceProduct.Contains("dualsense") || deviceProduct.Contains("playstation") || deviceProduct.Contains("sony") ||
+                    deviceInterface.Contains("playstation") || deviceInterface.Contains("sony"))
+                {
+                    UpdateDevice(DeviceType.PS5);
+                }
+                else
+                {
+                    UpdateDevice(DeviceType.Xbox);
+                }
+            }
+            else if (device is Touchscreen)
+            {
+                UpdateDevice(DeviceType.Mobile);
             }
         }
 

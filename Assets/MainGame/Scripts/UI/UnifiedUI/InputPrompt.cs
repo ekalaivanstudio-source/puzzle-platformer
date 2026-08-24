@@ -14,6 +14,12 @@ namespace MainGame.UI.Unified
         [Tooltip("Object to enable when Xbox Layout is active.")]
         [SerializeField] private GameObject m_XboxPromptObject;
 
+        [Tooltip("Object to enable when PS5 Layout is active.")]
+        [SerializeField] private GameObject m_PS5PromptObject;
+
+        [Tooltip("Object to enable when Mobile Layout is active.")]
+        [SerializeField] private GameObject m_MobilePromptObject;
+
         private void OnEnable()
         {
             if (InputPromptManager.Instance != null)
@@ -33,16 +39,30 @@ namespace MainGame.UI.Unified
 
         private void RefreshPrompt(DeviceType deviceType)
         {
-            bool isPc = deviceType == DeviceType.KeyboardMouse;
+            if (m_KeyboardPromptObject != null) m_KeyboardPromptObject.SetActive(false);
+            if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(false);
+            if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(false);
+            if (m_MobilePromptObject != null) m_MobilePromptObject.SetActive(false);
 
-            if (m_KeyboardPromptObject != null)
+            switch (deviceType)
             {
-                m_KeyboardPromptObject.SetActive(isPc);
-            }
+                case DeviceType.KeyboardMouse:
+                    if (m_KeyboardPromptObject != null) m_KeyboardPromptObject.SetActive(true);
+                    break;
 
-            if (m_XboxPromptObject != null)
-            {
-                m_XboxPromptObject.SetActive(!isPc);
+                case DeviceType.Xbox:
+                    if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(true);
+                    else if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(true);
+                    break;
+
+                case DeviceType.PS5:
+                    if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(true);
+                    else if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(true);
+                    break;
+
+                case DeviceType.Mobile:
+                    if (m_MobilePromptObject != null) m_MobilePromptObject.SetActive(true);
+                    break;
             }
         }
     }

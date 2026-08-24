@@ -6,6 +6,8 @@ namespace MainGame.UI.Unified
     public enum DeviceType
     {
         KeyboardMouse,
-        Xbox
+        Xbox,
+        PS5,
+        Mobile
     }
 }
