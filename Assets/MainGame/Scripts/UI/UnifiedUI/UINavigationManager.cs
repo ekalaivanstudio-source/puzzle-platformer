@@ -74,6 +74,7 @@ namespace MainGame.UI.Unified
         }
 
         private GameObject m_LastLoggedSelection = null;
+        private GameObject m_LastValidSelection = null;
         private void Update()
         {
             if (EventSystem.current != null)
@@ -82,34 +83,25 @@ namespace MainGame.UI.Unified
                 if (currentSel != m_LastLoggedSelection)
                 {
                     m_LastLoggedSelection = currentSel;
+                    if (currentSel != null)
+                    {
+                        m_LastValidSelection = currentSel;
+                    }
                     Debug.Log($"[UINavigationManager Focus Tracker] Selected GameObject changed to: {(currentSel != null ? currentSel.name : "NULL")}");
                 }
 
                 if (currentSel == null)
                 {
-                    bool hasNavigationInput = false;
-                    if (m_NavigateAction != null && m_NavigateAction.triggered)
+                    if (m_LastValidSelection != null && m_LastValidSelection.activeInHierarchy)
                     {
-                        hasNavigationInput = true;
+                        RestoreSelectedElement(m_LastValidSelection);
                     }
-                    else
+                    else if (m_ScreenHistory.Count > 0)
                     {
-                        hasNavigationInput = Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow) ||
-                                               Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow) ||
-                                               Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.S) ||
-                                               Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D) ||
-                                               Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.1f || Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f;
-                    }
-
-                    if (hasNavigationInput)
-                    {
-                        if (m_ScreenHistory.Count > 0)
+                        UIScreen currentScreen = m_ScreenHistory.Peek();
+                        if (currentScreen != null)
                         {
-                            UIScreen currentScreen = m_ScreenHistory.Peek();
-                            if (currentScreen != null)
-                            {
-                                RestoreSelectedElement(currentScreen.DefaultSelectedObject);
-                            }
+                            RestoreSelectedElement(currentScreen.DefaultSelectedObject);
                         }
                     }
                 }

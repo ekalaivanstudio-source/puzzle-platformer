@@ -86,6 +86,41 @@ namespace Setting.Menu
                 targetGraphic = img;
             }
 
+            // Disable raycast target on all children so clicks pass through to this parent script
+            if (stepImages != null)
+            {
+                foreach (var stepImg in stepImages)
+                {
+                    if (stepImg != null)
+                    {
+                        stepImg.raycastTarget = false;
+                    }
+                }
+            }
+
+            if (decreaseButtonTransform != null)
+            {
+                var images = decreaseButtonTransform.GetComponentsInChildren<Image>(true);
+                foreach (var img in images)
+                {
+                    img.raycastTarget = false;
+                }
+            }
+
+            if (increaseButtonTransform != null)
+            {
+                var images = increaseButtonTransform.GetComponentsInChildren<Image>(true);
+                foreach (var img in images)
+                {
+                    img.raycastTarget = false;
+                }
+            }
+
+            if (labelImage != null)
+            {
+                labelImage.raycastTarget = false;
+            }
+
             // Set default navigation mode to explicit/vertical
             navigation = new Navigation { mode = Navigation.Mode.Automatic };
 
@@ -134,23 +169,19 @@ namespace Setting.Menu
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            // Calculate if the click was on the left half or right half of this UI element
-            RectTransform rectTransform = transform as RectTransform;
-            if (rectTransform != null)
+            if (EventSystem.current != null)
             {
-                Vector2 localPoint;
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, eventData.position, eventData.pressEventCamera, out localPoint))
-                {
-                    // If clicked on the left side of the row center, decrease. Otherwise, increase.
-                    if (localPoint.x < 0)
-                    {
-                        DecreaseValue();
-                    }
-                    else
-                    {
-                        IncreaseValue();
-                    }
-                }
+                EventSystem.current.SetSelectedGameObject(gameObject);
+            }
+
+            // Only change the value if clicking the decrease/increase button areas
+            if (decreaseButtonTransform != null && IsPointInRect(decreaseButtonTransform, eventData.position, eventData.pressEventCamera))
+            {
+                DecreaseValue();
+            }
+            else if (increaseButtonTransform != null && IsPointInRect(increaseButtonTransform, eventData.position, eventData.pressEventCamera))
+            {
+                IncreaseValue();
             }
         }
 
@@ -162,7 +193,7 @@ namespace Setting.Menu
         /// Intercepts navigation inputs. If the direction is horizontal, changes values and consumes the event.
         /// If the direction is vertical, lets the event continue so that EventSystem moves focus to other UI elements.
         /// </summary>
-        public void OnMove(AxisEventData eventData)
+        public override void OnMove(AxisEventData eventData)
         {
             switch (eventData.moveDir)
             {
@@ -228,6 +259,12 @@ namespace Setting.Menu
             {
                 SetValue(currentValue - 1);
             }
+        }
+
+        private bool IsPointInRect(RectTransform rect, Vector2 screenPoint, Camera cam)
+        {
+            if (rect == null) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPoint, cam);
         }
 
         /// <summary>
