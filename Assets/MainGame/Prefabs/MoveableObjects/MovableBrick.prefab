@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 2735249090782775833}
   - component: {fileID: 2593197851394945521}
   - component: {fileID: 6177765610834648123}
+  - component: {fileID: 6328277621969262679}
+  - component: {fileID: 75917635907297522}
   m_Layer: 6
   m_Name: MovableBrick
   m_TagString: Untagged
@@ -115,6 +117,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 256
   m_LandingTag: 
+  m_PushHitParticle: {fileID: 5880797563127281583, guid: 265d3a5ba69981a4698ceabcedf368b0, type: 3}
+  m_PushHitParticleScale: 0.4
+  m_PushHitParticleInset: 0
+  m_PushHitShake:
+    Magnitude: 0.07
+    Duration: 0.14
   m_DestroyParticle: {fileID: 7581426562798727453, guid: 3008512c7d1b0ed48a89b30bafb7e4f6, type: 3}
   m_ShakeMagnitude: 0.15
   m_ShakeDuration: 0.3
@@ -191,3 +199,39 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
+--- !u!114 &6328277621969262679
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7528258303469203784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bff4f5a8991d7fa47baed5c5ff25979f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Tiny.Trail
+  material: {fileID: 2100000, guid: 1407f0b670cd83e45b3e435458adfcd7, type: 2}
+  duration: 0.2
+  corner: 0
+  loop: 0
+  points:
+  - {x: 0, y: -0.45, z: 0}
+  - {x: 0, y: 0.45, z: 0}
+--- !u!114 &75917635907297522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7528258303469203784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87721c713b2ee60429c7e7a79e56249b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MoveTrail
+  m_MoveThreshold: 0.0005
+  m_Linger: 0.25
+  m_TeleportDistance: 2
+  m_SortingLayer: Default
+  m_SortingOrder: -1

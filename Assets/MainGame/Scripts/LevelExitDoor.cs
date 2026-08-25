@@ -13,6 +13,14 @@ using UnityEngine;
 /// rather than on the slot so the frames, the renderer and the doorway effect are configured
 /// in exactly one place — on the door they belong to.
 ///
+/// The doorway's own trigger is owned here too, opened and shut alongside the frames, so a
+/// shut door cannot be walked through and a door that opens can always be entered — the slot
+/// no longer has to enable it separately.
+///
+/// A level with no battery and no socket ticks <see cref="OpensWithoutKey"/>: the doorway
+/// starts open, the battery and socket named in Key Puzzle Objects are switched off, and
+/// walking in wins. That is the whole conversion — nothing else in the level changes.
+///
 /// Put this on the object tagged "Door" (the one carrying the door's trigger collider)
 /// and point it at an empty child placed on the ground in the middle of the doorway.
 /// </summary>
@@ -42,7 +50,59 @@ public class LevelExitDoor : MonoBehaviour
              "position, scale and sorting are whatever the scene shows.")]
     [SerializeField] private GameObject m_DoorOpenEffect;
 
+    [Header("Doorway Trigger")]
+    [Tooltip("The doorway's own trigger — the collider tagged \"Door\" the player walks " +
+             "into. Enabled as the door opens and disabled while it is shut, so a shut door " +
+             "cannot be walked through. Falls back to the collider on this object.")]
+    [SerializeField] private Collider2D m_DoorCollider;
+
+    [Header("Automatic Opening")]
+    [Tooltip("Tick this on a level that has no battery and no socket: the doorway simply " +
+             "starts open and walking into it completes the level. The key-puzzle objects " +
+             "below are switched off with it, so one tick converts a level.")]
+    [SerializeField] private bool m_OpensWithoutKey;
+
+    [Tooltip("The key-puzzle objects this door would otherwise wait on — the battery and " +
+             "its socket. Deactivated when Opens Without Key is ticked, and left exactly as " +
+             "the scene has them otherwise. Wired once on the prefab, so an instance only " +
+             "needs the tick.")]
+    [SerializeField] private GameObject[] m_KeyPuzzleObjects;
+
     private Coroutine m_Animation;
+
+    /// <summary>
+    /// True on a level with no battery and no socket, where the doorway is open from the
+    /// start. Read by <see cref="PlayerController"/>, which otherwise only counts a door
+    /// touch as a win once the key has been placed — a check no such level could ever pass.
+    /// </summary>
+    public bool OpensWithoutKey => m_OpensWithoutKey;
+
+    // Resolved lazily rather than in Awake: KeySlot calls SetClosed from ITS Awake, and the
+    // two Awakes run in an undefined order, so a cached-in-Awake reference would still be
+    // null for that first call.
+    private Collider2D DoorCollider =>
+        m_DoorCollider != null ? m_DoorCollider : (m_DoorCollider = GetComponent<Collider2D>());
+
+    // The battery and socket go off before their own Awake runs, so the socket never gets to
+    // shut this door or disable the doorway trigger behind the automatic open below.
+    private void Awake()
+    {
+        if (!m_OpensWithoutKey || m_KeyPuzzleObjects == null) return;
+
+        foreach (GameObject puzzleObject in m_KeyPuzzleObjects)
+        {
+            if (puzzleObject != null)
+                puzzleObject.SetActive(false);
+        }
+    }
+
+    // In Start, not Awake: it has to land after every KeySlot Awake that might have closed
+    // this door, and after PlaceableKey's own set-up.
+    private void Start()
+    {
+        if (m_OpensWithoutKey)
+            SetOpen();
+    }
 
     /// <summary>World position the player walks to before the level completes.</summary>
     public Vector2 InteractionPosition =>
@@ -57,7 +117,22 @@ public class LevelExitDoor : MonoBehaviour
     {
         StopAnimation();
         SetFrame(0);
+        SetDoorwayEnabled(false);
         ShowEffect(false);
+    }
+
+    /// <summary>
+    /// Open, instantly and silently — the mirror of <see cref="SetClosed"/>: the doorway
+    /// holds on its last frame with the trigger live and the doorway effect showing, with no
+    /// animation to watch. The state a level whose door <see cref="OpensWithoutKey"/> starts
+    /// in; there is no key placement to animate away from.
+    /// </summary>
+    public void SetOpen()
+    {
+        StopAnimation();
+        SetFrame(m_DoorOpenFrames != null ? m_DoorOpenFrames.Length - 1 : 0);
+        SetDoorwayEnabled(true);
+        ShowEffect(true);
     }
 
     /// <summary>
@@ -68,6 +143,10 @@ public class LevelExitDoor : MonoBehaviour
     /// </summary>
     public void Open()
     {
+        // Live from the first frame of the swing, matching the doorway the player can see
+        // opening in front of them.
+        SetDoorwayEnabled(true);
+
         if (!HasFrames())
         {
             ShowEffect(true);
@@ -134,6 +213,12 @@ public class LevelExitDoor : MonoBehaviour
         if (!HasFrames()) return;
 
         m_DoorRenderer.sprite = m_DoorOpenFrames[Mathf.Clamp(index, 0, m_DoorOpenFrames.Length - 1)];
+    }
+
+    private void SetDoorwayEnabled(bool enabled)
+    {
+        if (DoorCollider != null)
+            DoorCollider.enabled = enabled;
     }
 
     private void ShowEffect(bool visible)
