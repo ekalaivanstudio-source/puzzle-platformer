@@ -13,9 +13,19 @@ namespace MainGame.UI.Unified
     {
         public static InputDeviceManager Instance { get; private set; }
 
+        /// <summary>Substrings that identify a PlayStation pad from its name / product / interface.</summary>
+        private static readonly string[] PlayStationIdentifiers =
+        {
+            "dualshock", "dualsense", "playstation", "sony", "ps4", "ps5"
+        };
+
         [Header("Settings")]
         [Tooltip("Threshold pointer movement to register mouse activity instead of accidental jitter.")]
         [SerializeField] private float m_MouseMovementThreshold = 1.0f;
+
+        [Header("Debugging")]
+        [Tooltip("Log every device switch. Off by default to keep the console readable.")]
+        [SerializeField] private bool m_VerboseLogging;
 
         private Vector2 m_LastMousePosition;
         private DeviceType m_CurrentDevice = DeviceType.KeyboardMouse;
@@ -39,7 +49,6 @@ namespace MainGame.UI.Unified
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("[InputDeviceManager] Awake completed. Current Device: " + m_CurrentDevice);
         }
 
         private void OnEnable()
@@ -50,6 +59,14 @@ namespace MainGame.UI.Unified
         private void OnDisable()
         {
             InputSystem.onEvent -= OnInputEvent;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         private void OnInputEvent(InputEventPtr eventPtr, InputDevice device)
@@ -64,37 +81,11 @@ namespace MainGame.UI.Unified
             }
             else if (device is Mouse mouse)
             {
-                // Check if the mouse actually moved past a threshold to ignore jitter
-                Vector2 currentPos = mouse.position.ReadValue();
-                if (Vector2.Distance(currentPos, m_LastMousePosition) > m_MouseMovementThreshold)
-                {
-                    m_LastMousePosition = currentPos;
-                    UpdateDevice(DeviceType.KeyboardMouse);
-                }
-                
-                // If any mouse buttons are pressed, count as active KeyboardMouse device immediately
-                if (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame || mouse.scroll.ReadValue().sqrMagnitude > 0.01f)
-                {
-                    UpdateDevice(DeviceType.KeyboardMouse);
-                }
+                HandleMouseEvent(mouse);
             }
             else if (device is Gamepad)
             {
-                // Detect PlayStation controllers (DualShock, DualSense, etc.)
-                string deviceName = device.name != null ? device.name.ToLower() : "";
-                string deviceProduct = device.description.product != null ? device.description.product.ToLower() : "";
-                string deviceInterface = device.description.interfaceName != null ? device.description.interfaceName.ToLower() : "";
-
-                if (deviceName.Contains("dualshock") || deviceName.Contains("dualsense") || deviceName.Contains("playstation") || deviceName.Contains("sony") || deviceName.Contains("ps4") || deviceName.Contains("ps5") ||
-                    deviceProduct.Contains("dualshock") || deviceProduct.Contains("dualsense") || deviceProduct.Contains("playstation") || deviceProduct.Contains("sony") ||
-                    deviceInterface.Contains("playstation") || deviceInterface.Contains("sony"))
-                {
-                    UpdateDevice(DeviceType.PS5);
-                }
-                else
-                {
-                    UpdateDevice(DeviceType.Xbox);
-                }
+                UpdateDevice(IsPlayStationPad(device) ? DeviceType.PS5 : DeviceType.Xbox);
             }
             else if (device is Touchscreen)
             {
@@ -102,14 +93,59 @@ namespace MainGame.UI.Unified
             }
         }
 
+        /// <summary>
+        /// Treats the mouse as active on a button press, a scroll, or a movement large enough to
+        /// clear the jitter threshold, so a nudged desk does not steal focus from a gamepad.
+        /// </summary>
+        private void HandleMouseEvent(Mouse mouse)
+        {
+            if (mouse.leftButton.isPressed || mouse.rightButton.isPressed || mouse.middleButton.isPressed
+                || mouse.scroll.ReadValue().sqrMagnitude > 0.01f)
+            {
+                UpdateDevice(DeviceType.KeyboardMouse);
+                return;
+            }
+
+            Vector2 currentPos = mouse.position.ReadValue();
+            if (Vector2.Distance(currentPos, m_LastMousePosition) > m_MouseMovementThreshold)
+            {
+                m_LastMousePosition = currentPos;
+                UpdateDevice(DeviceType.KeyboardMouse);
+            }
+        }
+
+        private static bool IsPlayStationPad(InputDevice device)
+        {
+            return MatchesPlayStation(device.name)
+                || MatchesPlayStation(device.description.product)
+                || MatchesPlayStation(device.description.manufacturer)
+                || MatchesPlayStation(device.description.interfaceName);
+        }
+
+        private static bool MatchesPlayStation(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+
+            for (int i = 0; i < PlayStationIdentifiers.Length; i++)
+            {
+                if (value.IndexOf(PlayStationIdentifiers[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void UpdateDevice(DeviceType newDevice)
         {
-            if (m_CurrentDevice != newDevice)
+            if (m_CurrentDevice == newDevice) return;
+
+            m_CurrentDevice = newDevice;
+            if (m_VerboseLogging)
             {
-                m_CurrentDevice = newDevice;
                 Debug.Log($"[InputDeviceManager] Last used device switched to: {m_CurrentDevice}");
-                OnDeviceChanged?.Invoke(m_CurrentDevice);
             }
+            OnDeviceChanged?.Invoke(m_CurrentDevice);
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,11 +22,17 @@ namespace MainGame.UI.Unified
         [SerializeField] private UIScreen m_CollectionScreen;
         [SerializeField] private UIScreen m_OptionsScreen;
         [SerializeField] private UIScreen m_CreditsScreen;
-        [SerializeField] private UIScreen m_ConfirmationPopupScreen;
+        [SerializeField] private ConfirmationPopupScreen m_ConfirmationPopupScreen;
 
         [Header("Confirmation Visuals")]
         [Tooltip("Sprite showing 'EXIT?'")]
         [SerializeField] private Sprite m_ExitTitleSprite;
+
+        [Header("Scene Loading")]
+        [Tooltip("Build index of the first playable level, loaded when starting a new game.")]
+        [SerializeField] private int m_FirstLevelBuildIndex = 1;
+
+        private UIVerticalNavigationLinker m_NavigationLinker;
 
         /// <summary>
         /// Dynamically selects the Continue button if it is active and enabled, otherwise falls back to New Game.
@@ -42,6 +49,17 @@ namespace MainGame.UI.Unified
             }
         }
 
+        protected override void Awake()
+        {
+            base.Awake();
+
+            m_NavigationLinker = GetComponent<UIVerticalNavigationLinker>();
+            if (m_NavigationLinker == null)
+            {
+                m_NavigationLinker = GetComponentInChildren<UIVerticalNavigationLinker>(true);
+            }
+        }
+
         public override void Open()
         {
             base.Open();
@@ -50,28 +68,40 @@ namespace MainGame.UI.Unified
 
         private void RefreshContinueButtonState()
         {
-            if (m_ContinueButton != null)
+            if (m_ContinueButton == null) return;
+
+            bool hasSave = ModernLevelSelection.SaveManager.HasSaveData();
+            m_ContinueButton.gameObject.SetActive(hasSave);
+            m_ContinueButton.interactable = hasSave;
+
+            // Showing/hiding a row changes the vertical chain, so relink it.
+            if (m_NavigationLinker != null)
             {
-                bool hasSave = PlayerPrefs.HasKey("MLS_HighestUnlocked") || ModernLevelSelection.SaveManager.GetHighestUnlocked() > 1;
-                m_ContinueButton.gameObject.SetActive(hasSave);
-                m_ContinueButton.interactable = hasSave;
-                
-                GetComponent<UIVerticalNavigationLinker>()?.RefreshNavigationLinks();
-                GetComponentInChildren<UIVerticalNavigationLinker>()?.RefreshNavigationLinks();
+                m_NavigationLinker.RefreshNavigationLinks();
             }
         }
 
         private void Start()
         {
             RefreshContinueButtonState();
-            // If returning from pause menu to Level Selection, auto open it immediately
+
+            // If returning from the pause menu, jump straight back into Level Selection. Deferred by a
+            // frame so this runs after UINavigationManager.Start has pushed the initial screen, otherwise
+            // the main menu would land on top of the level selection screen.
             if (PauseMenuScreen.AutoOpenLevelSelection)
             {
                 PauseMenuScreen.AutoOpenLevelSelection = false; // Reset flag
-                if (m_LevelSelectionScreen != null && UINavigationManager.Instance != null)
-                {
-                    UINavigationManager.Instance.PushScreen(m_LevelSelectionScreen);
-                }
+                StartCoroutine(OpenLevelSelectionNextFrame());
+            }
+        }
+
+        private IEnumerator OpenLevelSelectionNextFrame()
+        {
+            yield return null;
+
+            if (m_LevelSelectionScreen != null && UINavigationManager.Instance != null)
+            {
+                UINavigationManager.Instance.PushScreen(m_LevelSelectionScreen);
             }
         }
 
@@ -99,10 +129,7 @@ namespace MainGame.UI.Unified
         {
             AudioManager.Instance?.PlayButton();
             // Opens Level Selection screen so players can choose where to continue
-            if (m_LevelSelectionScreen != null && UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PushScreen(m_LevelSelectionScreen);
-            }
+            PushScreen(m_LevelSelectionScreen);
         }
 
         private void HandleNewGameClicked()
@@ -110,57 +137,56 @@ namespace MainGame.UI.Unified
             AudioManager.Instance?.PlayButton();
             ModernLevelSelection.SaveManager.ResetProgress();
             Collectables.CollectableSaveSystem.ResetAll();
-            ModernLevelSelection.SaveManager.SetHighestUnlocked(1);
-            UnityEngine.SceneManagement.SceneManager.LoadScene(1);
+            UnityEngine.SceneManagement.SceneManager.LoadScene(m_FirstLevelBuildIndex);
         }
 
         private void HandleCollectClicked()
         {
             AudioManager.Instance?.PlayButton();
-            if (m_CollectionScreen != null && UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PushScreen(m_CollectionScreen);
-            }
+            PushScreen(m_CollectionScreen);
         }
 
         private void HandleOptionsClicked()
         {
             AudioManager.Instance?.PlayButton();
-            if (m_OptionsScreen != null && UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PushScreen(m_OptionsScreen);
-            }
+            PushScreen(m_OptionsScreen);
         }
 
         private void HandleCreditsClicked()
         {
             AudioManager.Instance?.PlayButton();
-            if (m_CreditsScreen != null && UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PushScreen(m_CreditsScreen);
-            }
+            PushScreen(m_CreditsScreen);
         }
 
         private void HandleExitClicked()
         {
             AudioManager.Instance?.PlayButton();
-            if (m_ConfirmationPopupScreen != null && UINavigationManager.Instance != null)
+
+            if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)
             {
-                ConfirmationPopupScreen confirmPopup = m_ConfirmationPopupScreen as ConfirmationPopupScreen;
-                if (confirmPopup != null)
-                {
-                    confirmPopup.SetupAction(() =>
-                    {
-                        Debug.Log("[MainMenuScreen] Exiting application...");
-                        Application.Quit();
-                    }, m_ExitTitleSprite);
-                }
-                UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+                Debug.LogWarning("[MainMenuScreen] ConfirmationPopupScreen not assigned, quitting application directly.");
+                QuitApplication();
+                return;
             }
-            else
+
+            m_ConfirmationPopupScreen.SetupAction(QuitApplication, m_ExitTitleSprite);
+            UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+        }
+
+        private static void QuitApplication()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        private static void PushScreen(UIScreen screen)
+        {
+            if (screen != null && UINavigationManager.Instance != null)
             {
-                Debug.Log("[MainMenuScreen] ConfirmationPopupScreen not assigned, quitting application directly...");
-                Application.Quit();
+                UINavigationManager.Instance.PushScreen(screen);
             }
         }
     }

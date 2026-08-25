@@ -140,15 +140,10 @@ namespace ModernLevelSelection
             int total = _allButtons.Count;
             int highestUnlocked = SaveManager.GetHighestUnlocked();
             int maxPlayable = LevelManager.GetHighestPlayableLevelFromBuild(avoidScenecount);
-            Debug.Log("Highest Unlocked : " + SaveManager.GetHighestUnlocked());
-            Debug.Log("Highest Playable : " + LevelManager.GetHighestPlayableLevelFromBuild(avoidScenecount));
-            // Show Continue button only if more than one level is unlocked.
+            // Show Continue button only when the player actually has progress to continue from.
             if (_continueButton != null)
             {
-                if (SaveManager.GetHighestUnlocked() >= 1)
-                    _continueButton.SetActive(true);
-                else
-                    _continueButton.SetActive(false);
+                _continueButton.SetActive(SaveManager.HasSaveData());
             }
 
             for (int i = 0; i < total; i++)

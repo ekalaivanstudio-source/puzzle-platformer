@@ -20,7 +20,7 @@ namespace Setting.Menu
 
         [Header("Visual Blocks")]
         [Tooltip("Exactly 10 image components representing the steps.")]
-        [SerializeField] private Image[] stepImages = new Image[10];
+        [SerializeField] private Image[] stepImages = new Image[MaxValue];
 
         [Header("Sprites")]
         [Tooltip("Sprite used for active (filled) blocks (e.g., yellow sprite).")]
@@ -42,9 +42,19 @@ namespace Setting.Menu
 
         #endregion
 
+        #region Constants
+
+        /// <summary>
+        /// Highest value this control can hold; also the number of visual blocks.
+        /// Callers converting to/from a 0..1 range scale by this value.
+        /// </summary>
+        public const int MaxValue = 10;
+
+        #endregion
+
         #region Private Fields
 
-        private int currentValue = 0; // Range: 0 to 10
+        private int currentValue = 0; // Range: 0 to MaxValue
 
         #endregion
 
@@ -60,7 +70,7 @@ namespace Setting.Menu
         #region Properties
 
         /// <summary>
-        /// Gets the current step value (0 to 10).
+        /// Gets the current step value (0 to <see cref="MaxValue"/>).
         /// </summary>
         public int Value => currentValue;
 
@@ -121,8 +131,9 @@ namespace Setting.Menu
                 labelImage.raycastTarget = false;
             }
 
-            // Set default navigation mode to explicit/vertical
-            navigation = new Navigation { mode = Navigation.Mode.Automatic };
+            // Navigation is intentionally left as authored in the inspector. OptionsScreen rebuilds it
+            // explicitly once the screen opens; overwriting it here would discard the designer setup and
+            // let Automatic navigation jump sideways out of the settings list for a frame.
 
             // Ensure start visual matches normal state
             UpdateLabelSprite(false);
@@ -219,20 +230,20 @@ namespace Setting.Menu
         /// <summary>
         /// Sets the value and updates the visual blocks without triggering the OnValueChanged event.
         /// </summary>
-        /// <param name="value">New value (clamped between 0 and 10).</param>
+        /// <param name="value">New value (clamped between 0 and <see cref="MaxValue"/>).</param>
         public void SetValueWithoutNotify(int value)
         {
-            currentValue = Mathf.Clamp(value, 0, 10);
+            currentValue = Mathf.Clamp(value, 0, MaxValue);
             UpdateVisuals();
         }
 
         /// <summary>
         /// Sets the value, updates visual blocks, and triggers the OnValueChanged event.
         /// </summary>
-        /// <param name="value">New value (clamped between 0 and 10).</param>
+        /// <param name="value">New value (clamped between 0 and <see cref="MaxValue"/>).</param>
         public void SetValue(int value)
         {
-            int newValue = Mathf.Clamp(value, 0, 10);
+            int newValue = Mathf.Clamp(value, 0, MaxValue);
             if (currentValue != newValue)
             {
                 currentValue = newValue;
@@ -247,18 +258,12 @@ namespace Setting.Menu
 
         private void IncreaseValue()
         {
-            if (currentValue < 10)
-            {
-                SetValue(currentValue + 1);
-            }
+            SetValue(currentValue + 1);
         }
 
         private void DecreaseValue()
         {
-            if (currentValue > 0)
-            {
-                SetValue(currentValue - 1);
-            }
+            SetValue(currentValue - 1);
         }
 
         private bool IsPointInRect(RectTransform rect, Vector2 screenPoint, Camera cam)
@@ -268,7 +273,7 @@ namespace Setting.Menu
         }
 
         /// <summary>
-        /// Updates the sprites and colors of the 10 images based on the currentValue.
+        /// Updates the sprites and colors of the step images based on the currentValue.
         /// </summary>
         private void UpdateVisuals()
         {

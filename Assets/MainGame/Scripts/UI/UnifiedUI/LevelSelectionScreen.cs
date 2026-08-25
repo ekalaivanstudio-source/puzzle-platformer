@@ -11,28 +11,50 @@ namespace MainGame.UI.Unified
         [Header("Controls")]
         [SerializeField] private Button m_BackButton;
 
+        [Header("References")]
+        [Tooltip("Manager that generates the arc pages. Resolved from this object or its children when left empty.")]
+        [SerializeField] private LevelSelection.LevelSelectionManager m_LevelSelectionManager;
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            if (m_LevelSelectionManager == null)
+            {
+                m_LevelSelectionManager = GetComponent<LevelSelection.LevelSelectionManager>();
+            }
+            if (m_LevelSelectionManager == null)
+            {
+                m_LevelSelectionManager = GetComponentInChildren<LevelSelection.LevelSelectionManager>(true);
+            }
+        }
+
+        /// <summary>
+        /// Returns the node for the player's current level. This is a pure lookup: the arc itself is
+        /// (re)generated in <see cref="Open"/>, because the navigation manager may read this property
+        /// repeatedly while restoring lost focus.
+        /// </summary>
         public override GameObject DefaultSelectedObject
         {
             get
             {
-                LevelSelection.LevelSelectionManager manager = GetComponent<LevelSelection.LevelSelectionManager>();
-                if (manager == null) manager = GetComponentInChildren<LevelSelection.LevelSelectionManager>();
-                if (manager != null)
-                {
-                    manager.InitializeAndFocusCurrentLevel();
-                    GameObject selectTarget = manager.GetCurrentUnlockedLevelNodeObject();
-                    if (selectTarget != null)
-                    {
-                        return selectTarget;
-                    }
-                }
-                return base.DefaultSelectedObject;
+                GameObject selectTarget = m_LevelSelectionManager != null
+                    ? m_LevelSelectionManager.GetCurrentUnlockedLevelNodeObject()
+                    : null;
+
+                return selectTarget != null ? selectTarget : base.DefaultSelectedObject;
             }
         }
 
         public override void Open()
         {
             base.Open();
+
+            // Rebuild the arc page around the player's latest progress before focus is restored.
+            if (m_LevelSelectionManager != null)
+            {
+                m_LevelSelectionManager.InitializeAndFocusCurrentLevel();
+            }
         }
 
         private void OnEnable()

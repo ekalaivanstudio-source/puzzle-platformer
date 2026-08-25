@@ -61,18 +61,11 @@ namespace LevelSelection
         /// <summary>
         /// Instantiates the level nodes and path lines for a specific arc index.
         /// </summary>
-        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex, Button prevArcButton, Button nextArcButton)
+        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex)
         {
-            // Clear existing elements
-            if (nodesContainer != null)
-            {
-                foreach (Transform child in nodesContainer) Destroy(child.gameObject);
-            }
-            if (linesContainer != null)
-            {
-                foreach (Transform child in linesContainer) Destroy(child.gameObject);
-            }
-            
+            ClearContainer(nodesContainer);
+            ClearContainer(linesContainer);
+
             spawnedNodes.Clear();
             generatedSegments.Clear();
 
@@ -89,7 +82,7 @@ namespace LevelSelection
             if (arcs != null && arcs.Count > 0)
             {
                 if (arcIndex < 0 || arcIndex >= arcs.Count) arcIndex = 0;
-                
+
                 // Calculate start level number by summing up previous arcs
                 int startLevel = 1;
                 for (int i = 0; i < arcIndex; i++)
@@ -101,7 +94,7 @@ namespace LevelSelection
                 config.arcName = arcData.arcName;
                 config.totalLevelsInArc = arcData.totalLevelsInArc;
                 config.startLevelNumber = startLevel;
-                config.columns = arcData.columns;
+                config.columns = Mathf.Max(1, arcData.columns);
                 config.horizontalSpacing = arcData.horizontalSpacing;
                 config.verticalSpacing = arcData.verticalSpacing;
                 config.startOffset = arcData.startOffset;
@@ -115,7 +108,7 @@ namespace LevelSelection
                 config.arcName = arcName;
                 config.totalLevelsInArc = totalLevelsInArc;
                 config.startLevelNumber = startLevelNumber;
-                config.columns = columns;
+                config.columns = Mathf.Max(1, columns);
                 config.horizontalSpacing = horizontalSpacing;
                 config.verticalSpacing = verticalSpacing;
                 config.startOffset = startOffset;
@@ -203,55 +196,36 @@ namespace LevelSelection
                 }
             }
 
-            // 6. Build Winding S-Curve Explicit Button Navigation links
-            BuildLevelButtonNavigation(config.columns, prevArcButton, nextArcButton);
+            // 6. Link the spawned nodes into a single left/right chain that follows the S-curve order
+            BuildLevelButtonNavigation();
         }
 
         /// <summary>
-        /// Explicitly binds the UI buttons in a winding snake navigation mesh (S-curve path).
+        /// Explicitly binds the level buttons into one sequential Left/Right chain. Because the nodes are
+        /// laid out as a winding S-curve, index order and reading order match: Right always advances one
+        /// level, Left always steps back one. Up/Down are cleared so vertical input never jumps rows.
+        /// Left on the first node and Right on the last node are left unbound; LevelNodeUI turns those
+        /// into arc page changes.
         /// </summary>
-        private void BuildLevelButtonNavigation(int columnsCount, Button prevArcButton, Button nextArcButton)
+        private void BuildLevelButtonNavigation()
         {
             int total = spawnedNodes.Count;
             if (total <= 1) return;
 
             for (int i = 0; i < total; i++)
             {
-                Button btn = spawnedNodes[i].GetComponent<Button>();
-                if (btn == null)
-                {
-                    btn = spawnedNodes[i].GetComponentInChildren<Button>();
-                }
+                Button btn = GetButton(spawnedNodes[i]);
                 if (btn == null) continue;
 
                 Navigation nav = btn.navigation;
                 nav.mode = Navigation.Mode.Explicit;
-
-                int row = i / columnsCount;
-                int col = i % columnsCount;
-                bool isOddRow = (row % 2 != 0);
-
-                // --- HORIZONTAL (LEFT / RIGHT) MOVEMENT ---
-                // Right Arrow always progresses to the next level (index i + 1)
-                // Left Arrow always reverts to the previous level (index i - 1)
-                Button prevSequential = (i > 0) ? GetButton(spawnedNodes[i - 1]) : null;
-                Button nextSequential = (i < total - 1) ? GetButton(spawnedNodes[i + 1]) : null;
-
-                nav.selectOnLeft = prevSequential;
-                nav.selectOnRight = nextSequential;
-
-                // --- VERTICAL (UP / DOWN) MOVEMENT ---
-                // Removed all vertical bridges so player can only navigate horizontally.
+                nav.selectOnLeft = (i > 0) ? GetButton(spawnedNodes[i - 1]) : null;
+                nav.selectOnRight = (i < total - 1) ? GetButton(spawnedNodes[i + 1]) : null;
                 nav.selectOnUp = null;
                 nav.selectOnDown = null;
 
-                // --- BOUNDARY ARC CONNECTIONS ---
-                // Left on first node and Right on last node will stay on the node (selectOnLeft/Right are set to null/prev/next sequential).
-
                 btn.navigation = nav;
             }
-
-            Debug.Log($"[ArcLevelGenerator] Winding navigation built for {total} level nodes.");
         }
 
         private Button GetButton(LevelNodeUI node)
@@ -259,6 +233,21 @@ namespace LevelSelection
             if (node == null) return null;
             Button b = node.GetComponent<Button>();
             return b != null ? b : node.GetComponentInChildren<Button>();
+        }
+
+        /// <summary>
+        /// Destroys every child of a container. Children are deactivated first because Destroy is deferred
+        /// to the end of the frame, which would otherwise leave the old arc visible on top of the new one.
+        /// </summary>
+        private static void ClearContainer(RectTransform container)
+        {
+            if (container == null) return;
+
+            foreach (Transform child in container)
+            {
+                child.gameObject.SetActive(false);
+                Destroy(child.gameObject);
+            }
         }
 
         /// <summary>
@@ -345,7 +334,7 @@ namespace LevelSelection
             GameObject lineObj = Instantiate(linePrefab, linesContainer);
             lineObj.transform.SetAsFirstSibling(); // Force line to render behind level nodes
             RectTransform lineRect = lineObj.GetComponent<RectTransform>();
-            
+
             if (lineRect != null)
             {
                 lineRect.pivot = new Vector2(0f, 0.5f); // Pivot at start to draw outwards
@@ -361,6 +350,7 @@ namespace LevelSelection
             {
                 segment.targetLevelIndex = startLevelNum;
                 segment.SetFilled(startLevelNum <= highestUnlockedLevel);
+                generatedSegments.Add(segment);
             }
         }
 
@@ -370,7 +360,7 @@ namespace LevelSelection
             GameObject lineObj = Instantiate(linePrefab, linesContainer);
             lineObj.transform.SetAsFirstSibling(); // Force line to render behind level nodes
             RectTransform lineRect = lineObj.GetComponent<RectTransform>();
-            
+
             if (lineRect != null)
             {
                 lineRect.pivot = new Vector2(0f, 0.5f); // Pivot at start to draw outwards
@@ -386,6 +376,7 @@ namespace LevelSelection
             {
                 segment.targetLevelIndex = startLevelNum + totalLevels; // Unlocks when entering the next Arc
                 segment.SetFilled(segment.targetLevelIndex <= highestUnlockedLevel);
+                generatedSegments.Add(segment);
             }
         }
 

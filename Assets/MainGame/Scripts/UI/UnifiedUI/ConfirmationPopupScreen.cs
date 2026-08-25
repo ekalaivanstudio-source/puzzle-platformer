@@ -20,6 +20,18 @@ namespace MainGame.UI.Unified
 
         private Action m_OnConfirmCallback;
 
+        /// <summary>
+        /// Focus defaults to the safe option (Cancel / "NO") so a stray Submit never confirms a destructive action.
+        /// </summary>
+        public override GameObject DefaultSelectedObject =>
+            m_CancelButton != null ? m_CancelButton.gameObject : base.DefaultSelectedObject;
+
+        protected override void Awake()
+        {
+            base.Awake();
+            BuildHorizontalLoopNavigation();
+        }
+
         private void OnEnable()
         {
             if (m_ConfirmButton != null)
@@ -30,32 +42,6 @@ namespace MainGame.UI.Unified
             {
                 m_CancelButton.onClick.AddListener(HandleCancelClicked);
             }
-
-            // Set up explicit horizontal loop navigation between Yes and No
-            if (m_ConfirmButton != null && m_CancelButton != null)
-            {
-                Navigation confirmNav = m_ConfirmButton.navigation;
-                confirmNav.mode = Navigation.Mode.Explicit;
-                confirmNav.selectOnRight = m_CancelButton;
-                confirmNav.selectOnLeft = m_CancelButton; // loop
-                confirmNav.selectOnUp = null;
-                confirmNav.selectOnDown = null;
-                m_ConfirmButton.navigation = confirmNav;
-
-                Navigation cancelNav = m_CancelButton.navigation;
-                cancelNav.mode = Navigation.Mode.Explicit;
-                cancelNav.selectOnLeft = m_ConfirmButton;
-                cancelNav.selectOnRight = m_ConfirmButton; // loop
-                cancelNav.selectOnUp = null;
-                cancelNav.selectOnDown = null;
-                m_CancelButton.navigation = cancelNav;
-            }
-
-            // Force focus to the NO (Cancel) button by default as a safety measure
-            if (UINavigationManager.Instance != null && m_CancelButton != null)
-            {
-                UINavigationManager.Instance.RestoreSelectedElement(m_CancelButton.gameObject);
-            }
         }
 
         private void OnDisable()
@@ -64,22 +50,35 @@ namespace MainGame.UI.Unified
             if (m_CancelButton != null) m_CancelButton.onClick.RemoveListener(HandleCancelClicked);
         }
 
-        private void Update()
+        public override void Close()
         {
-            // Cancel key triggers Cancel (Submit key is handled natively by EventSystem based on selection)
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                HandleCancelClicked();
-            }
+            base.Close();
+            // Whoever closed us (including the global Cancel action popping the stack) cancels the pending action.
+            m_OnConfirmCallback = null;
+        }
 
-            // Gamepad Cancel trigger
-            if (UnityEngine.InputSystem.Gamepad.current != null)
-            {
-                if (UnityEngine.InputSystem.Gamepad.current.buttonEast.wasPressedThisFrame)
-                {
-                    HandleCancelClicked();
-                }
-            }
+        /// <summary>
+        /// Sets up explicit horizontal loop navigation between the Yes and No buttons.
+        /// </summary>
+        private void BuildHorizontalLoopNavigation()
+        {
+            if (m_ConfirmButton == null || m_CancelButton == null) return;
+
+            Navigation confirmNav = m_ConfirmButton.navigation;
+            confirmNav.mode = Navigation.Mode.Explicit;
+            confirmNav.selectOnRight = m_CancelButton;
+            confirmNav.selectOnLeft = m_CancelButton; // loop
+            confirmNav.selectOnUp = null;
+            confirmNav.selectOnDown = null;
+            m_ConfirmButton.navigation = confirmNav;
+
+            Navigation cancelNav = m_CancelButton.navigation;
+            cancelNav.mode = Navigation.Mode.Explicit;
+            cancelNav.selectOnLeft = m_ConfirmButton;
+            cancelNav.selectOnRight = m_ConfirmButton; // loop
+            cancelNav.selectOnUp = null;
+            cancelNav.selectOnDown = null;
+            m_CancelButton.navigation = cancelNav;
         }
 
         /// <summary>
@@ -98,17 +97,16 @@ namespace MainGame.UI.Unified
         private void HandleConfirmClicked()
         {
             AudioManager.Instance?.PlayButton();
-            Debug.Log("[ConfirmationPopupScreen] Action confirmed.");
-            
-            // Pop popup off the screen stack
+
+            // Capture before popping: Close() clears the pending callback.
+            Action confirmed = m_OnConfirmCallback;
+
             if (UINavigationManager.Instance != null)
             {
                 UINavigationManager.Instance.PopScreen();
             }
 
-            // Execute action
-            m_OnConfirmCallback?.Invoke();
-            m_OnConfirmCallback = null;
+            confirmed?.Invoke();
         }
 
         private void HandleCancelClicked()
