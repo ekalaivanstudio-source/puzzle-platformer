@@ -145,7 +145,7 @@ namespace ModernLevelSelection
             // Show Continue button only if more than one level is unlocked.
             if (_continueButton != null)
             {
-                if (SaveManager.GetHighestUnlocked() > 1)
+                if (SaveManager.GetHighestUnlocked() >= 1)
                     _continueButton.SetActive(true);
                 else
                     _continueButton.SetActive(false);
