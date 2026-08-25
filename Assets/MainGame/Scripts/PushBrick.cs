@@ -69,6 +69,25 @@ public class PushBrick : MonoBehaviour
              "GridSolid footprint on such objects and use Landing Layers instead.")]
     [SerializeField] private string m_LandingTag = "";
 
+    [Header("Push FX")]
+    [Tooltip("Particle prefab burst on the face the player shoves, every time the brick " +
+             "is pushed. Plays whether or not the brick can actually move — a stuck brick " +
+             "still shows the impact, matching the shove animation the player plays either way.")]
+    [SerializeField] private GameObject m_PushHitParticle;
+
+    [Tooltip("Uniform scale for the push hit particle. The Cartoon FX packs are authored " +
+             "several world units across, where this project's grid cell is one, so a burst " +
+             "landing on a single brick face has to be shrunk.")]
+    [SerializeField] private float m_PushHitParticleScale = 0.2f;
+
+    [Tooltip("Shifts the burst along the push direction, in units. Positive sinks it into " +
+             "the brick, negative pulls it out toward the player.")]
+    [SerializeField] private float m_PushHitParticleInset = 0f;
+
+    [Tooltip("Camera shake for the shove. Keep it well under the destroy shake below — " +
+             "a push happens constantly, a brick shattering does not.")]
+    [SerializeField] private CameraShakeSettings m_PushHitShake = new CameraShakeSettings(0.07f, 0.14f);
+
     [Header("Destroy FX")]
     [Tooltip("Particle prefab spawned at the brick's position when destroyed by a laser.")]
     [SerializeField] private GameObject m_DestroyParticle;
@@ -80,6 +99,7 @@ public class PushBrick : MonoBehaviour
     private Vector3 m_StartPosition;
     private Collider2D m_Collider;
     private Rigidbody2D m_Rigidbody;
+    private MoveTrail m_MoveTrail;   // optional push/fall streak; null when the prefab has none
 
     // Reused by GetAllowedDistance so the sweep allocates no garbage.
     private readonly List<RaycastHit2D> m_CastResults = new List<RaycastHit2D>();
@@ -107,6 +127,7 @@ public class PushBrick : MonoBehaviour
     {
         m_StartPosition = transform.position;
         m_Collider = GetComponent<Collider2D>();
+        m_MoveTrail = GetComponent<MoveTrail>();
         m_BlockingFilter = new ContactFilter2D { useTriggers = true, useLayerMask = true };
         m_BlockingFilter.SetLayerMask(m_BlockingLayers);
 
@@ -141,6 +162,11 @@ public class PushBrick : MonoBehaviour
     private void ResetBrick()
     {
         gameObject.SetActive(true);
+
+        // Snapping home is a reposition, not a slide — kill the streak so the trail
+        // doesn't get drawn across everything between here and the start cell.
+        if (m_MoveTrail != null) m_MoveTrail.Cancel();
+
         transform.position = m_StartPosition;
     }
 
@@ -266,6 +292,35 @@ public class PushBrick : MonoBehaviour
     {
         if (!m_IsLaserDestructible) return;
         Shatter();
+    }
+
+    /// <summary>
+    /// Bursts the impact FX and shakes the camera on the face being shoved.
+    ///
+    /// Called by <see cref="PlayerController"/> at the moment of contact — as the shove
+    /// animation starts, BEFORE its wind-up and before <see cref="Push"/> slides the
+    /// brick. Fired from there rather than from Push() so the hit reads as the cause of
+    /// the slide: run at the top of Push() it landed a wind-up late, on the same frame
+    /// the brick was already moving off.
+    ///
+    /// Deliberately independent of whether the brick can actually move, so shoving a
+    /// stuck brick still shows the hit — that IS the feedback that it is stuck.
+    /// </summary>
+    /// <param name="signDir">+1 when pushed right, -1 when pushed left.</param>
+    public void PlayPushHit(float signDir)
+    {
+        m_PushHitShake.Play();
+
+        if (m_PushHitParticle == null || m_Collider == null) return;
+
+        // The contact point is the brick's near face, on the side the player stands.
+        Bounds b = m_Collider.bounds;
+        Vector3 contact = new Vector3(
+            b.center.x - Mathf.Sign(signDir) * (b.extents.x - m_PushHitParticleInset),
+            b.center.y,
+            transform.position.z);
+
+        ParticleEffectSpawner.Spawn(m_PushHitParticle, contact, m_PushHitParticleScale);
     }
 
     /// <summary>
