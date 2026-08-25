@@ -1350,7 +1350,6 @@ MonoBehaviour:
   m_PlayerTag: Player
   m_EmptyVisual: {fileID: 7876948268534674505}
   m_FilledVisual: {fileID: 2768031314177276669}
-  m_DoorCollider: {fileID: 1730837836457466484}
   m_ExitDoor: {fileID: 7763236517712971495}
   shineEffect: {fileID: 7703078660324728281}
   m_PlaceEffect: {fileID: 8680598818964007281, guid: dcd90c4976197424b9958a7c54b6bb8c, type: 3}
@@ -2029,6 +2028,11 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5a6b556a394e49d4ba756e03acb73732, type: 3}
   m_FrameTime: 0.06
   m_DoorOpenEffect: {fileID: 4706963058622158819}
+  m_DoorCollider: {fileID: 1730837836457466484}
+  m_OpensWithoutKey: 0
+  m_KeyPuzzleObjects:
+  - {fileID: 3901967678478176673}
+  - {fileID: 6542570619695586013}
 --- !u!1001 &262028778545316244
 PrefabInstance:
   m_ObjectHideFlags: 0
