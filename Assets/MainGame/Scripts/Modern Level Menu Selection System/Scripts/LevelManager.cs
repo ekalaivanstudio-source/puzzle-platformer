@@ -57,6 +57,8 @@ namespace ModernLevelSelection
             else if (_instance != this)
             {
                 Debug.LogWarning("Multiple LevelManager instances detected. Keeping the first instance.");
+                Destroy(gameObject);
+                return;
             }
             // Auto-link generator if not assigned
             if (_generator == null)

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using MainGame.UI.Unified;
 
 namespace LevelSelection
 {
@@ -25,6 +27,10 @@ namespace LevelSelection
         [SerializeField] private Button prevArcButton;
         [SerializeField] private Image arcTitleImage;
 
+        [Header("Global Input Settings")]
+        [Tooltip("Reference to the input actions asset to listen to PageLeft / PageRight events.")]
+        [SerializeField] private InputActionAsset m_UIInputActionAsset;
+
         #endregion
 
         #region Private Fields
@@ -32,6 +38,8 @@ namespace LevelSelection
         private List<LevelNodeUI> levelNodes = new List<LevelNodeUI>();
         private List<UIPathSegment> pathSegments = new List<UIPathSegment>();
         private int currentArcIndex = 0;
+        private InputAction m_PageLeftAction;
+        private InputAction m_PageRightAction;
 
         #endregion
 
@@ -49,15 +57,52 @@ namespace LevelSelection
                 prevArcButton.onClick.AddListener(OnPrevArcClicked);
             }
 
-            if (arcGenerator != null)
+            // Wire up Page/Tab actions for Q/E and LB/RB controls
+            if (m_UIInputActionAsset != null)
             {
-                int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
-                
-                // Initialize at the arc containing the highest unlocked level
-                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
-                
-                RefreshArcDisplay();
+                InputActionMap uiMap = m_UIInputActionAsset.FindActionMap("UI", throwIfNotFound: false);
+                if (uiMap != null)
+                {
+                    m_PageLeftAction = uiMap.FindAction("PageLeft", throwIfNotFound: false);
+                    m_PageRightAction = uiMap.FindAction("PageRight", throwIfNotFound: false);
+
+                    if (m_PageLeftAction != null)
+                    {
+                        m_PageLeftAction.performed += handlePageLeft;
+                        m_PageLeftAction.Enable();
+                    }
+                    if (m_PageRightAction != null)
+                    {
+                        m_PageRightAction.performed += handlePageRight;
+                        m_PageRightAction.Enable();
+                    }
+                }
             }
+
+            // Fallback initial load
+            InitializeAndFocusCurrentLevel();
+        }
+
+        private void OnDestroy()
+        {
+            if (m_PageLeftAction != null)
+            {
+                m_PageLeftAction.performed -= handlePageLeft;
+            }
+            if (m_PageRightAction != null)
+            {
+                m_PageRightAction.performed -= handlePageRight;
+            }
+        }
+
+        private void handlePageLeft(InputAction.CallbackContext context)
+        {
+            OnPrevArcClicked();
+        }
+
+        private void handlePageRight(InputAction.CallbackContext context)
+        {
+            OnNextArcClicked();
         }
 
         #endregion
@@ -73,18 +118,77 @@ namespace LevelSelection
             StartCoroutine(UnlockSequence(completedLevelIndex));
         }
 
+        /// <summary>
+        /// Generates the arc nodes and sets selection focus directly on the player's highest unlocked level.
+        /// </summary>
+        public void InitializeAndFocusCurrentLevel()
+        {
+            if (arcGenerator != null)
+            {
+                int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
+                RefreshArcDisplay();
+            }
+        }
+
+        public GameObject GetCurrentUnlockedLevelNodeObject()
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return null;
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+            foreach (var node in levelNodes)
+            {
+                if (node != null && node.levelNumber == highestUnlockedLevel)
+                {
+                    return node.gameObject;
+                }
+            }
+            return levelNodes[0].gameObject;
+        }
+
+        public bool IsFirstLevelOfCurrentArc(int levelNum)
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return false;
+            return levelNum == levelNodes[0].levelNumber;
+        }
+
+        public bool IsLastLevelOfCurrentArc(int levelNum)
+        {
+            if (levelNodes == null || levelNodes.Count == 0) return false;
+            return levelNum == levelNodes[levelNodes.Count - 1].levelNumber;
+        }
+
+        public bool CanGoToNextArc()
+        {
+            return arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1;
+        }
+
+        public bool CanGoToPrevArc()
+        {
+            return arcGenerator != null && currentArcIndex > 0;
+        }
+
+        public void GoToNextArc()
+        {
+            OnNextArcClicked();
+        }
+
+        public void GoToPrevArc()
+        {
+            OnPrevArcClicked();
+        }
+
         #endregion
 
         #region Private Methods
 
-        private void RefreshArcDisplay()
+        private void RefreshArcDisplay(int focusTargetNodeIndex = -1)
         {
             if (arcGenerator == null) return;
 
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
 
-            // 1. Generate the specific arc nodes and paths
-            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel);
+            // 1. Generate the specific arc nodes and paths passing the buttons for layout links
+            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel, prevArcButton, nextArcButton);
             
             // 2. Fetch references to spawned UI elements
             levelNodes = arcGenerator.SpawnedNodes;
@@ -105,6 +209,35 @@ namespace LevelSelection
             {
                 arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
             }
+
+            // 5. Restore EventSystem focus
+            if (UINavigationManager.Instance != null && levelNodes != null && levelNodes.Count > 0)
+            {
+                GameObject selectTarget = null;
+                
+                if (focusTargetNodeIndex == -1)
+                {
+                    // Find node for highest unlocked level
+                    LevelNodeUI targetNode = null;
+                    foreach (var node in levelNodes)
+                    {
+                        if (node != null && node.levelNumber == highestUnlockedLevel)
+                        {
+                            targetNode = node;
+                            break;
+                        }
+                    }
+                    selectTarget = targetNode != null ? targetNode.gameObject : levelNodes[0].gameObject;
+                }
+                else
+                {
+                    // Select specified index
+                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
+                    selectTarget = levelNodes[targetIdx].gameObject;
+                }
+
+                UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+            }
         }
 
         private void OnNextArcClicked()
@@ -112,7 +245,7 @@ namespace LevelSelection
             if (arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1)
             {
                 currentArcIndex++;
-                RefreshArcDisplay();
+                RefreshArcDisplay(0); // Focus the first node of the new arc
             }
         }
 
@@ -121,7 +254,7 @@ namespace LevelSelection
             if (arcGenerator != null && currentArcIndex > 0)
             {
                 currentArcIndex--;
-                RefreshArcDisplay();
+                RefreshArcDisplay(999); // Focus the last node of the new arc (clamped)
             }
         }
 

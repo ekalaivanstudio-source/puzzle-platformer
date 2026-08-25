@@ -61,7 +61,7 @@ namespace LevelSelection
         /// <summary>
         /// Instantiates the level nodes and path lines for a specific arc index.
         /// </summary>
-        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex)
+        public void GenerateArc(int arcIndex, int highestUnlockedLevel, int currentSelectedLevelIndex, Button prevArcButton, Button nextArcButton)
         {
             // Clear existing elements
             if (nodesContainer != null)
@@ -202,6 +202,63 @@ namespace LevelSelection
                     CreateExitLine(lastNode, highestUnlockedLevel, config.startLevelNumber, config.totalLevelsInArc);
                 }
             }
+
+            // 6. Build Winding S-Curve Explicit Button Navigation links
+            BuildLevelButtonNavigation(config.columns, prevArcButton, nextArcButton);
+        }
+
+        /// <summary>
+        /// Explicitly binds the UI buttons in a winding snake navigation mesh (S-curve path).
+        /// </summary>
+        private void BuildLevelButtonNavigation(int columnsCount, Button prevArcButton, Button nextArcButton)
+        {
+            int total = spawnedNodes.Count;
+            if (total <= 1) return;
+
+            for (int i = 0; i < total; i++)
+            {
+                Button btn = spawnedNodes[i].GetComponent<Button>();
+                if (btn == null)
+                {
+                    btn = spawnedNodes[i].GetComponentInChildren<Button>();
+                }
+                if (btn == null) continue;
+
+                Navigation nav = btn.navigation;
+                nav.mode = Navigation.Mode.Explicit;
+
+                int row = i / columnsCount;
+                int col = i % columnsCount;
+                bool isOddRow = (row % 2 != 0);
+
+                // --- HORIZONTAL (LEFT / RIGHT) MOVEMENT ---
+                // Right Arrow always progresses to the next level (index i + 1)
+                // Left Arrow always reverts to the previous level (index i - 1)
+                Button prevSequential = (i > 0) ? GetButton(spawnedNodes[i - 1]) : null;
+                Button nextSequential = (i < total - 1) ? GetButton(spawnedNodes[i + 1]) : null;
+
+                nav.selectOnLeft = prevSequential;
+                nav.selectOnRight = nextSequential;
+
+                // --- VERTICAL (UP / DOWN) MOVEMENT ---
+                // Removed all vertical bridges so player can only navigate horizontally.
+                nav.selectOnUp = null;
+                nav.selectOnDown = null;
+
+                // --- BOUNDARY ARC CONNECTIONS ---
+                // Left on first node and Right on last node will stay on the node (selectOnLeft/Right are set to null/prev/next sequential).
+
+                btn.navigation = nav;
+            }
+
+            Debug.Log($"[ArcLevelGenerator] Winding navigation built for {total} level nodes.");
+        }
+
+        private Button GetButton(LevelNodeUI node)
+        {
+            if (node == null) return null;
+            Button b = node.GetComponent<Button>();
+            return b != null ? b : node.GetComponentInChildren<Button>();
         }
 
         /// <summary>
