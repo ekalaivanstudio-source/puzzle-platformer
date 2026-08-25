@@ -14,10 +14,10 @@ public class KeySlot : MonoBehaviour
     [SerializeField] private GameObject m_FilledVisual;
 
     [Header("Door")]
-    [SerializeField] private BoxCollider2D m_DoorCollider;
-    [Tooltip("The exit door this slot opens. It owns the doorway's animation and its open " +
-             "effect — the slot only tells it when to open and when to go back to shut — so " +
-             "the frames, the renderer and the effect are configured over there, on the door.")]
+    [Tooltip("The exit door this slot opens. It owns the doorway's animation, its trigger " +
+             "and its open effect — the slot only tells it when to open and when to go back " +
+             "to shut — so the frames, the renderer, the collider and the effect are all " +
+             "configured over there, on the door.")]
     [SerializeField] private LevelExitDoor m_ExitDoor;
 
     [SerializeField] private GameObject shineEffect;
@@ -46,9 +46,6 @@ public class KeySlot : MonoBehaviour
 
         if (shineEffect != null)
             shineEffect.SetActive(false);
-
-        if (m_DoorCollider != null)
-            m_DoorCollider.enabled = false;
 
         m_ExitDoor?.SetClosed();
     }
@@ -95,13 +92,9 @@ public class KeySlot : MonoBehaviour
         m_LinkedKey?.Place();
         AudioManager.Instance?.PlayKeyPlaced();
 
-        if (m_DoorCollider != null)
-        {
-            m_DoorCollider.enabled = true;
-            AudioManager.Instance?.PlayDoorOpen();
-        }
-
+        // The door opens itself, doorway trigger and all.
         m_ExitDoor?.Open();
+        AudioManager.Instance?.PlayDoorOpen();
 
         GameManager.Instance?.KeyCollected();
     }
@@ -118,9 +111,6 @@ public class KeySlot : MonoBehaviour
 
         if (shineEffect != null)
             shineEffect.SetActive(false);
-
-        if (m_DoorCollider != null)
-            m_DoorCollider.enabled = false;
 
         m_ExitDoor?.SetClosed();
     }

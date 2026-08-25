@@ -44,6 +44,13 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
 
+    [Tooltip("Seconds the push animation is on screen before the brick starts to slide. " +
+             "The shove plays exactly once and Byte then returns to idle for the slide " +
+             "itself, so set this to the push clip's own length (five frames at 10 fps = " +
+             "0.5s) to have one complete shove land before the brick moves. This lengthens " +
+             "every push command by the same amount; 0 skips the shove entirely.")]
+    [SerializeField] private float m_PushWindUpTime = 0.5f;
+
     [Header("Ground Check")]
     [Tooltip("All layers that count as walkable ground / solid walls (Ground, Laser, etc.).")]
     [SerializeField] private LayerMask[] m_GroundLayers;
@@ -63,6 +70,13 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Abandon a fall after this many seconds — the player is over the void.")]
     [SerializeField] private float m_FallTimeout = 6f;
+
+    [Tooltip("How far (units) the player has to drop below the height a descent began at " +
+             "before the ground-pound dive clip replaces the jump clip. A jump that lands " +
+             "back on its own level never descends past its launch height at all, so this " +
+             "keeps the dive for drops the arc could not finish — over a pit, off a ledge, " +
+             "or onto a platform well below.")]
+    [SerializeField] private float m_GroundPoundDropDistance = 0.5f;
 
     [Tooltip("Peak height (units) of the small hop the player makes when a step walks off a " +
              "ledge into empty space. Set to 0 to step off flat.")]
@@ -157,12 +171,30 @@ public class PlayerController : MonoBehaviour
 
     private bool m_IsWalking;    // mid-step of a horizontal command
     private bool m_IsAirborne;   // mid-jump arc, or falling
+    private bool m_IsPushing;    // holding position while a PushBrick's routine slides it
+
+    // True once a descent has carried the player m_GroundPoundDropDistance below the height
+    // it started at — the jump arc ran out with no platform under it, a step walked off a
+    // ledge, or the ground left from under a standing player. Latched for the rest of that
+    // descent and cleared on landing, so the dive pose is held all the way down rather than
+    // flickering against the jump clip.
+    private bool m_IsGroundPounding;
+
+    // How far the current passive (FixedUpdate) drop has fallen. Accumulated rather than
+    // measured against the transform because MovePosition is deferred to the physics step —
+    // reading position back in the same FixedUpdate returns the value from before the move.
+    private float m_PassiveFallDistance;
 
     /// <summary>
     /// True while the player's feet are off the ground — mid-jump arc, or falling. Read by
     /// effects that want to land with the player rather than go off in mid-air.
     /// </summary>
     public bool IsAirborne => m_IsAirborne;
+
+    /// <summary>True while the player is in the long straight drop that plays the
+    /// ground-pound dive — a jump whose arc ended with nothing underneath it, or any
+    /// other fall that has run past <c>m_GroundPoundDropDistance</c>.</summary>
+    public bool IsGroundPounding => m_IsGroundPounding;
 
     // True while a command/transport routine is driving the body. Blocks the passive
     // settle in FixedUpdate so the two never issue MovePosition in the same step.
@@ -287,6 +319,7 @@ public class PlayerController : MonoBehaviour
         if (m_InteractRadius <= 0f) m_InteractRadius = 0.5f;
         if (m_PortalDuration <= 0f) m_PortalDuration = 1f;
         if (m_PortalSpins <= 0f) m_PortalSpins = 3f;
+        if (m_PushWindUpTime < 0f) m_PushWindUpTime = 0f;
         if (m_DoorEnterEffectScale <= 0f) m_DoorEnterEffectScale = 0.2f;
         if (m_SpawnDoorLead < 0f) m_SpawnDoorLead = 0f;
     }
@@ -334,9 +367,14 @@ public class PlayerController : MonoBehaviour
         if (CheckIsGrounded())
         {
             m_PassiveFallSpeed = 0f;
+            m_PassiveFallDistance = 0f;
             m_IsAirborne = false;
+            m_IsGroundPounding = false;
             return;
         }
+
+        // First ungrounded step of this drop — start its distance tally from zero.
+        if (!m_IsAirborne) m_PassiveFallDistance = 0f;
 
         m_PassiveFallSpeed = Mathf.Min(
             m_PassiveFallSpeed + m_FallGravity * Time.fixedDeltaTime, m_MaxFallSpeed);
@@ -348,13 +386,18 @@ public class PlayerController : MonoBehaviour
         {
             m_IsAirborne = true;
             m_Rigidbody.MovePosition(m_Rigidbody.position + Vector2.down * drop);
+
+            m_PassiveFallDistance += drop;
+            if (m_PassiveFallDistance > m_GroundPoundDropDistance) m_IsGroundPounding = true;
         }
 
         // A surface stopped the fall short of the full step → landed. Settle on the cell.
         if (drop < step)
         {
             m_PassiveFallSpeed = 0f;
+            m_PassiveFallDistance = 0f;
             m_IsAirborne = false;
+            m_IsGroundPounding = false;
             SnapToGrid();
         }
     }
@@ -366,8 +409,17 @@ public class PlayerController : MonoBehaviour
     {
         if (m_Animator == null) return;
 
-        if (m_IsAirborne || !CheckIsGrounded())
+        // Ground pound outranks the jump clip: it is only ever set while airborne, and it
+        // means this descent is no longer the back half of an arc that lands where it left.
+        if (m_IsGroundPounding)
+            m_Animator.Play(PlayerAnimState.GroundPound);
+        else if (m_IsAirborne || !CheckIsGrounded())
             m_Animator.Play(PlayerAnimState.Jump);
+        // Ahead of the walk clip because a push happens INSTEAD of the step that ran into
+        // the brick — the player holds position while the brick's routine slides it, so
+        // m_IsWalking is already false and the walk clip would fall through to idle.
+        else if (m_IsPushing)
+            m_Animator.Play(PlayerAnimState.Push);
         else if (m_IsWalking)
             m_Animator.Play(PlayerAnimState.Run);
         else
@@ -634,13 +686,40 @@ public class PlayerController : MonoBehaviour
             if (brick != null)
             {
                 m_IsWalking = false;
+                m_IsPushing = true;
+
+                // The impact lands with the shove, not with the slide: burst and shake
+                // here, ahead of the wind-up below, so the feedback arrives on contact
+                // rather than a wind-up later when the brick is already on its way.
+                brick.PlayPushHit(sign);
+
+                // Byte braces and shoves BEFORE the brick moves, so the animation reads as
+                // the cause of the slide rather than something playing alongside it.
+                //
+                // Realtime rather than WaitForSeconds because PlayerAnimator steps its
+                // frames on unscaled time: under the slow-motion the hazards use, a scaled
+                // wait would stretch while the clip it is waiting on kept running at full
+                // speed, and the brick would start moving several shoves later.
+                //
+                // Deliberately outside the blocked check below, so shoving a brick that
+                // cannot move still plays the shove — that IS the feedback that it is stuck.
+                if (m_PushWindUpTime > 0f)
+                    yield return new WaitForSecondsRealtime(m_PushWindUpTime);
+
+                // One shove and done — dropped here rather than after the brick's routine so
+                // Byte stands idle through the slide. Held for the whole slide instead, the
+                // clip's final frame just sat there for however long the brick took, which
+                // read as the animation having hung rather than finished.
+                m_IsPushing = false;
 
                 // The brick's own routine drives it, and may drop it several cells. The
                 // player simply holds position for the whole of it - nothing moves this
                 // body, so there is no drift to undo afterwards. The dynamic version had
                 // to freeze the X axis here to stop depenetration sliding the player
                 // backwards while the brick fell.
-                yield return StartCoroutine(brick.Push(sign));
+                if (m_IsGamePlaying)
+                    yield return StartCoroutine(brick.Push(sign));
+
                 break;
             }
 
@@ -671,6 +750,7 @@ public class PlayerController : MonoBehaviour
         }
 
         m_IsWalking = false;
+        m_IsPushing = false;
         m_IsScriptedMotion = wasScripted;
         SnapToGrid();
     }
@@ -780,6 +860,11 @@ public class PlayerController : MonoBehaviour
         float fallSpeed = Mathf.Clamp(initialFallSpeed, 0f, m_MaxFallSpeed);
         float elapsed = 0f;
 
+        // Distance this drop has covered. Deliberately not paired with a reset of the dive
+        // flag: a jump arc that already went into the dive hands it over still latched, and
+        // this only ever adds to it.
+        float fallen = 0f;
+
         while (!CheckIsGrounded() && elapsed < m_FallTimeout)
         {
             fallSpeed = Mathf.Min(fallSpeed + m_FallGravity * Time.fixedDeltaTime, m_MaxFallSpeed);
@@ -793,6 +878,10 @@ public class PlayerController : MonoBehaviour
             if (drop > 0f)
             {
                 m_Rigidbody.MovePosition(m_Rigidbody.position + Vector2.down * drop);
+
+                fallen += drop;
+                if (fallen > m_GroundPoundDropDistance) m_IsGroundPounding = true;
+
                 yield return new WaitForFixedUpdate();
             }
 
@@ -802,6 +891,7 @@ public class PlayerController : MonoBehaviour
         }
 
         m_IsAirborne = false;
+        m_IsGroundPounding = false;   // feet are down — the dive is over
         m_IsScriptedMotion = wasScripted;
         SnapToGrid();
     }
@@ -931,6 +1021,16 @@ public class PlayerController : MonoBehaviour
             m_Rigidbody.MovePosition(next);
             yield return new WaitForFixedUpdate();
 
+            // The arc has fallen past the height it launched from and is still going: the
+            // jump reached the end of its movement without a platform under it, so what is
+            // left is a straight drop rather than the back half of a jump. Read off the
+            // evaluated arcY, not the body, because MovePosition has not been applied yet.
+            //
+            // A jump that lands back on its own level stops at tLand exactly on start.y and
+            // never trips this; one out over a pit, or onto a platform well below, does.
+            if (!m_IsGroundPounding && start.y - arcY > m_GroundPoundDropDistance)
+                m_IsGroundPounding = true;
+
             // Landed on something the destination-column ray never saw - a brick pushed
             // into the path, or a platform that moved under the arc. Tested only past the
             // apex so it cannot trip on the ground the jump launched from.
@@ -949,6 +1049,10 @@ public class PlayerController : MonoBehaviour
         // then hung there while the fall accelerated it back up from zero. Negative while
         // still rising — a ceiling cut the arc short — which the fall reads as "from rest".
         yield return FallToGround(Mathf.Max(0f, gEff * t - v0y));
+
+        // FallToGround clears the dive when it lands, but returns immediately when the arc
+        // already finished on a surface — so the landing is signed off here too.
+        m_IsGroundPounding = false;
 
         SnapToGrid();
 
@@ -1550,8 +1654,11 @@ public class PlayerController : MonoBehaviour
         // and the player would hover the next time the ground went away.
         m_IsScriptedMotion = false;
         m_IsWalking = false;
+        m_IsPushing = false;
         m_IsAirborne = false;
+        m_IsGroundPounding = false;
         m_PassiveFallSpeed = 0f;
+        m_PassiveFallDistance = 0f;
     }
 
     // Short delay before resetting position and unlocking UI
@@ -1571,6 +1678,9 @@ public class PlayerController : MonoBehaviour
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_PassiveFallSpeed = 0f;
+        m_PassiveFallDistance = 0f;
+        m_IsPushing = false;
+        m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
         m_EndTurnCoroutine = null;
 
@@ -1597,12 +1707,24 @@ public class PlayerController : MonoBehaviour
         {
             // The door's collider spans the whole doorway, so this fires again on every
             // step the player takes into it. Only the first touch owns the win.
-            if (GameManager.Instance.IsKeyCollected && !m_IsWinning)
+            if (!m_IsWinning && IsDoorOpen(other))
             {
                 m_IsWinning = true;
                 StartCoroutine(WinRoutine(other));
             }
         }
+    }
+
+    // Normally the door is open because the battery went into its socket, which is what
+    // IsKeyCollected records. The early levels have no battery and no socket at all, so
+    // their door is authored to open on its own — that door says so itself, and touching it
+    // is the win.
+    private bool IsDoorOpen(Collider2D door)
+    {
+        if (GameManager.Instance.IsKeyCollected) return true;
+
+        LevelExitDoor exit = door.GetComponentInParent<LevelExitDoor>();
+        return exit != null && exit.OpensWithoutKey;
     }
 
     private IEnumerator WinRoutine(Collider2D door)
@@ -1770,6 +1892,9 @@ public class PlayerController : MonoBehaviour
         GameManager.Instance?.SoftResetLevel();
         m_Rigidbody.position = m_StartPosition;
         m_PassiveFallSpeed = 0f;
+        m_PassiveFallDistance = 0f;
+        m_IsPushing = false;
+        m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
 
         // Death done — hand the sprite back to the normal idle/run/jump animation.
