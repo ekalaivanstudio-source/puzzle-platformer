@@ -124,29 +124,27 @@ public class DeviceInputProvider : MonoBehaviour
     private void OnLeft(InputAction.CallbackContext c)
     {
         if (!IsEnabled) return;
-        AudioManager.Instance?.PlayQueue();
         bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
         if (jumpHeld && !m_JumpComboQueued)
         {
             m_JumpComboQueued = true;
-            SequenceManager.Instance?.AddAction(ActionTypeEnum.JumpLeft);
+            TryQueue(ActionTypeEnum.JumpLeft);
             return;
         }
-        SequenceManager.Instance?.AddAction(ActionTypeEnum.Left);
+        TryQueue(ActionTypeEnum.Left);
     }
 
     private void OnRight(InputAction.CallbackContext c)
     {
         if (!IsEnabled) return;
-        AudioManager.Instance?.PlayQueue();
         bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
         if (jumpHeld && !m_JumpComboQueued)
         {
             m_JumpComboQueued = true;
-            SequenceManager.Instance?.AddAction(ActionTypeEnum.JumpRight);
+            TryQueue(ActionTypeEnum.JumpRight);
             return;
         }
-        SequenceManager.Instance?.AddAction(ActionTypeEnum.Right);
+        TryQueue(ActionTypeEnum.Right);
     }
 
     private void OnJumpStarted(InputAction.CallbackContext c)
@@ -166,11 +164,34 @@ public class DeviceInputProvider : MonoBehaviour
         }
         if (!m_JumpComboQueued)
         {
-            SequenceManager.Instance?.AddAction(ActionTypeEnum.Jump);
-            AudioManager.Instance?.PlayQueue();
+            TryQueue(ActionTypeEnum.Jump);
         }
         m_IsJumpHeld = false;
         m_JumpComboQueued = false;
+    }
+
+    /// <summary>
+    /// Queues an action and plays the queue sound only if it actually stuck.
+    ///
+    /// On a level with a correct sequence registered, a wrong input is appended by
+    /// <see cref="SequenceManager.AddAction"/> and then pulled straight back out by
+    /// <see cref="PlayerInputUIHelper"/>'s validation - all synchronously, inside the
+    /// OnSequenceChanged callback, before AddAction returns. Its bool is therefore true
+    /// even for a rejected input, so the queue length is what gets compared here (the
+    /// same check <see cref="AutoPlayTester"/> makes). Without this the player hears the
+    /// confirming "queued" blip on the very input the UI is rejecting with a red blink.
+    /// </summary>
+    private static bool TryQueue(ActionTypeEnum action)
+    {
+        SequenceManager sequencer = SequenceManager.Instance;
+        if (sequencer == null) return false;
+
+        int before = sequencer.SequenceLength;
+        sequencer.AddAction(action);
+        if (sequencer.SequenceLength <= before) return false;
+
+        AudioManager.Instance?.PlayQueue();
+        return true;
     }
 
     private void OnUndo(InputAction.CallbackContext c) { if (IsEnabled) { SequenceManager.Instance?.RemoveLastAction(); AudioManager.Instance?.PlayUndo(); } }

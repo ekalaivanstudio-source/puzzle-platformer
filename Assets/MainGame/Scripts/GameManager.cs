@@ -122,6 +122,13 @@ public class GameManager : MonoBehaviour
 
     // ─── Scene Management ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Home screen scene name. Loaded by name because the build list is ordered
+    /// Launcher (0), Level1..LevelN (1..N), HomeScreen (last) so that every level's build index
+    /// still equals its level number.
+    /// </summary>
+    public const string HomeSceneName = "HomeScreen";
+
     /// <summary>Reloads the currently active scene.</summary>
     public void ReloadLevel()
     {
@@ -135,11 +142,21 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void RestartLevel() => ReloadLevel();
 
-    /// <summary>Loads the next scene by build index, looping back to 0 after the last level.</summary>
+    /// <summary>
+    /// Loads the next scene by build index, returning to the home screen after the last level.
+    /// </summary>
     public void LoadNextLevel()
     {
         int next = SceneManager.GetActiveScene().buildIndex + 1;
-        if (next >= SceneManager.sceneCountInBuildSettings) next = 0;
+
+        // Levels are build indices 1..N. Past the last one — or from a scene that isn't in the
+        // build at all (buildIndex -1) — go home rather than wrapping onto the Launcher splash.
+        if (next <= 0 || next >= SceneManager.sceneCountInBuildSettings)
+        {
+            GoToMainMenu();
+            return;
+        }
+
         SceneManager.LoadScene(next);
     }
 
@@ -153,7 +170,9 @@ public class GameManager : MonoBehaviour
 
     public void GoToMainMenu()
     {
-        SceneManager.LoadScene(0);
+        // By name, not index: build index 0 is the Launcher splash, and the home screen sits at
+        // the end of the build list so the levels keep matching their build indices.
+        SceneManager.LoadScene(HomeSceneName);
     }
     public void QuitApplication()
     {

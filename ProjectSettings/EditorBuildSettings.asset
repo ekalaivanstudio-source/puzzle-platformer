@@ -6,8 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/MainGame/Scenes/HomeScreen.unity
-    guid: d9787bd1d5f945d4d851464e8d85862a
+    path: Assets/MainGame/Scenes/Launcher.unity
+    guid: 33cccfa99c071a04ca01513ca05b07bb
+  - enabled: 1
+    path: Assets/MainGame/Scenes/Abel/Tutorial1.unity
+    guid: 152f4f751cd497d449683ae9fd397679
+  - enabled: 1
+    path: Assets/MainGame/Scenes/Abel/Tutorial2.unity
+    guid: ecfc860aa559d574381376229dcc3f48
+  - enabled: 1
+    path: Assets/MainGame/Scenes/Abel/Tutorial3.unity
+    guid: 0fe2affaf3b35e845aae05e2d66fb5e8
+  - enabled: 1
+    path: Assets/MainGame/Scenes/Abel/Tutorial4.unity
+    guid: 8fe8e648c361d0346be1dfac144a1c04
   - enabled: 1
     path: Assets/MainGame/Scenes/Abel/Level1.unity
     guid: 4227536e622038245a4de1941ec0d434
@@ -36,37 +48,7 @@ EditorBuildSettings:
     path: Assets/MainGame/Scenes/Abel/Level9.unity
     guid: fb8dba091c0ec68419bcfb9d5fa73b7e
   - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level10.unity
-    guid: 09bfa977e743824498dc57746b4621b9
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level11.unity
-    guid: 7824c015b7d271d41b704628681b6641
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level12.unity
-    guid: 09841fca45135c348bb7f5a59ce685d3
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level13.unity
-    guid: dac130f172e03754dafaeabde8bc7d5d
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level14.unity
-    guid: 34663422dcfd66c4db847322ee48fb14
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level15.unity
-    guid: d135ec5963dcd1542af6570ecaeb321b
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level16.unity
-    guid: 651b797215e92f147aa3ade4508d001c
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level17.unity
-    guid: d9c861fafdd932a4981525475317211e
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level18.unity
-    guid: 4924782484540b741bdf014a7061ccb1
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level19.unity
-    guid: b24f9cd63b21d094994f8de4ffb90785
-  - enabled: 1
-    path: Assets/MainGame/Scenes/Abel/Level20.unity
-    guid: 2ef174bfddbe5ab41bd045d7b8819f27
+    path: Assets/MainGame/Scenes/HomeScreen.unity
+    guid: d9787bd1d5f945d4d851464e8d85862a
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

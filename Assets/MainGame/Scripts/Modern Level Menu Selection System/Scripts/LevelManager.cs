@@ -87,9 +87,10 @@ namespace ModernLevelSelection
         /// </summary>
         public void LoadLevel(int levelNumber)
         {
-            // Build Index 0 = Main Menu
-            // Build Index 1 = Level 1
-            // Build Index 2 = Level 2
+            // Build Index 0 = Launcher splash
+            // Build Index 1..N = the levels, in build order: Tutorial1-4 are levels 1-4,
+            // then Level1-9 are levels 5-13.
+            // The home screen sits at the end of the build list, so level number == build index.
             int buildIndex = levelNumber;
 
             if (buildIndex < 0 || buildIndex >= SceneManager.sceneCountInBuildSettings)
@@ -169,10 +170,13 @@ namespace ModernLevelSelection
         /// </summary>
         public static int GetHighestPlayableLevelFromBuild(int index)
         {
-            int sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
+            // Build index 0 is the Launcher splash, which is not a level. Discount it so this
+            // keeps returning the same count it did before the Launcher scene was added.
+            const int launcherSceneCount = 1;
+            int sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings
+                             - launcherSceneCount;
 
-            // Build Index 0 = Home
-            // Everything after that is a playable level.
+            // Everything from build index 1 up to the home screen at the end is a playable level.
             _index = index;
             return Mathf.Max(sceneCount - index, 0);
         }

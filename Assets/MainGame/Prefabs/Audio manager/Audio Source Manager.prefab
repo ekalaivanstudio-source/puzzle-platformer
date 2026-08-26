@@ -446,6 +446,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2224675920207773677}
   - component: {fileID: 9034490101627687290}
+  - component: {fileID: 4820113573902845611}
   m_Layer: 0
   m_Name: Music
   m_TagString: Untagged
@@ -480,7 +481,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 3757439084511027419, guid: 715849985e109a349815b0f62ce525b9, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 3b238f8f197548f43933396315efb874, type: 3}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 1
@@ -565,3 +566,15 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &4820113573902845611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8835330922264993903}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 387efc9992ad4a76a5eb0d6489d26c15, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BackgroundMusic

@@ -16,7 +16,7 @@ public class UIManager : MonoBehaviour
     [Header("Fade")]
     [Tooltip("Full-screen dark overlay CanvasGroup. Alpha 1 = black, 0 = clear.")]
     [SerializeField] private CanvasGroup m_FadeOverlay;
-    [SerializeField] private float m_FadeDuration = 1f;
+    [SerializeField] private float m_FadeDuration = 0.25f;
 
     [Header("Level Label")]
     [Tooltip("Top-of-screen text showing which level the player is on.")]

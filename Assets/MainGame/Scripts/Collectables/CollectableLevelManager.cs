@@ -11,7 +11,8 @@ namespace Collectables
     /// there is a single access point for the save file.
     ///
     /// The current level number comes from the LevelContext's config (its
-    /// <c>levelNumber</c>), falling back to the scene build index (Home = 0, Level1 = 1, …).
+    /// <c>levelNumber</c>), falling back to the scene build index (0 = Launcher splash,
+    /// then levels 1..N in build order, HomeScreen last).
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LevelContext))]

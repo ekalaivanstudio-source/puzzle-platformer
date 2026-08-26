@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -141,57 +141,10 @@ public class AutoPlayTester : MonoBehaviour
 
     // ─── Solution Resolution ─────────────────────────────────────────────────
 
-    // Picks the sequence to play: the level config's explicit solution when authored,
-    // otherwise the registered correct sequence if it is concrete enough to be played.
-    // Returns false with a reason the designer can act on rather than a silent no-op.
+    // Picks the sequence to play. The rule for what a level's solution is lives in
+    // LevelSolution, so the auto-play tool and the tutorial hints teach the same thing.
     private bool TryResolveSolution(out ActionTypeEnum[] solution, out string reason)
-    {
-        solution = null;
-        reason = null;
-
-        LevelConfig config = LevelContext.Instance != null ? LevelContext.Instance.Config : null;
-        ActionTypeEnum[] authored = config != null ? config.sequence.autoPlaySequence : null;
-
-        if (authored != null && authored.Length > 0)
-        {
-            int wildcard = System.Array.IndexOf(authored, ActionTypeEnum.Any);
-            if (wildcard >= 0)
-            {
-                reason = $"'{config.name}' has Any at index {wildcard} of its Auto Play Sequence. " +
-                         "A wildcard is not a playable action — replace it with the action the " +
-                         "solution actually uses.";
-                return false;
-            }
-
-            solution = authored;
-            return true;
-        }
-
-        // No authored solution — fall back to the level's correct sequence.
-        IReadOnlyList<ActionTypeEnum> correct = SequenceManager.Instance.CorrectSequence;
-        string configName = config != null ? config.name : "this level's LevelConfig";
-
-        if (correct == null || correct.Count == 0)
-        {
-            reason = $"No solution to play. Fill in Sequence ▸ Auto Play Sequence on {configName}.";
-            return false;
-        }
-
-        var resolved = new ActionTypeEnum[correct.Count];
-        for (int i = 0; i < correct.Count; i++)
-        {
-            if (correct[i] == ActionTypeEnum.Any)
-            {
-                reason = $"The correct sequence has Any at index {i}, so it cannot be played back. " +
-                         $"Fill in Sequence ▸ Auto Play Sequence on {configName} instead.";
-                return false;
-            }
-            resolved[i] = correct[i];
-        }
-
-        solution = resolved;
-        return true;
-    }
+        => LevelSolution.TryResolve(out solution, out reason);
 
     // ─── Playback ────────────────────────────────────────────────────────────
 

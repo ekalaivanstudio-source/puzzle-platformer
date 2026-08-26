@@ -23,8 +23,9 @@ public class LevelContext : MonoBehaviour
     public LevelConfig Config => config;
 
     /// <summary>
-    /// Level number: the config's value when set, otherwise the scene build index
-    /// (Home = 0, Level1 = 1, …).
+    /// Level number: the config's value when set, otherwise the scene build index.
+    /// Build index 0 is the Launcher splash and HomeScreen sits last, so levels run
+    /// 1..N in build order — Tutorial1-4 are levels 1-4 and Level1-9 are levels 5-13.
     /// </summary>
     public int CurrentLevel =>
         config != null && config.levelNumber > 0

@@ -14,7 +14,8 @@ public enum PlayerAnimState { Idle, Run, Jump, GroundPound, Push }
 ///    *different* idle is chosen at random, giving continuous standing variety.
 ///  • Run / Jump — loop continuously.
 ///  • Push — plays once, then PlayerController hands the sprite back to Idle. The shove
-///    is a single action, not a cycle, and it is over before the brick starts to slide.
+///    is a single action, not a cycle, and it runs alongside the brick's slide, which
+///    starts on the same frame.
 ///  • GroundPound — plays once and holds on the last frame, so the dive pose stays
 ///    held for however long the drop lasts.
 ///

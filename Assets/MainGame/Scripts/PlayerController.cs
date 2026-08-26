@@ -44,11 +44,12 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
 
-    [Tooltip("Seconds the push animation is on screen before the brick starts to slide. " +
-             "The shove plays exactly once and Byte then returns to idle for the slide " +
-             "itself, so set this to the push clip's own length (five frames at 10 fps = " +
-             "0.5s) to have one complete shove land before the brick moves. This lengthens " +
-             "every push command by the same amount; 0 skips the shove entirely.")]
+    [Tooltip("Seconds the push animation stays on screen. The brick starts sliding on the " +
+             "same frame the shove starts, so this no longer delays the push — it only sets " +
+             "how long the clip is held before Byte returns to idle. Set it to the push " +
+             "clip's own length (five frames at 10 fps = 0.5s) for exactly one complete " +
+             "shove. The command still lasts as long as the brick's slide and fall take, " +
+             "so a value under that costs nothing; 0 skips the shove entirely.")]
     [SerializeField] private float m_PushWindUpTime = 0.5f;
 
     [Header("Ground Check")]
@@ -717,32 +718,43 @@ public class PlayerController : MonoBehaviour
                 // rather than a wind-up later when the brick is already on its way.
                 brick.PlayPushHit(sign);
 
-                // Byte braces and shoves BEFORE the brick moves, so the animation reads as
-                // the cause of the slide rather than something playing alongside it.
+                // Shove and slide run TOGETHER: the brick's routine is kicked off here
+                // rather than after the shove clip, so Byte's arms are moving on the same
+                // frames the brick is. Started, not awaited, so the clip below plays over
+                // the slide instead of after it.
+                //
+                // The brick's own routine drives it, and may drop it several cells. The
+                // player simply holds position for the whole of it - nothing moves this
+                // body, so there is no drift to undo afterwards. The dynamic version had
+                // to freeze the X axis here to stop depenetration sliding the player
+                // backwards while the brick fell.
+                Coroutine pushRoutine = m_IsGamePlaying
+                    ? StartCoroutine(brick.Push(sign))
+                    : null;
+
+                // Hold the shove clip on screen for its own length while the brick slides
+                // beneath it.
                 //
                 // Realtime rather than WaitForSeconds because PlayerAnimator steps its
                 // frames on unscaled time: under the slow-motion the hazards use, a scaled
                 // wait would stretch while the clip it is waiting on kept running at full
-                // speed, and the brick would start moving several shoves later.
+                // speed, and the shove would outlast the slide by several clip lengths.
                 //
                 // Deliberately outside the blocked check below, so shoving a brick that
                 // cannot move still plays the shove — that IS the feedback that it is stuck.
                 if (m_PushWindUpTime > 0f)
                     yield return new WaitForSecondsRealtime(m_PushWindUpTime);
 
-                // One shove and done — dropped here rather than after the brick's routine so
-                // Byte stands idle through the slide. Held for the whole slide instead, the
-                // clip's final frame just sat there for however long the brick took, which
-                // read as the animation having hung rather than finished.
+                // One shove and done — dropped as soon as the clip has run its length so
+                // Byte stands idle for whatever remains of the slide. Held for the whole
+                // slide instead, the clip's final frame just sat there for however long the
+                // brick took, which read as the animation having hung rather than finished.
                 m_IsPushing = false;
 
-                // The brick's own routine drives it, and may drop it several cells. The
-                // player simply holds position for the whole of it - nothing moves this
-                // body, so there is no drift to undo afterwards. The dynamic version had
-                // to freeze the X axis here to stop depenetration sliding the player
-                // backwards while the brick fell.
-                if (m_IsGamePlaying)
-                    yield return StartCoroutine(brick.Push(sign));
+                // Whichever of the two is still running, wait it out before the command
+                // ends — the brick may keep sliding and falling past the end of the clip.
+                if (pushRoutine != null)
+                    yield return pushRoutine;
 
                 break;
             }
