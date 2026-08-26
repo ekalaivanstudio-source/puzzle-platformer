@@ -65,9 +65,21 @@ public static class PipeConnectionBuilder
 
     // ─── Look ────────────────────────────────────────────────────────────────────
 
-    private const string k_SortingLayer = "Fg1";
-    private const int k_PipeSortingOrder = 1;
-    private const int k_GlowSortingOrder = 2;
+    // Pipes are plumbing bolted to the level, so they belong behind everything the player can
+    // touch and in front of everything they cannot.
+    //
+    // That is Default, just under zero. Everything gameplay sits on Default at zero or above —
+    // bricks and the socket at 0, the ground and the doorway at 1 and 3, the player and the
+    // battery at 4, collectables at 5 — so a negative order is behind all of it. And Default
+    // is above every background layer, so a run on it clears Bg2, Bg1, Mg2 and Mg1 outright,
+    // whatever sorting orders the backdrops use among themselves; some of them run into the
+    // hundreds, which is exactly the trap a "high order on Mg1" answer would walk into.
+    //
+    // -3 and -2 rather than -2 and -1 because Default already has decoration sitting at -1,
+    // and two renderers on the same layer and order draw in an order nothing here controls.
+    private const string k_SortingLayer = "Default";
+    private const int k_PipeSortingOrder = -3;
+    private const int k_GlowSortingOrder = -2;
 
     private static readonly Color k_GlowColor = new Color(0f, 0.81421626f, 1f, 1f);
 
@@ -191,9 +203,12 @@ public static class PipeConnectionBuilder
         if (existing != null)
         {
             // Someone drew this one by hand. Its route is better than anything found here, so
-            // only the wiring is missing.
+            // only the wiring is missing — and the sorting, which a run drawn a piece at a
+            // time tends to end up inconsistent about.
             glows = CollectGlows(existing);
-            Debug.Log($"[Pipes] {level}: kept the existing run, wired {glows.Count} glow segments.");
+            int resorted = ApplySorting(existing);
+            Debug.Log($"[Pipes] {level}: kept the existing run, wired {glows.Count} glow " +
+                      $"segments, re-sorted {resorted} renderers.");
         }
         else
         {
@@ -607,6 +622,36 @@ public static class PipeConnectionBuilder
     }
 
     // ─── Wiring ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Puts every renderer in a run onto the layer and orders described up top, and reports
+    /// how many it had to change. Runs the builder lays down are born correct; this is for the
+    /// ones drawn by hand, which pick up whatever sorting the Scene window happened to be
+    /// showing at the time — the run in Level3 had one piece of fourteen on a different layer
+    /// from the rest of it.
+    /// </summary>
+    private static int ApplySorting(Transform root)
+    {
+        int changed = 0;
+
+        foreach (SpriteRenderer renderer in root.GetComponentsInChildren<SpriteRenderer>(includeInactive: true))
+        {
+            // A glow rides just in front of the piece it lights; everything else in the run is
+            // the pipe itself.
+            int order = renderer.name.StartsWith("Glow") ? k_GlowSortingOrder : k_PipeSortingOrder;
+
+            if (renderer.sortingLayerName == k_SortingLayer && renderer.sortingOrder == order)
+                continue;
+
+            Undo.RecordObject(renderer, "Sort Pipe Connection");
+            renderer.sortingLayerName = k_SortingLayer;
+            renderer.sortingOrder = order;
+            EditorUtility.SetDirty(renderer);
+            changed++;
+        }
+
+        return changed;
+    }
 
     // Depth-first, which for "piece, then the glows on it" is the order the charge travels —
     // the same order a run drawn by hand in the Scene window already sits in.
