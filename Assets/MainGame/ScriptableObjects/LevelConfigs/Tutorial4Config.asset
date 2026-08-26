@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
-  m_Name: Level7Config
+  m_Name: Tutorial4Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
-  levelNumber: 7
-  robotPartCount: 1
-  memoryShardCount: 1
+  levelNumber: 1
+  robotPartCount: 0
+  memoryShardCount: 0
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1
     offset: {x: 0, y: 0}
     smoothTime: 1
-    minX: 1
-    maxX: 3
+    minX: -0.5
+    maxX: 1
     minY: 0
     maxY: 1
     followX: 1
     followY: 1
   sequence:
-    maxSequenceLength: 7
+    maxSequenceLength: 6
     requireFullSequence: 0
-    autoPlaySequence: 05000000010000000500000001000000010000000100000006000000
+    autoPlaySequence: 01000000010000000100000005000000
