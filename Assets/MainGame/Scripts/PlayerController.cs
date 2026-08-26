@@ -127,13 +127,27 @@ public class PlayerController : MonoBehaviour
 
     [Header("References")]
 
-    [Tooltip("Particle prefab instantiated at the player's position on spike death.")]
-    [SerializeField] private GameObject m_DeathParticle;
+    [Tooltip("Explosion spawned at the player's position when a hazard kills them. Assign " +
+             "ByteDeathExplosion — the CFXR3 Fire Explosion B variant scaled down for this " +
+             "one-unit grid, with the pack's own camera shake turned off so it doesn't fight " +
+             "the CameraController shake below.")]
+    [SerializeField] private GameObject m_DeathExplosion;
+
+    [Tooltip("Debris spawned alongside the explosion. Assign ByteDeathDebris — the particle " +
+             "systems that throw Byte's five body pieces out under gravity and bounce them " +
+             "off the ground. Optional; the explosion plays on its own without it.")]
+    [SerializeField] private GameObject m_DeathDebris;
+
     [SerializeField] private float m_DeathShakeMagnitude = 0.2f;
     [SerializeField] private float m_DeathShakeDuration = 0.4f;
 
-    [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / dead). Auto-fetched if left empty.")]
+    [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / push). Auto-fetched if left empty.")]
     [SerializeField] private PlayerAnimator m_Animator;
+
+    [Tooltip("Byte's own sprite. Switched off for the length of a death so the explosion and " +
+             "the flying pieces read as the body coming apart, and back on at respawn. " +
+             "Auto-fetched if left empty.")]
+    [SerializeField] private SpriteRenderer m_SpriteRenderer;
 
     [Header("Jump VFX")]
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump takes off. Optional. Should carry a OneShotEffect.")]
@@ -245,6 +259,7 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody = GetComponent<Rigidbody2D>();
         m_Collider = GetComponent<Collider2D>();
         if (m_Animator == null) m_Animator = GetComponent<PlayerAnimator>();
+        if (m_SpriteRenderer == null) m_SpriteRenderer = GetComponent<SpriteRenderer>();
         // Snapped, so a spawn the designer nudged off-grid in the scene doesn't seed a
         // fractional offset into every command of every turn.
         m_StartPosition = GridWorld.SnapToCell(transform.position);
@@ -327,7 +342,8 @@ public class PlayerController : MonoBehaviour
     // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
-        // While dead the death animation owns the sprite; don't override it.
+        // Mid-death the body is hidden and the debris stands in for it; there is no
+        // sprite on screen for the animation state machine to drive.
         if (m_IsDead) return;
 
         // Same for the portal spin: it holds the player on the idle clip, and every check
@@ -1868,9 +1884,16 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayDeath();
 
-        // Play the dead sprite animation (holds its last frame) through the death pause.
+        // Byte is blown apart rather than played through a death clip: the body vanishes
+        // on the same frame the explosion lands, and the debris pieces are what the player
+        // watches until the fade takes over.
         m_IsDead = true;
-        m_Animator?.Play(PlayerAnimState.Dead);
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
+
+        // Unparented, so both effects keep playing where the player died while the reset
+        // below teleports the body back to spawn underneath them.
+        ParticleEffectSpawner.Spawn(m_DeathExplosion, transform.position);
+        ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
 
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
@@ -1897,8 +1920,10 @@ public class PlayerController : MonoBehaviour
         m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
 
-        // Death done — hand the sprite back to the normal idle/run/jump animation.
+        // Death done — put the body back on screen and hand it to the normal
+        // idle/run/jump animation. Both happen behind the black fade.
         m_IsDead = false;
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
         m_Animator?.Play(PlayerAnimState.Idle);
 
         // A normal body again, back at spawn — hazards apply once more. (If spawn itself
