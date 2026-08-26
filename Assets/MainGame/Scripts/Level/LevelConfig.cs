@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// All designer-tunable data for a single level, in one asset. Create one per level
@@ -43,8 +43,27 @@ public class LevelConfig : ScriptableObject
         public ActionTypeEnum[] autoPlaySequence = new ActionTypeEnum[0];
     }
 
+    // ─── Tutorial hint settings ───────────────────────────────────────────────────
+    [System.Serializable]
+    public class TutorialSettings
+    {
+        [Tooltip("Show this level's on-screen tutorial hints. Off for normal levels — the " +
+                 "tutorial canvas ships with Managers, so this checkbox is all a level needs.")]
+        public bool showTutorial = false;
+
+        [Tooltip("Hints played on a loop before the player's first input, in this order. " +
+                 "Use for a mechanic the key hints cannot teach — e.g. Push on the " +
+                 "move-brick level. Leave empty to go straight to the key hints.")]
+        public TutorialAnimType[] introHints = new TutorialAnimType[0];
+
+        [Tooltip("Seconds each intro hint stays on screen before the next one.")]
+        [Min(0.1f)] public float introHintDuration = 3f;
+    }
+
     [Header("Identity")]
-    [Tooltip("Level number. Matches the scene build index (Home = 0, Level1 = 1, ...).")]
+    [Tooltip("Level number. Matches the scene build index: 0 is the Launcher splash, then " +
+             "levels run 1..N in build order (Tutorial1-4 are levels 1-4, Level1-9 are 5-13), " +
+             "with HomeScreen last.")]
     public int levelNumber = 1;
 
     [Header("Collectables")]
@@ -56,4 +75,7 @@ public class LevelConfig : ScriptableObject
 
     [Header("Sequence")]
     public SequenceSettings sequence = new SequenceSettings();
+
+    [Header("Tutorial")]
+    public TutorialSettings tutorial = new TutorialSettings();
 }

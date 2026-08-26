@@ -297,11 +297,10 @@ public class PushBrick : MonoBehaviour
     /// <summary>
     /// Bursts the impact FX and shakes the camera on the face being shoved.
     ///
-    /// Called by <see cref="PlayerController"/> at the moment of contact — as the shove
-    /// animation starts, BEFORE its wind-up and before <see cref="Push"/> slides the
-    /// brick. Fired from there rather than from Push() so the hit reads as the cause of
-    /// the slide: run at the top of Push() it landed a wind-up late, on the same frame
-    /// the brick was already moving off.
+    /// Called by <see cref="PlayerController"/> at the moment of contact, on the same frame
+    /// the shove animation and <see cref="Push"/> both start. Fired from there rather than
+    /// from Push() so the hit lands even when the brick is blocked and Push() bails out
+    /// before playing anything.
     ///
     /// Deliberately independent of whether the brick can actually move, so shoving a
     /// stuck brick still shows the hit — that IS the feedback that it is stuck.

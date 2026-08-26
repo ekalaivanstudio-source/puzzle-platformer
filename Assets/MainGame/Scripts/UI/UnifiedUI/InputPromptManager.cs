@@ -15,6 +15,8 @@ namespace MainGame.UI.Unified
         /// </summary>
         public event Action<DeviceType> OnPromptStyleChanged;
 
+        private InputDeviceManager m_SubscribedDeviceManager;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -28,19 +30,47 @@ namespace MainGame.UI.Unified
 
         private void Start()
         {
-            if (InputDeviceManager.Instance != null)
+            TrySubscribe();
+        }
+
+        private void Update()
+        {
+            // InputDeviceManager may come up after this component (script execution order, or a
+            // manager prefab spawned later). Keep looking until we are wired to it exactly once.
+            if (m_SubscribedDeviceManager == null)
             {
-                InputDeviceManager.Instance.OnDeviceChanged += HandleDeviceChanged;
-                // Initial update
-                HandleDeviceChanged(InputDeviceManager.Instance.CurrentDevice);
+                TrySubscribe();
             }
         }
 
         private void OnDestroy()
         {
-            if (InputDeviceManager.Instance != null)
+            Unsubscribe();
+
+            if (Instance == this)
             {
-                InputDeviceManager.Instance.OnDeviceChanged -= HandleDeviceChanged;
+                Instance = null;
+            }
+        }
+
+        private void TrySubscribe()
+        {
+            InputDeviceManager deviceManager = InputDeviceManager.Instance;
+            if (deviceManager == null) return;
+
+            m_SubscribedDeviceManager = deviceManager;
+            deviceManager.OnDeviceChanged += HandleDeviceChanged;
+
+            // Initial update so prompts match the device already in use
+            HandleDeviceChanged(deviceManager.CurrentDevice);
+        }
+
+        private void Unsubscribe()
+        {
+            if (m_SubscribedDeviceManager != null)
+            {
+                m_SubscribedDeviceManager.OnDeviceChanged -= HandleDeviceChanged;
+                m_SubscribedDeviceManager = null;
             }
         }
 
@@ -54,11 +84,8 @@ namespace MainGame.UI.Unified
         /// </summary>
         public DeviceType GetCurrentDeviceStyle()
         {
-            if (InputDeviceManager.Instance != null)
-            {
-                return InputDeviceManager.Instance.CurrentDevice;
-            }
-            return DeviceType.KeyboardMouse;
+            InputDeviceManager deviceManager = InputDeviceManager.Instance;
+            return deviceManager != null ? deviceManager.CurrentDevice : DeviceType.KeyboardMouse;
         }
     }
 }

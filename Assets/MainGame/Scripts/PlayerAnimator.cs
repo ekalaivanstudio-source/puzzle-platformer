@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>The mutually-exclusive animation states the player can be in.</summary>
-public enum PlayerAnimState { Idle, Run, Jump, GroundPound, Push, Dead }
+public enum PlayerAnimState { Idle, Run, Jump, GroundPound, Push }
 
 /// <summary>
 /// Drives the player's frame-by-frame sprite-sheet animations on a
@@ -14,16 +14,21 @@ public enum PlayerAnimState { Idle, Run, Jump, GroundPound, Push, Dead }
 ///    *different* idle is chosen at random, giving continuous standing variety.
 ///  • Run / Jump — loop continuously.
 ///  • Push — plays once, then PlayerController hands the sprite back to Idle. The shove
-///    is a single action, not a cycle, and it is over before the brick starts to slide.
+///    is a single action, not a cycle, and it runs alongside the brick's slide, which
+///    starts on the same frame.
 ///  • GroundPound — plays once and holds on the last frame, so the dive pose stays
 ///    held for however long the drop lasts.
-///  • Dead — plays once and holds on the last frame.
+///
+/// There is no death clip: a hazard kill blows Byte apart into the pieces thrown by the
+/// death debris effect, and <see cref="PlayerController"/> hides this renderer outright for
+/// the length of that explosion rather than playing anything here.
 ///
 /// A state whose sprite array was never filled in falls back to the nearest populated
 /// clip (GroundPound → Jump, Push → Run) rather than freezing the sprite.
 ///
 /// Uses unscaled time so animation keeps playing correctly during slow-motion and
-/// the (realtime) death pause — matching <see cref="SpriteSheetAnimator"/>.
+/// the (realtime) pauses the death and win flows take — matching
+/// <see cref="SpriteSheetAnimator"/>.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 public class PlayerAnimator : MonoBehaviour
@@ -50,10 +55,6 @@ public class PlayerAnimator : MonoBehaviour
     [Header("Push (shoving a movable brick)")]
     [SerializeField] private Sprite[] m_PushFrames;
     [SerializeField] private float m_PushFps = 10f;
-
-    [Header("Dead")]
-    [SerializeField] private Sprite[] m_DeadFrames;
-    [SerializeField] private float m_DeadFps = 8f;
 
     private SpriteRenderer m_Renderer;
     private Sprite[][] m_IdleClips;
@@ -100,7 +101,7 @@ public class PlayerAnimator : MonoBehaviour
                 m_Frame = 0;
             else
             {
-                // Non-looping (Dead): hold the last frame.
+                // Non-looping (GroundPound / Push): hold the last frame.
                 m_Frame = m_Frames.Length - 1;
                 ApplyFrame();
                 return;
@@ -131,7 +132,6 @@ public class PlayerAnimator : MonoBehaviour
             case PlayerAnimState.Idle: StartIdle(); break;
             case PlayerAnimState.Run:  SetClip(m_RunFrames, m_RunFps, loops: true); break;
             case PlayerAnimState.Jump: SetClip(m_JumpFrames, m_JumpFps, loops: true); break;
-            case PlayerAnimState.Dead: SetClip(m_DeadFrames, m_DeadFps, loops: false); break;
 
             // One shove, not a cycle. Looping re-played the brace for as long as the push
             // command lasted, which read as Byte shoving the brick several times. The

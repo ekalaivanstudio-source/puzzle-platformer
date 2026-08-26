@@ -44,11 +44,12 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Pause (seconds) between commands so the player can see each action clearly.")]
     [SerializeField] private float m_BeatGapTime = 0.05f;
 
-    [Tooltip("Seconds the push animation is on screen before the brick starts to slide. " +
-             "The shove plays exactly once and Byte then returns to idle for the slide " +
-             "itself, so set this to the push clip's own length (five frames at 10 fps = " +
-             "0.5s) to have one complete shove land before the brick moves. This lengthens " +
-             "every push command by the same amount; 0 skips the shove entirely.")]
+    [Tooltip("Seconds the push animation stays on screen. The brick starts sliding on the " +
+             "same frame the shove starts, so this no longer delays the push — it only sets " +
+             "how long the clip is held before Byte returns to idle. Set it to the push " +
+             "clip's own length (five frames at 10 fps = 0.5s) for exactly one complete " +
+             "shove. The command still lasts as long as the brick's slide and fall take, " +
+             "so a value under that costs nothing; 0 skips the shove entirely.")]
     [SerializeField] private float m_PushWindUpTime = 0.5f;
 
     [Header("Ground Check")]
@@ -127,13 +128,27 @@ public class PlayerController : MonoBehaviour
 
     [Header("References")]
 
-    [Tooltip("Particle prefab instantiated at the player's position on spike death.")]
-    [SerializeField] private GameObject m_DeathParticle;
+    [Tooltip("Explosion spawned at the player's position when a hazard kills them. Assign " +
+             "ByteDeathExplosion — the CFXR3 Fire Explosion B variant scaled down for this " +
+             "one-unit grid, with the pack's own camera shake turned off so it doesn't fight " +
+             "the CameraController shake below.")]
+    [SerializeField] private GameObject m_DeathExplosion;
+
+    [Tooltip("Debris spawned alongside the explosion. Assign ByteDeathDebris — the particle " +
+             "systems that throw Byte's five body pieces out under gravity and bounce them " +
+             "off the ground. Optional; the explosion plays on its own without it.")]
+    [SerializeField] private GameObject m_DeathDebris;
+
     [SerializeField] private float m_DeathShakeMagnitude = 0.2f;
     [SerializeField] private float m_DeathShakeDuration = 0.4f;
 
-    [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / dead). Auto-fetched if left empty.")]
+    [Tooltip("Drives the player's sprite-sheet animations (idle / run / jump / push). Auto-fetched if left empty.")]
     [SerializeField] private PlayerAnimator m_Animator;
+
+    [Tooltip("Byte's own sprite. Switched off for the length of a death so the explosion and " +
+             "the flying pieces read as the body coming apart, and back on at respawn. " +
+             "Auto-fetched if left empty.")]
+    [SerializeField] private SpriteRenderer m_SpriteRenderer;
 
     [Header("Jump VFX")]
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump takes off. Optional. Should carry a OneShotEffect.")]
@@ -245,6 +260,7 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody = GetComponent<Rigidbody2D>();
         m_Collider = GetComponent<Collider2D>();
         if (m_Animator == null) m_Animator = GetComponent<PlayerAnimator>();
+        if (m_SpriteRenderer == null) m_SpriteRenderer = GetComponent<SpriteRenderer>();
         // Snapped, so a spawn the designer nudged off-grid in the scene doesn't seed a
         // fractional offset into every command of every turn.
         m_StartPosition = GridWorld.SnapToCell(transform.position);
@@ -327,7 +343,8 @@ public class PlayerController : MonoBehaviour
     // Animation-only update — movement is driven by coroutines, not Update
     private void Update()
     {
-        // While dead the death animation owns the sprite; don't override it.
+        // Mid-death the body is hidden and the debris stands in for it; there is no
+        // sprite on screen for the animation state machine to drive.
         if (m_IsDead) return;
 
         // Same for the portal spin: it holds the player on the idle clip, and every check
@@ -606,6 +623,14 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
+            // A move that ended on a battery socket has set something off: the charge is
+            // travelling the pipe to the door, and the door is swinging open at the end of it.
+            // The beat waits for that. The player stands and watches where the socket they
+            // just filled leads, and the moves they queued after it are then walked towards a
+            // doorway that is already open rather than one that is still shut.
+            while (KeySlot.IsAnsweringBattery && m_IsGamePlaying)
+                yield return null;
+
             if (m_BeatGapTime > 0f && m_IsGamePlaying)
                 yield return new WaitForSeconds(m_BeatGapTime);
 
@@ -693,32 +718,43 @@ public class PlayerController : MonoBehaviour
                 // rather than a wind-up later when the brick is already on its way.
                 brick.PlayPushHit(sign);
 
-                // Byte braces and shoves BEFORE the brick moves, so the animation reads as
-                // the cause of the slide rather than something playing alongside it.
+                // Shove and slide run TOGETHER: the brick's routine is kicked off here
+                // rather than after the shove clip, so Byte's arms are moving on the same
+                // frames the brick is. Started, not awaited, so the clip below plays over
+                // the slide instead of after it.
+                //
+                // The brick's own routine drives it, and may drop it several cells. The
+                // player simply holds position for the whole of it - nothing moves this
+                // body, so there is no drift to undo afterwards. The dynamic version had
+                // to freeze the X axis here to stop depenetration sliding the player
+                // backwards while the brick fell.
+                Coroutine pushRoutine = m_IsGamePlaying
+                    ? StartCoroutine(brick.Push(sign))
+                    : null;
+
+                // Hold the shove clip on screen for its own length while the brick slides
+                // beneath it.
                 //
                 // Realtime rather than WaitForSeconds because PlayerAnimator steps its
                 // frames on unscaled time: under the slow-motion the hazards use, a scaled
                 // wait would stretch while the clip it is waiting on kept running at full
-                // speed, and the brick would start moving several shoves later.
+                // speed, and the shove would outlast the slide by several clip lengths.
                 //
                 // Deliberately outside the blocked check below, so shoving a brick that
                 // cannot move still plays the shove — that IS the feedback that it is stuck.
                 if (m_PushWindUpTime > 0f)
                     yield return new WaitForSecondsRealtime(m_PushWindUpTime);
 
-                // One shove and done — dropped here rather than after the brick's routine so
-                // Byte stands idle through the slide. Held for the whole slide instead, the
-                // clip's final frame just sat there for however long the brick took, which
-                // read as the animation having hung rather than finished.
+                // One shove and done — dropped as soon as the clip has run its length so
+                // Byte stands idle for whatever remains of the slide. Held for the whole
+                // slide instead, the clip's final frame just sat there for however long the
+                // brick took, which read as the animation having hung rather than finished.
                 m_IsPushing = false;
 
-                // The brick's own routine drives it, and may drop it several cells. The
-                // player simply holds position for the whole of it - nothing moves this
-                // body, so there is no drift to undo afterwards. The dynamic version had
-                // to freeze the X axis here to stop depenetration sliding the player
-                // backwards while the brick fell.
-                if (m_IsGamePlaying)
-                    yield return StartCoroutine(brick.Push(sign));
+                // Whichever of the two is still running, wait it out before the command
+                // ends — the brick may keep sliding and falling past the end of the clip.
+                if (pushRoutine != null)
+                    yield return pushRoutine;
 
                 break;
             }
@@ -1868,9 +1904,16 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(false);
         AudioManager.Instance?.PlayDeath();
 
-        // Play the dead sprite animation (holds its last frame) through the death pause.
+        // Byte is blown apart rather than played through a death clip: the body vanishes
+        // on the same frame the explosion lands, and the debris pieces are what the player
+        // watches until the fade takes over.
         m_IsDead = true;
-        m_Animator?.Play(PlayerAnimState.Dead);
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
+
+        // Unparented, so both effects keep playing where the player died while the reset
+        // below teleports the body back to spawn underneath them.
+        ParticleEffectSpawner.Spawn(m_DeathExplosion, transform.position);
+        ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
 
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
@@ -1897,8 +1940,10 @@ public class PlayerController : MonoBehaviour
         m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
 
-        // Death done — hand the sprite back to the normal idle/run/jump animation.
+        // Death done — put the body back on screen and hand it to the normal
+        // idle/run/jump animation. Both happen behind the black fade.
         m_IsDead = false;
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
         m_Animator?.Play(PlayerAnimState.Idle);
 
         // A normal body again, back at spawn — hazards apply once more. (If spawn itself

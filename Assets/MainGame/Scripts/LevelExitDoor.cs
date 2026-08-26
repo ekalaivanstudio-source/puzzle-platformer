@@ -77,6 +77,15 @@ public class LevelExitDoor : MonoBehaviour
     /// </summary>
     public bool OpensWithoutKey => m_OpensWithoutKey;
 
+    /// <summary>
+    /// Seconds <see cref="Open"/> takes to swing from shut to its last frame. Read by
+    /// <see cref="KeySlot"/>, which holds the player's queued run until the doorway has
+    /// finished opening. One frame short of the frame count, because the last frame is held
+    /// rather than waited out.
+    /// </summary>
+    public float OpenDuration =>
+        HasFrames() ? (m_DoorOpenFrames.Length - 1) * Mathf.Max(0f, m_FrameTime) : 0f;
+
     // Resolved lazily rather than in Awake: KeySlot calls SetClosed from ITS Awake, and the
     // two Awakes run in an undefined order, so a cached-in-Awake reference would still be
     // null for that first call.

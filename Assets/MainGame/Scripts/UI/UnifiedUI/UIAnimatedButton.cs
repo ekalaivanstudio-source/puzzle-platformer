@@ -9,7 +9,6 @@ namespace MainGame.UI.Unified
     /// scale emphasis, and left/right indicators using a clean interruptible animation loop.
     /// Works automatically with Keyboard, Gamepad (EventSystem selection) and Mouse (Pointer events).
     /// </summary>
-    [RequireComponent(typeof(CanvasGroup))]
     public class UIAnimatedButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Animation Settings")]
@@ -36,6 +35,7 @@ namespace MainGame.UI.Unified
         private Vector2 m_OriginalPointerPos;
         private Coroutine m_AnimationCoroutine;
         private bool m_IsFocused = false;
+        private bool m_HasCapturedRestState;
 
         private void Awake()
         {
@@ -45,14 +45,30 @@ namespace MainGame.UI.Unified
                 m_ButtonVisual = GetComponent<RectTransform>();
             }
 
-            m_OriginalVisualPos = m_ButtonVisual.anchoredPosition;
-
             if (m_LeftPointer != null)
             {
-                m_OriginalPointerPos = m_LeftPointer.anchoredPosition;
                 // Initially hide pointers
                 m_LeftPointer.gameObject.SetActive(false);
             }
+        }
+
+        private void Start()
+        {
+            // Capture in Start rather than Awake: a parent layout group assigns the final anchored
+            // position after Awake, and animating back to a pre-layout position would visibly jump.
+            CaptureRestState();
+        }
+
+        private void CaptureRestState()
+        {
+            if (m_HasCapturedRestState || m_ButtonVisual == null) return;
+
+            m_OriginalVisualPos = m_ButtonVisual.anchoredPosition;
+            if (m_LeftPointer != null)
+            {
+                m_OriginalPointerPos = m_LeftPointer.anchoredPosition;
+            }
+            m_HasCapturedRestState = true;
         }
 
         private void OnDisable()
@@ -91,6 +107,9 @@ namespace MainGame.UI.Unified
 
         private void SetFocused(bool focused)
         {
+            // A button focused on the very first frame can beat Start(); capture before we move it.
+            CaptureRestState();
+
             if (m_IsFocused == focused) return;
             m_IsFocused = focused;
 
@@ -172,6 +191,9 @@ namespace MainGame.UI.Unified
             }
 
             m_IsFocused = false;
+
+            // Nothing to rewind to if the button was never focused / laid out yet.
+            if (!m_HasCapturedRestState) return;
 
             if (m_ButtonVisual != null)
             {

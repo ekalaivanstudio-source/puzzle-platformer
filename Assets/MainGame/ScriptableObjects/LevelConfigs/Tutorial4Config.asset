@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
   m_Name: Tutorial4Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
-  levelNumber: 1
+  levelNumber: 4
   robotPartCount: 0
   memoryShardCount: 0
   cameraDeadZone:
@@ -30,3 +30,7 @@ MonoBehaviour:
     maxSequenceLength: 6
     requireFullSequence: 0
     autoPlaySequence: 01000000010000000100000005000000
+  tutorial:
+    showTutorial: 1
+    introHints: 05000000
+    introHintDuration: 3

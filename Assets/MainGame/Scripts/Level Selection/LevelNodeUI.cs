@@ -15,35 +15,73 @@ namespace LevelSelection
         #region Inspector Fields
 
         public int levelNumber;
-        
+
         [Header("UI References")]
         [SerializeField] private GameObject lockedStateObject;   // GameObject for locked state
         [SerializeField] private GameObject unlockedStateObject; // GameObject for unlocked state
         [SerializeField] private Image unlockedImage;            // Image on unlocked state to tint yellow if completed
         [SerializeField] private GameObject selectionArrow;      // Arrow for active level
 
+        [Header("Arrow Pulse")]
+        [Tooltip("Oscillations per second of the selection arrow pulse.")]
+        [SerializeField] private float arrowPulseSpeed = 6f;
+        [Tooltip("Peak scale deviation of the pulse, as a fraction of the arrow's resting scale.")]
+        [SerializeField] private float arrowPulseScale = 0.05f;
+        [Tooltip("Peak vertical bob of the arrow, in local units.")]
+        [SerializeField] private float arrowBobDistance = 8f;
+
+        [Header("Completed Tint")]
+        [SerializeField] private Color completedColor = new Color(1f, 0.92f, 0.016f);
+
+        #endregion
+
+        #region Private Fields
+
+        private static readonly Color UnlockedColor = Color.white;
+
         private bool m_IsUnlocked;
+        private Button m_Button;
+        private LevelSelectionManager m_Manager;
+        private Coroutine m_PulseCoroutine;
+
+        // Resting transform of the arrow, captured before any pulse runs so the animation
+        // can always be rewound exactly instead of drifting a little further each time.
+        private Vector3 m_ArrowRestScale = Vector3.one;
+        private Vector3 m_ArrowRestLocalPos;
 
         #endregion
 
         #region Unity Lifecycle
 
-        private void Start()
+        private void Awake()
         {
-            Button button = GetComponent<Button>();
-            if (button == null)
+            m_Button = GetComponent<Button>();
+            if (m_Button == null)
             {
-                button = GetComponentInChildren<Button>();
+                m_Button = GetComponentInChildren<Button>(true);
             }
-            if (button != null)
+
+            if (selectionArrow != null)
             {
-                button.onClick.AddListener(OnNodeClicked);
+                m_ArrowRestScale = selectionArrow.transform.localScale;
+                m_ArrowRestLocalPos = selectionArrow.transform.localPosition;
             }
+        }
+
+        private void OnEnable()
+        {
+            if (m_Button != null) m_Button.onClick.AddListener(OnNodeClicked);
+        }
+
+        private void OnDisable()
+        {
+            if (m_Button != null) m_Button.onClick.RemoveListener(OnNodeClicked);
+            StopPulse();
         }
 
         #endregion
 
-        private Coroutine m_PulseCoroutine;
+        #region Selection Handling
 
         public void OnSelect(BaseEventData eventData)
         {
@@ -73,7 +111,68 @@ namespace LevelSelection
             // Do not clear the selected GameObject on hover exit to keep focus persistent (like main menu buttons)
         }
 
+        public void OnMove(AxisEventData eventData)
+        {
+            if (eventData.moveDir != MoveDirection.Right && eventData.moveDir != MoveDirection.Left)
+            {
+                return;
+            }
+
+            LevelSelectionManager manager = ResolveManager();
+            if (manager == null) return;
+
+            // Moving past either end of the arc pages to the neighbouring arc instead of dead-ending.
+            if (eventData.moveDir == MoveDirection.Right)
+            {
+                if (manager.IsLastLevelOfCurrentArc(levelNumber) && manager.CanGoToNextArc())
+                {
+                    manager.GoToNextArc();
+                    eventData.Use();
+                }
+            }
+            else if (manager.IsFirstLevelOfCurrentArc(levelNumber) && manager.CanGoToPrevArc())
+            {
+                manager.GoToPrevArc();
+                eventData.Use();
+            }
+        }
+
+        private LevelSelectionManager ResolveManager()
+        {
+            if (m_Manager == null)
+            {
+                // Nodes are spawned under the manager's containers, so the parent lookup normally hits.
+                m_Manager = GetComponentInParent<LevelSelectionManager>();
+            }
+            if (m_Manager == null)
+            {
+                m_Manager = FindAnyObjectByType<LevelSelectionManager>();
+            }
+            return m_Manager;
+        }
+
+        #endregion
+
+        #region Arrow Animation
+
         private void SetArrowActive(bool active)
+        {
+            StopPulse();
+
+            if (selectionArrow == null) return;
+
+            selectionArrow.SetActive(active);
+            if (active && isActiveAndEnabled)
+            {
+                m_PulseCoroutine = StartCoroutine(ArrowPulseRoutine());
+            }
+        }
+
+        /// <summary>
+        /// Stops any running pulse and rewinds the arrow to its resting transform, so repeated
+        /// select/deselect cycles never accumulate scale or position drift.
+        /// </summary>
+        private void StopPulse()
         {
             if (m_PulseCoroutine != null)
             {
@@ -83,151 +182,93 @@ namespace LevelSelection
 
             if (selectionArrow != null)
             {
-                selectionArrow.SetActive(active);
-                if (active)
-                {
-                    m_PulseCoroutine = StartCoroutine(ArrowPulseRoutine());
-                }
+                selectionArrow.transform.localScale = m_ArrowRestScale;
+                selectionArrow.transform.localPosition = m_ArrowRestLocalPos;
             }
         }
 
         private IEnumerator ArrowPulseRoutine()
         {
-            if (selectionArrow == null) yield break;
-
-            Vector3 originalScale = selectionArrow.transform.localScale;
-            Vector3 originalLocalPos = selectionArrow.transform.localPosition;
             float elapsed = 0f;
 
-            while (true)
+            while (selectionArrow != null)
             {
                 elapsed += Time.unscaledDeltaTime;
-                
-                // Gentle pulse: sine wave oscillating scale between 95% and 105% at 6Hz frequency
-                float scaleOffset = Mathf.Sin(elapsed * 6f) * 0.05f;
-                selectionArrow.transform.localScale = originalScale * (1f + scaleOffset);
+                float wave = Mathf.Sin(elapsed * arrowPulseSpeed);
 
-                // Bobbing: vertical shift up and down by 8 units using sine wave
-                float bobOffset = Mathf.Sin(elapsed * 6f) * 8f;
-                selectionArrow.transform.localPosition = new Vector3(originalLocalPos.x, originalLocalPos.y + bobOffset, originalLocalPos.z);
+                selectionArrow.transform.localScale = m_ArrowRestScale * (1f + wave * arrowPulseScale);
+                selectionArrow.transform.localPosition = new Vector3(
+                    m_ArrowRestLocalPos.x,
+                    m_ArrowRestLocalPos.y + wave * arrowBobDistance,
+                    m_ArrowRestLocalPos.z);
 
                 yield return null;
             }
+
+            m_PulseCoroutine = null;
         }
+
+        #endregion
 
         #region Public Methods
 
         /// <summary>
         /// Updates the visual state of the level node.
         /// </summary>
+        /// <remarks>
+        /// Locked nodes stay interactable on purpose: they remain reachable by keyboard/controller
+        /// navigation so the player can see what is coming. <see cref="OnNodeClicked"/> is what
+        /// refuses to load a locked level.
+        /// </remarks>
         public void SetupNode(bool isUnlocked, bool isCompleted, bool isSelected)
         {
             m_IsUnlocked = isUnlocked;
 
-            Button button = GetComponent<Button>();
-            if (button == null)
+            if (m_Button != null)
             {
-                button = GetComponentInChildren<Button>();
-            }
-            if (button != null)
-            {
-                button.interactable = true;
+                m_Button.interactable = true;
             }
 
-            if (selectionArrow != null)
+            SetArrowActive(isSelected);
+
+            if (lockedStateObject != null)
             {
-                selectionArrow.SetActive(isSelected);
+                lockedStateObject.SetActive(!isUnlocked);
+            }
+            if (unlockedStateObject != null)
+            {
+                unlockedStateObject.SetActive(isUnlocked);
             }
 
-            if (!isUnlocked)
+            if (!isUnlocked) return;
+
+            // Auto-retrieve Image component if not assigned
+            if (unlockedImage == null && unlockedStateObject != null)
             {
-                // Locked State
-                if (lockedStateObject != null)
+                unlockedImage = unlockedStateObject.GetComponent<Image>();
+                if (unlockedImage == null)
                 {
-                    lockedStateObject.SetActive(true);
-                }
-                if (unlockedStateObject != null)
-                {
-                    unlockedStateObject.SetActive(false);
+                    unlockedImage = unlockedStateObject.GetComponentInChildren<Image>(true);
                 }
             }
-            else
+
+            if (unlockedImage != null)
             {
-                // Unlocked State
-                if (lockedStateObject != null)
-                {
-                    lockedStateObject.SetActive(false);
-                }
-                if (unlockedStateObject != null)
-                {
-                    unlockedStateObject.SetActive(true);
-                }
-
-                // Auto-retrieve Image component if not assigned
-                if (unlockedImage == null && unlockedStateObject != null)
-                {
-                    unlockedImage = unlockedStateObject.GetComponent<Image>();
-                    if (unlockedImage == null)
-                    {
-                        unlockedImage = unlockedStateObject.GetComponentInChildren<Image>();
-                    }
-                }
-
-                if (unlockedImage != null)
-                {
-                    if (isCompleted)
-                    {
-                        // Completed: tint yellow
-                        unlockedImage.color = new Color(1f, 0.92f, 0.016f);
-                    }
-                    else
-                    {
-                        // Unlocked but not completed (active level): keep white/default
-                        unlockedImage.color = Color.white;
-                    }
-                }
+                // Completed levels are tinted; the current (unlocked, unbeaten) level stays default.
+                unlockedImage.color = isCompleted ? completedColor : UnlockedColor;
             }
         }
 
         #endregion
 
-        public void OnMove(AxisEventData eventData)
-        {
-            if (eventData.moveDir == MoveDirection.Right)
-            {
-                LevelSelectionManager manager = FindAnyObjectByType<LevelSelectionManager>();
-                if (manager != null && manager.IsLastLevelOfCurrentArc(levelNumber))
-                {
-                    if (manager.CanGoToNextArc())
-                    {
-                        manager.GoToNextArc();
-                        eventData.Use();
-                    }
-                }
-            }
-            else if (eventData.moveDir == MoveDirection.Left)
-            {
-                LevelSelectionManager manager = FindAnyObjectByType<LevelSelectionManager>();
-                if (manager != null && manager.IsFirstLevelOfCurrentArc(levelNumber))
-                {
-                    if (manager.CanGoToPrevArc())
-                    {
-                        manager.GoToPrevArc();
-                        eventData.Use();
-                    }
-                }
-            }
-        }
-
         #region Private Methods
 
         private void OnNodeClicked()
         {
-            if (m_IsUnlocked)
-            {
-                // Load the scene corresponding to the level number
-                UnityEngine.SceneManagement.SceneManager.LoadScene(levelNumber);
-            }
+            if (!m_IsUnlocked) return;
+
+            // Load the scene corresponding to the level number
+            UnityEngine.SceneManagement.SceneManager.LoadScene(levelNumber);
         }
 
         #endregion

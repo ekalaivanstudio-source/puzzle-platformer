@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
@@ -14,6 +13,19 @@ namespace LevelSelection
     [DisallowMultipleComponent]
     public class LevelSelectionManager : MonoBehaviour
     {
+        #region Constants
+
+        /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the player's current level.</summary>
+        private const int FocusCurrentLevel = -1;
+
+        /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the first node of the arc.</summary>
+        private const int FocusFirstNode = 0;
+
+        /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the last node of the arc.</summary>
+        private const int FocusLastNode = int.MaxValue;
+
+        #endregion
+
         #region Inspector Fields
 
         [Header("Arc Generator")]
@@ -40,24 +52,16 @@ namespace LevelSelection
         private int currentArcIndex = 0;
         private InputAction m_PageLeftAction;
         private InputAction m_PageRightAction;
+        private bool m_HasGeneratedArc;
 
         #endregion
 
         #region Unity Lifecycle
 
-        private void Start()
+        private void Awake()
         {
-            // Set up navigation listeners
-            if (nextArcButton != null)
-            {
-                nextArcButton.onClick.AddListener(OnNextArcClicked);
-            }
-            if (prevArcButton != null)
-            {
-                prevArcButton.onClick.AddListener(OnPrevArcClicked);
-            }
-
-            // Wire up Page/Tab actions for Q/E and LB/RB controls
+            // Resolve the paging actions once; enabling/disabling them follows this component's lifetime
+            // so Q/E and the shoulder buttons only page arcs while the level selection screen is open.
             if (m_UIInputActionAsset != null)
             {
                 InputActionMap uiMap = m_UIInputActionAsset.FindActionMap("UI", throwIfNotFound: false);
@@ -65,42 +69,61 @@ namespace LevelSelection
                 {
                     m_PageLeftAction = uiMap.FindAction("PageLeft", throwIfNotFound: false);
                     m_PageRightAction = uiMap.FindAction("PageRight", throwIfNotFound: false);
-
-                    if (m_PageLeftAction != null)
-                    {
-                        m_PageLeftAction.performed += handlePageLeft;
-                        m_PageLeftAction.Enable();
-                    }
-                    if (m_PageRightAction != null)
-                    {
-                        m_PageRightAction.performed += handlePageRight;
-                        m_PageRightAction.Enable();
-                    }
                 }
             }
-
-            // Fallback initial load
-            InitializeAndFocusCurrentLevel();
         }
 
-        private void OnDestroy()
+        private void OnEnable()
         {
+            if (nextArcButton != null) nextArcButton.onClick.AddListener(OnNextArcClicked);
+            if (prevArcButton != null) prevArcButton.onClick.AddListener(OnPrevArcClicked);
+
             if (m_PageLeftAction != null)
             {
-                m_PageLeftAction.performed -= handlePageLeft;
+                m_PageLeftAction.performed += HandlePageLeft;
+                m_PageLeftAction.Enable();
             }
             if (m_PageRightAction != null)
             {
-                m_PageRightAction.performed -= handlePageRight;
+                m_PageRightAction.performed += HandlePageRight;
+                m_PageRightAction.Enable();
             }
         }
 
-        private void handlePageLeft(InputAction.CallbackContext context)
+        private void OnDisable()
+        {
+            if (nextArcButton != null) nextArcButton.onClick.RemoveListener(OnNextArcClicked);
+            if (prevArcButton != null) prevArcButton.onClick.RemoveListener(OnPrevArcClicked);
+
+            if (m_PageLeftAction != null)
+            {
+                m_PageLeftAction.performed -= HandlePageLeft;
+                m_PageLeftAction.Disable();
+            }
+            if (m_PageRightAction != null)
+            {
+                m_PageRightAction.performed -= HandlePageRight;
+                m_PageRightAction.Disable();
+            }
+        }
+
+        private void Start()
+        {
+            // Fallback initial load for scenes that show this manager without going through
+            // LevelSelectionScreen. When that screen drove Open() first, the arc already exists
+            // and regenerating here would destroy the nodes the EventSystem just focused.
+            if (!m_HasGeneratedArc)
+            {
+                InitializeAndFocusCurrentLevel();
+            }
+        }
+
+        private void HandlePageLeft(InputAction.CallbackContext context)
         {
             OnPrevArcClicked();
         }
 
-        private void handlePageRight(InputAction.CallbackContext context)
+        private void HandlePageRight(InputAction.CallbackContext context)
         {
             OnNextArcClicked();
         }
@@ -123,38 +146,36 @@ namespace LevelSelection
         /// </summary>
         public void InitializeAndFocusCurrentLevel()
         {
-            if (arcGenerator != null)
-            {
-                int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
-                currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
-                RefreshArcDisplay();
-            }
+            if (arcGenerator == null) return;
+
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+            currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
+            RefreshArcDisplay();
         }
 
+        /// <summary>
+        /// Returns the spawned node for the player's highest unlocked level, falling back to the first
+        /// node of the current arc. Returns null when no arc has been generated yet.
+        /// </summary>
         public GameObject GetCurrentUnlockedLevelNodeObject()
         {
-            if (levelNodes == null || levelNodes.Count == 0) return null;
-            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
-            foreach (var node in levelNodes)
-            {
-                if (node != null && node.levelNumber == highestUnlockedLevel)
-                {
-                    return node.gameObject;
-                }
-            }
-            return levelNodes[0].gameObject;
+            LevelNodeUI node = FindNodeForLevel(ModernLevelSelection.SaveManager.GetHighestUnlocked());
+            if (node != null) return node.gameObject;
+
+            return levelNodes.Count > 0 && levelNodes[0] != null ? levelNodes[0].gameObject : null;
         }
 
         public bool IsFirstLevelOfCurrentArc(int levelNum)
         {
-            if (levelNodes == null || levelNodes.Count == 0) return false;
+            if (levelNodes.Count == 0 || levelNodes[0] == null) return false;
             return levelNum == levelNodes[0].levelNumber;
         }
 
         public bool IsLastLevelOfCurrentArc(int levelNum)
         {
-            if (levelNodes == null || levelNodes.Count == 0) return false;
-            return levelNum == levelNodes[levelNodes.Count - 1].levelNumber;
+            if (levelNodes.Count == 0) return false;
+            LevelNodeUI last = levelNodes[levelNodes.Count - 1];
+            return last != null && levelNum == last.levelNumber;
         }
 
         public bool CanGoToNextArc()
@@ -181,15 +202,36 @@ namespace LevelSelection
 
         #region Private Methods
 
-        private void RefreshArcDisplay(int focusTargetNodeIndex = -1)
+        private LevelNodeUI FindNodeForLevel(int levelNumber)
+        {
+            for (int i = 0; i < levelNodes.Count; i++)
+            {
+                LevelNodeUI node = levelNodes[i];
+                if (node != null && node.levelNumber == levelNumber)
+                {
+                    return node;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Rebuilds the current arc page and restores selection focus.
+        /// </summary>
+        /// <param name="focusTargetNodeIndex">
+        /// Node index to focus, or <see cref="FocusCurrentLevel"/> to focus the player's highest unlocked level.
+        /// Indices are clamped to the generated node range.
+        /// </param>
+        private void RefreshArcDisplay(int focusTargetNodeIndex = FocusCurrentLevel)
         {
             if (arcGenerator == null) return;
 
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
 
-            // 1. Generate the specific arc nodes and paths passing the buttons for layout links
-            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel, prevArcButton, nextArcButton);
-            
+            // 1. Generate the specific arc nodes and paths
+            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel);
+            m_HasGeneratedArc = true;
+
             // 2. Fetch references to spawned UI elements
             levelNodes = arcGenerator.SpawnedNodes;
             pathSegments = arcGenerator.GeneratedSegments;
@@ -197,11 +239,11 @@ namespace LevelSelection
             // 3. Update navigation buttons
             if (prevArcButton != null)
             {
-                prevArcButton.interactable = currentArcIndex > 0;
+                prevArcButton.interactable = CanGoToPrevArc();
             }
             if (nextArcButton != null)
             {
-                nextArcButton.interactable = currentArcIndex < arcGenerator.ArcCount - 1;
+                nextArcButton.interactable = CanGoToNextArc();
             }
 
             // 4. Update Arc Title image
@@ -211,66 +253,46 @@ namespace LevelSelection
             }
 
             // 5. Restore EventSystem focus
-            if (UINavigationManager.Instance != null && levelNodes != null && levelNodes.Count > 0)
-            {
-                GameObject selectTarget = null;
-                
-                if (focusTargetNodeIndex == -1)
-                {
-                    // Find node for highest unlocked level
-                    LevelNodeUI targetNode = null;
-                    foreach (var node in levelNodes)
-                    {
-                        if (node != null && node.levelNumber == highestUnlockedLevel)
-                        {
-                            targetNode = node;
-                            break;
-                        }
-                    }
-                    selectTarget = targetNode != null ? targetNode.gameObject : levelNodes[0].gameObject;
-                }
-                else
-                {
-                    // Select specified index
-                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
-                    selectTarget = levelNodes[targetIdx].gameObject;
-                }
+            if (UINavigationManager.Instance == null || levelNodes.Count == 0) return;
 
+            GameObject selectTarget;
+            if (focusTargetNodeIndex == FocusCurrentLevel)
+            {
+                selectTarget = GetCurrentUnlockedLevelNodeObject();
+            }
+            else
+            {
+                int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
+                LevelNodeUI target = levelNodes[targetIdx];
+                selectTarget = target != null ? target.gameObject : null;
+            }
+
+            if (selectTarget != null)
+            {
                 UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
             }
         }
 
         private void OnNextArcClicked()
         {
-            if (arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1)
-            {
-                currentArcIndex++;
-                RefreshArcDisplay(0); // Focus the first node of the new arc
-            }
+            if (!CanGoToNextArc()) return;
+
+            currentArcIndex++;
+            RefreshArcDisplay(FocusFirstNode);
         }
 
         private void OnPrevArcClicked()
         {
-            if (arcGenerator != null && currentArcIndex > 0)
-            {
-                currentArcIndex--;
-                RefreshArcDisplay(999); // Focus the last node of the new arc (clamped)
-            }
+            if (!CanGoToPrevArc()) return;
+
+            currentArcIndex--;
+            RefreshArcDisplay(FocusLastNode);
         }
 
         private IEnumerator UnlockSequence(int completedLevelIndex)
         {
-            LevelNodeUI currentNode = null;
-            LevelNodeUI nextNode = null;
-            
-            foreach (var node in levelNodes)
-            {
-                if (node != null)
-                {
-                    if (node.levelNumber == completedLevelIndex) currentNode = node;
-                    if (node.levelNumber == completedLevelIndex + 1) nextNode = node;
-                }
-            }
+            LevelNodeUI currentNode = FindNodeForLevel(completedLevelIndex);
+            LevelNodeUI nextNode = FindNodeForLevel(completedLevelIndex + 1);
 
             if (currentNode != null)
             {
@@ -280,8 +302,9 @@ namespace LevelSelection
             }
 
             // 2. Find and animate the path leading to the next level
-            foreach (var segment in pathSegments)
+            for (int i = 0; i < pathSegments.Count; i++)
             {
+                UIPathSegment segment = pathSegments[i];
                 if (segment != null && segment.targetLevelIndex == completedLevelIndex + 1)
                 {
                     yield return StartCoroutine(segment.AnimateFill(fillDuration));
@@ -289,13 +312,14 @@ namespace LevelSelection
                 }
             }
 
-            // 3. Set unlocked state on next level node and highlight it
+            // 3. Save progress and highlight the newly unlocked level.
+            // Saved unconditionally: the next level may live on the following arc page and have no
+            // spawned node here, and progress must persist either way.
+            ModernLevelSelection.SaveManager.SetHighestUnlocked(completedLevelIndex + 1);
+
             if (nextNode != null)
             {
                 nextNode.SetupNode(isUnlocked: true, isCompleted: false, isSelected: true);
-                
-                // Save progress
-                ModernLevelSelection.SaveManager.SetHighestUnlocked(completedLevelIndex + 1);
             }
         }
 

@@ -64,14 +64,9 @@ namespace MainGame.UI.Unified
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject)
-            {
-                EventSystem.current.SetSelectedGameObject(null);
-            }
-            else
-            {
-                SetSelectedState(false);
-            }
+            // Deliberately keeps focus on the last hovered row, matching UIAnimatedButton. Clearing the
+            // selection here would leave the EventSystem with nothing selected, which UINavigationManager
+            // then has to repair on the next frame - a visible flicker.
         }
 
         private void SetSelectedState(bool selected)

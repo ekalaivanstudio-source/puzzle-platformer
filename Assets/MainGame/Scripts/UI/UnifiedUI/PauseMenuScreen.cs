@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -54,60 +55,54 @@ namespace MainGame.UI.Unified
 
         private void HandleResetClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            if (m_ConfirmationPopupScreen != null && UINavigationManager.Instance != null)
+            RequestConfirmation(m_ResetTitleSprite, () =>
             {
-                m_ConfirmationPopupScreen.SetupAction(() =>
-                {
-                    Debug.Log("[PauseMenuScreen] Reset confirmed. Invoking event...");
-                    m_OnResetConfirmed?.Invoke();
-                }, m_ResetTitleSprite);
-                UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
-            }
-            else
-            {
+                Debug.Log("[PauseMenuScreen] Reset confirmed. Invoking event...");
                 m_OnResetConfirmed?.Invoke();
-            }
+            });
         }
 
         private void HandleLevelsClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            if (m_ConfirmationPopupScreen != null && UINavigationManager.Instance != null)
+            RequestConfirmation(m_LevelsTitleSprite, () =>
             {
-                m_ConfirmationPopupScreen.SetupAction(() =>
-                {
-                    Debug.Log("[PauseMenuScreen] Levels confirmed. Redirecting to Level Selection screen...");
-                    AutoOpenLevelSelection = true;
-                    SceneManager.LoadScene(m_LevelsSceneName);
-                }, m_LevelsTitleSprite);
-                UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
-            }
-            else
-            {
-                AutoOpenLevelSelection = true;
-                SceneManager.LoadScene(m_LevelsSceneName);
-            }
+                Debug.Log("[PauseMenuScreen] Levels confirmed. Redirecting to Level Selection screen...");
+                LoadLevelsScene(autoOpenLevelSelection: true);
+            });
         }
 
         private void HandleExitClicked()
         {
+            RequestConfirmation(m_ExitTitleSprite, () =>
+            {
+                Debug.Log("[PauseMenuScreen] Exit confirmed. Loading main menu...");
+                LoadLevelsScene(autoOpenLevelSelection: false);
+            });
+        }
+
+        /// <summary>
+        /// Shows the shared confirmation popup with the given title, running <paramref name="onConfirmed"/>
+        /// only if the player accepts. When no popup is wired up the action runs immediately, so a missing
+        /// inspector reference degrades to the old un-confirmed behaviour rather than a dead button.
+        /// </summary>
+        private void RequestConfirmation(Sprite titleSprite, Action onConfirmed)
+        {
             AudioManager.Instance?.PlayButton();
-            if (m_ConfirmationPopupScreen != null && UINavigationManager.Instance != null)
+
+            if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)
             {
-                m_ConfirmationPopupScreen.SetupAction(() =>
-                {
-                    Debug.Log("[PauseMenuScreen] Exit confirmed. Loading main menu...");
-                    AutoOpenLevelSelection = false;
-                    SceneManager.LoadScene(m_LevelsSceneName);
-                }, m_ExitTitleSprite);
-                UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+                onConfirmed?.Invoke();
+                return;
             }
-            else
-            {
-                AutoOpenLevelSelection = false;
-                SceneManager.LoadScene(m_LevelsSceneName);
-            }
+
+            m_ConfirmationPopupScreen.SetupAction(onConfirmed, titleSprite);
+            UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+        }
+
+        private void LoadLevelsScene(bool autoOpenLevelSelection)
+        {
+            AutoOpenLevelSelection = autoOpenLevelSelection;
+            SceneManager.LoadScene(m_LevelsSceneName);
         }
     }
 }

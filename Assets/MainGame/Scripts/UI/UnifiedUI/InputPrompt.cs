@@ -20,50 +20,79 @@ namespace MainGame.UI.Unified
         [Tooltip("Object to enable when Mobile Layout is active.")]
         [SerializeField] private GameObject m_MobilePromptObject;
 
+        // The manager we are actually subscribed to, so unsubscribing survives the singleton being replaced.
+        private InputPromptManager m_SubscribedManager;
+
         private void OnEnable()
         {
-            if (InputPromptManager.Instance != null)
+            TrySubscribe();
+        }
+
+        private void Update()
+        {
+            // The prompt manager may initialise after this prompt is enabled; keep trying until wired.
+            if (m_SubscribedManager == null)
             {
-                InputPromptManager.Instance.OnPromptStyleChanged += RefreshPrompt;
-                RefreshPrompt(InputPromptManager.Instance.GetCurrentDeviceStyle());
+                TrySubscribe();
             }
         }
 
         private void OnDisable()
         {
-            if (InputPromptManager.Instance != null)
+            if (m_SubscribedManager != null)
             {
-                InputPromptManager.Instance.OnPromptStyleChanged -= RefreshPrompt;
+                m_SubscribedManager.OnPromptStyleChanged -= RefreshPrompt;
+                m_SubscribedManager = null;
             }
+        }
+
+        private void TrySubscribe()
+        {
+            InputPromptManager manager = InputPromptManager.Instance;
+            if (manager == null) return;
+
+            m_SubscribedManager = manager;
+            manager.OnPromptStyleChanged += RefreshPrompt;
+            RefreshPrompt(manager.GetCurrentDeviceStyle());
         }
 
         private void RefreshPrompt(DeviceType deviceType)
         {
-            if (m_KeyboardPromptObject != null) m_KeyboardPromptObject.SetActive(false);
-            if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(false);
-            if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(false);
-            if (m_MobilePromptObject != null) m_MobilePromptObject.SetActive(false);
+            SetActiveSafe(m_KeyboardPromptObject, false);
+            SetActiveSafe(m_XboxPromptObject, false);
+            SetActiveSafe(m_PS5PromptObject, false);
+            SetActiveSafe(m_MobilePromptObject, false);
 
             switch (deviceType)
             {
                 case DeviceType.KeyboardMouse:
-                    if (m_KeyboardPromptObject != null) m_KeyboardPromptObject.SetActive(true);
+                    SetActiveSafe(m_KeyboardPromptObject, true);
                     break;
 
                 case DeviceType.Xbox:
-                    if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(true);
-                    else if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(true);
+                    // Fall back to the other gamepad art rather than showing no prompt at all.
+                    if (!SetActiveSafe(m_XboxPromptObject, true)) SetActiveSafe(m_PS5PromptObject, true);
                     break;
 
                 case DeviceType.PS5:
-                    if (m_PS5PromptObject != null) m_PS5PromptObject.SetActive(true);
-                    else if (m_XboxPromptObject != null) m_XboxPromptObject.SetActive(true);
+                    if (!SetActiveSafe(m_PS5PromptObject, true)) SetActiveSafe(m_XboxPromptObject, true);
                     break;
 
                 case DeviceType.Mobile:
-                    if (m_MobilePromptObject != null) m_MobilePromptObject.SetActive(true);
+                    SetActiveSafe(m_MobilePromptObject, true);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Sets the active state when the object is assigned. Returns false when there is nothing to show.
+        /// </summary>
+        private static bool SetActiveSafe(GameObject target, bool active)
+        {
+            if (target == null) return false;
+
+            target.SetActive(active);
+            return true;
         }
     }
 }
