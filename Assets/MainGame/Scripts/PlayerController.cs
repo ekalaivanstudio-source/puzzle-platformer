@@ -622,6 +622,14 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
+            // A move that ended on a battery socket has set something off: the charge is
+            // travelling the pipe to the door, and the door is swinging open at the end of it.
+            // The beat waits for that. The player stands and watches where the socket they
+            // just filled leads, and the moves they queued after it are then walked towards a
+            // doorway that is already open rather than one that is still shut.
+            while (KeySlot.IsAnsweringBattery && m_IsGamePlaying)
+                yield return null;
+
             if (m_BeatGapTime > 0f && m_IsGamePlaying)
                 yield return new WaitForSeconds(m_BeatGapTime);
 
