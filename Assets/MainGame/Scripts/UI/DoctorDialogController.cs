@@ -11,6 +11,23 @@ public class DoctorDialogController : MonoBehaviour
     [SerializeField] private DoctorDialog[] m_HappyDialogs;
     [SerializeField] private DoctorDialog[] m_SadDialogs;
 
+    private DoctorDialog m_CurrentDialog;
+
+    private void Awake()
+    {
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.OnReachedTop += PlayVoiceOver;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.OnReachedTop -= PlayVoiceOver;
+        }
+    }
 
     public void ShowDialog(EvilDoctorAnimationController.DoctorAnimation animation)
     {
@@ -35,20 +52,30 @@ public class DoctorDialogController : MonoBehaviour
         if (dialogs == null || dialogs.Length == 0)
         {
             m_DialogText.text = string.Empty;
+            m_CurrentDialog = null;
             return;
         }
 
-        DoctorDialog dialog = dialogs[Random.Range(0, dialogs.Length)];
+        m_CurrentDialog = dialogs[Random.Range(0, dialogs.Length)];
+        m_DialogText.text = m_CurrentDialog.dialogText;
 
-        m_DialogText.text = dialog.dialogText;
-
-        // Play dialog.audioClip here if needed.
-        if(dialog.audioClip != null)
+        if (m_CurrentDialog.audioClip != null)
         {
-            AudioManager.Instance?.PlayVoice(dialog.audioClip);
+            if (m_UIFloatEffect != null)
+                m_UIFloatEffect.SetStayDuration(m_CurrentDialog.audioClip.length + 0.2f);
+        }
+        else
+        {
+            if (m_UIFloatEffect != null)
+                m_UIFloatEffect.SetStayDuration(2f);
+        }
+    }
 
-            if(m_UIFloatEffect != null)
-                m_UIFloatEffect.SetStayDuration(dialog.audioClip.length +.2f);
+    private void PlayVoiceOver()
+    {
+        if (m_CurrentDialog != null && m_CurrentDialog.audioClip != null)
+        {
+            AudioManager.Instance?.PlayVoice(m_CurrentDialog.audioClip);
         }
     }
 }
