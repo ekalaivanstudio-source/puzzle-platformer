@@ -1,89 +1,114 @@
-# Collectables & Level Config System
+# Robot Part Collectables
 
-Persistent pickups that survive across sessions: **Robot Parts** (single game‑wide
-total, e.g. `0/56`) and **Memory Shards** (tiered — each level range needs N shards to
-unlock a story). Separate from the Key/Door system.
+Four collectable robots — **ECHO, NOVA, PATCH, PIXEL** — each broken into **5 parts**
+scattered one per level. Collecting a part is permanent progress: it is written to disk
+immediately and the pickup never comes back, on level reset or on a new session.
 
-All **per‑level data** — collectable counts, camera dead‑zone, sequence settings, and
-anything added later — lives in one **`LevelConfig`** asset per level, assigned to that
-scene's **`LevelContext`**. Components read their values from there instead of exposing
-their own Inspector fields.
+The collection UI draws each robot as a dark silhouette that **fills in piece by piece**
+as its parts are found. The same UI appears in two places: pinned to the right of the
+screen during a level, and on the home screen's **Collection** tab.
+
+This replaces the old Robot Part / Memory Shard system entirely.
+
+## Identity
+
+A robot's id is its lower-case name (`echo`); a part's id is that plus its 1-based number
+(`echo_3`). `RobotIds` owns that format and the save file stores nothing else, so a part
+keeps its identity when it moves to a different level. **Never renumber `RobotId`** — the
+enum values are written into saves.
 
 ## Scripts
 
 | File | Role |
 |------|------|
-| `Level/LevelConfig.cs` | **ScriptableObject, one per level.** Collectable counts + camera dead‑zone + sequence settings (extend as needed). |
-| `Level/LevelContext.cs` | Per‑scene singleton (runs first). Holds the level's `LevelConfig`; everything reads `LevelContext.Instance.Config`. Lives on the same `LevelManager` object as `CollectableLevelManager` (which `[RequireComponent]`s it). |
-| `CollectableType.cs` | `RobotPart` / `MemoryShard` enum. |
-| `CollectableConstants.cs` | **Hand‑edited dials**: Robot Parts grand total + Memory‑Shard story tiers (level range → required count → story id). |
-| `CollectableSaveData.cs` / `CollectableSaveSystem.cs` | JSON save (`persistentDataPath/collectables.json`). Records every picked‑up id so it never respawns; provides counts; `ResetAll()`. |
-| `CollectableLevelManager.cs` | Per‑scene singleton. Single access point for collect + queries; reads level number from `LevelContext`. |
-| `Collectable.cs` | Component on the pickup prefab. Trigger‑collect, permanent, self‑hides if already collected. |
-| `CollectableHUD.cs` | Two TMP labels: Robot Parts `total/grandTotal`, Memory Shards `tierCollected/tierTarget`. |
-| `Editor/CollectableToolsWindow.cs` | `Tools ▸ Collectables ▸ Collectable Tools`: reset data, create prefabs, create a `LevelConfig`, assign missing ids. |
-| `Editor/CollectableUISetupWindow.cs` | `Tools ▸ Collectables ▸ Setup Collectable UI`: build the HUD prefab and inject HUD + managers + per‑level `LevelConfig` into scenes. |
+| `RobotId.cs` | The `RobotId` enum plus `RobotIds`: parts-per-robot, robot order, and the id string format. |
+| `RobotDefinition.cs` | **ScriptableObject, one per robot.** Display name, accent colour, silhouette, the 5 UI layer sprites (array order = draw order), the 5 world pickup sprites. |
+| `RobotCollectionDatabase.cs` | **ScriptableObject listing all 4 robots.** Lives in `Resources/` so the service can load it with no scene reference. |
+| `RobotPartSaveSystem.cs` | JSON save at `persistentDataPath/robotparts.json`. Stores collected part ids; provides counts; `ResetAll()`. |
+| `RobotCollectionService.cs` | **The single access point.** Database lookup, `IsCollected` / `Collect` / counts, `OnPartCollected` + `OnProgressChanged` events, `ResetAll`. Static, so it works on the home screen too. |
+| `RobotPartAssignment.cs` | Which part a level hides. Serialized into `LevelConfig.robotPart`. |
+| `RobotPartPickup.cs` | The pickup in the level. Trigger-collect, permanent, self-hides if already collected. Reads its identity from the level's config. |
+| `RobotCollectionSlot.cs` | One robot's silhouette + 5 stacked part layers + count label. Includes the collect pop animation. |
+| `RobotCollectionView.cs` | Drives a set of slots and owns the event subscription. Used by both the level HUD and the home screen tab. |
+| `Editor/RobotCollectionSetup.cs` | `Tools ▸ Robot Collection` — builds assets and prefabs, assigns parts, wires every scene. |
 
-## Components that now read from `LevelConfig`
+## How the fill effect works
 
-| Component | Fields moved into `LevelConfig` |
-|-----------|--------------------------------|
-| `CameraFollowDeadZone` | dead zone, offset, smooth time, bounds (min/max X/Y), follow X/Y. `Target`/`Camera` still auto‑resolve at runtime. |
-| `SequenceManager` | Max Sequence Length, Require Full Sequence. (A level's correct‑sequence still overrides max length at runtime via `PlayerInputUIHelper`.) |
-| `CollectableLevelManager` | `robotPartCount` / `memoryShardCount` (authoring info). |
+Every sprite for a robot is the same 72x72 canvas:
 
-These fields are now **hidden in the Inspector** (kept serialized only as a fallback);
-the asset is the source of truth.
+- `<Robot>_Silhouette.png` — the whole robot dimmed, always visible.
+- `<Robot>_Part1..5.png` — **only that part's pixels**, transparent everywhere else.
 
-## One‑time setup
+Because the layers share a canvas and hold disjoint pixels, stacking them lines up exactly:
+a collected part simply enables its layer and lights up its region of the silhouette. The
+slot's part layers are ordered so later parts draw in front (e.g. ECHO's eyes over its head).
 
-1. **Prefabs**: `Tools ▸ Collectables ▸ Collectable Tools` → `Create Robot Part Prefab`
-   / `Create Memory Shard Prefab`. Assign a sprite to each. Leave the prefab's
-   `Unique Id` **empty** — every dropped instance auto‑assigns its own id.
-2. **HUD**: `Tools ▸ Collectables ▸ Setup Collectable UI` → (optional) assign icons →
-   `Build / Update HUD Prefab`.
+These are **generated** from the artist's drops in `Sprites/ECHO|NOVA|PATCH|PIXEL/`, into
+`Sprites/RobotParts/<Robot>/`. The originals are still used as-is for the **world pickups**,
+where the full artwork (whole robot dark, one part lit) reads far better than a masked
+layer — several of those are only a handful of pixels.
 
-## Per‑level setup (automated)
+> Regenerating the layers is a one-off offline step. If the art changes, re-run the
+> generator, then `Tools ▸ Robot Collection ▸ 1. Build Database And Definitions`.
 
-`Tools ▸ Collectables ▸ Setup Collectable UI` → keep *Ensure Level Manager* and
-*Create + assign LevelConfig* on → **Setup In All Build Scenes** (or *Setup Current
-Scene*). Per scene it:
+## One part per level
 
-- adds the self‑contained HUD prefab (if missing),
-- adds one **`LevelManager`** object under `Managers` holding both `CollectableLevelManager`
-  and `LevelContext` (consolidating any separate objects an earlier setup created),
-- creates `ScriptableObjects/LevelConfigs/Level{n}Config.asset` and **captures that
-  scene's current camera dead‑zone + sequence values into it**, then assigns it to the
-  `LevelContext`,
-- saves the scene.
+The assignment lives on the level's **`LevelConfig.robotPart`**, not on the pickup object,
+which is what enforces the one-part-per-scene rule and means moving the pickup around a
+scene never changes what it is:
 
-Idempotent — safe to re‑run. *Only 'Level\*' Scenes* filters out Home/menu. The level
-number used everywhere comes from the config's `Level Number` field (via `LevelContext`).
+```
+placePart   off when this level hides no part
+robot       ECHO / NOVA / PATCH / PIXEL
+partNumber  1-5
+```
 
-> Because the migration captures the **existing** per‑scene camera bounds/sequence
-> values, nothing is lost when those fields move into the asset.
+`RobotPartPickup` reads that on `Start`, dresses itself in the right sprite, and hides
+itself when the part is already collected — or when the level has no part assigned.
 
-## Per‑level content
+A pickup can opt out with **Override Assignment** and name its own robot + part. That is
+for test scenes; normal levels leave it off.
 
-1. Drop the Robot Part / Memory Shard prefabs into the level. Each instance gets a
-   unique id automatically; if any is blank use *Collectable Tools ▸ Assign Missing Ids*.
-2. Set that level's `LevelConfig` **Robot Part Count** / **Memory Shard Count** to match
-   how many you placed (authoring info).
-3. Make sure the pickup's collider is a **trigger** and the player is tagged `Player`.
+## Setup
+
+`Tools ▸ Robot Collection ▸ Run Full Setup` does everything and is **idempotent** — re-run
+it any time. Individual steps are on the same menu:
+
+1. **Build Database And Definitions** — writes the 4 `RobotDefinition` assets from the
+   sprite folders and the database into `Resources/`.
+2. **Assign Parts To Levels** — walks the `LevelConfig` assets in `levelNumber` order and
+   assigns 5 levels per robot (ECHO first). Levels past the 20th get none.
+3. **Build Prefabs** — `RobotCollectionHUD.prefab` (own canvas, right-aligned column) and
+   `RobotPartPickup.prefab`.
+4. **Setup All Level Scenes** — per scene: strips the old collectable objects, then adds
+   the HUD and the pickup. The **HUD is replaced** each run so prefab changes reach every
+   level; the **pickup is only added when missing**, so hand-placed positions survive.
+5. **Setup Home Screen Tab** — fills the home screen's Collection panel with the same
+   four robots, drawn larger and with names.
+
+Three more entries help while working:
+
+- **Reset Progress** — deletes the save file.
+- **Log Level Assignments** — prints the level → part table.
+- **Purge Legacy From Remaining Scenes** — clears old collectable objects out of the
+  unshipped duplicate scenes under `Scenes/`. Scoped to `Assets/MainGame/Scenes` and it
+  does **not** strip missing scripts, so it cannot disturb unrelated or third-party scenes.
+
+## Per-level content
+
+The tool parks each pickup near the player spawn. Drag it somewhere worth finding — that
+is the only hand work a level needs. Its collider is already a trigger and the player is
+matched by the `Player` tag.
 
 ## Tuning
 
-- **A level's camera / sequence / collectable counts** → that level's `LevelConfig` asset.
-- **Shard story tiers (count + level range + story id)** → `CollectableConstants.MemoryShardTiers`
-  (ranges must not overlap).
-- **Robot Parts HUD total (0/56)** → `CollectableConstants.RobotPartsGrandTotal`.
+- **Which part a level hides** → that level's `LevelConfig ▸ Collectables`.
+- **Robot names / accent colours / layer draw order** → the `RobotDefinition` assets, or
+  the `RobotAuthoring` table in `RobotCollectionSetup.cs` which seeds them.
+- **HUD size and placement** → `BuildHudPrefab` in `RobotCollectionSetup.cs`, then re-run
+  steps 3 and 4.
 
 ## Reset
 
-- `Tools ▸ Collectables ▸ Collectable Tools ▸ Reset Collectable Data` — deletes the save file.
-- **New Game** (`MenuManager.NewGame()`) also wipes collectable progress for now.
-
-## Store (future)
-
-`CollectableLevelManager.IsStoryUnlockedForLevel(level)` / `IsCurrentStoryUnlocked`
-report tier completion — hook the not‑yet‑built store screen into these.
+- `Tools ▸ Robot Collection ▸ Reset Progress`.
+- **New Game** (`MenuManager.NewGame()` and the main menu button) also wipes part progress.
