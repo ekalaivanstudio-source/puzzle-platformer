@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Level3Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
   levelNumber: 7
-  robotPartCount: 1
-  memoryShardCount: 0
+  robotPart:
+    placePart: 1
+    robot: 1
+    partNumber: 2
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1
@@ -30,3 +32,7 @@ MonoBehaviour:
     maxSequenceLength: 4
     requireFullSequence: 0
     autoPlaySequence: 05000000010000000500000005000000
+  tutorial:
+    showTutorial: 0
+    introHints: 
+    introHintDuration: 3

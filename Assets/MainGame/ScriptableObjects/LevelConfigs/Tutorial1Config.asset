@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Tutorial1Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
   levelNumber: 1
-  robotPartCount: 0
-  memoryShardCount: 0
+  robotPart:
+    placePart: 1
+    robot: 0
+    partNumber: 1
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1

@@ -7,7 +7,7 @@
 /// exactly one place.
 ///
 /// Create via: Assets ▸ Create ▸ Level ▸ Level Config,
-/// or Tools ▸ Collectables ▸ Collectable Tools ▸ Create Level Config.
+/// or Tools ▸ Robot Collection ▸ Run Full Setup.
 /// </summary>
 [CreateAssetMenu(fileName = "LevelConfig", menuName = "Level/Level Config", order = 0)]
 public class LevelConfig : ScriptableObject
@@ -67,8 +67,9 @@ public class LevelConfig : ScriptableObject
     public int levelNumber = 1;
 
     [Header("Collectables")]
-    [Min(0)] public int robotPartCount = 0;
-    [Min(0)] public int memoryShardCount = 0;
+    [Tooltip("The one robot part hidden in this level, if any. A level holds at most one part; " +
+             "the RobotPartPickup in the scene reads its identity from here.")]
+    public Collectables.RobotPartAssignment robotPart = new Collectables.RobotPartAssignment();
 
     [Header("Camera Follow Dead Zone")]
     public CameraDeadZoneSettings cameraDeadZone = new CameraDeadZoneSettings();

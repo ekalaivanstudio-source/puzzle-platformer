@@ -112,7 +112,7 @@ public class MenuManager : MonoBehaviour
         SaveManager.ResetProgress();
 
         // Wipe collectable progress (Robot Parts / Memory Shards) for a fresh start.
-        Collectables.CollectableSaveSystem.ResetAll();
+        Collectables.RobotCollectionService.ResetAll();
 
         // Make sure Level 1 is unlocked.
         SaveManager.SetHighestUnlocked(1);
