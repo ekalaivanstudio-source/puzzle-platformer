@@ -10,12 +10,12 @@ using UnityEngine;
 public class SequenceManager : MonoBehaviour, ISequenceSource
 {
     public static SequenceManager Instance { get; private set; }
-    [Tooltip("Maximum number of actions the player can queue per turn.")]
-    [SerializeField] private int m_MaxSequenceLength = 6;
 
-    [Tooltip("When true the player must fill every slot before pressing Enter. " +
-             "Set false to allow submitting a partial sequence.")]
-    [SerializeField] private bool m_RequireFullSequence = false;
+    // Driven by the level's LevelConfig (via LevelContext) at runtime. Kept serialized but
+    // hidden so any existing per-scene value survives as a fallback when no config is set.
+    [HideInInspector, SerializeField] private int m_MaxSequenceLength = 6;
+
+    [HideInInspector, SerializeField] private bool m_RequireFullSequence = false;
 
 
     private readonly List<ActionTypeEnum> m_Sequence = new List<ActionTypeEnum>();
@@ -23,8 +23,20 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     // Optional correct sequence â€” when set, CanExecute also requires an exact match.
     private ActionTypeEnum[] m_CorrectSequence;
 
+    // The sequence submitted on the turn that has most recently ended. Survives the clear
+    // below so the player can still see what they tried while entering their next attempt.
+    private readonly List<ActionTypeEnum> m_PreviousSequence = new List<ActionTypeEnum>();
+
     /// <summary>Read-only view of the current queued command sequence.</summary>
     public IReadOnlyList<ActionTypeEnum> Sequence => m_Sequence;
+
+    /// <summary>
+    /// Read-only view of the sequence the player submitted on the last turn that ended —
+    /// their previous attempt. Empty until a turn has actually ended, and never emptied
+    /// afterwards: each finished attempt replaces the one before it.
+    /// Drawn by <see cref="PreviousInputDisplay"/>.
+    /// </summary>
+    public IReadOnlyList<ActionTypeEnum> PreviousSequence => m_PreviousSequence;
 
     // â”€â”€â”€ ISequenceSource â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -53,6 +65,13 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     /// </summary>
     public void SetCorrectSequence(ActionTypeEnum[] sequence) { m_CorrectSequence = sequence; }
 
+    /// <summary>
+    /// Read-only view of the correct sequence registered for this level, or null when none is set.
+    /// Read by <see cref="AutoPlayTester"/> so the solution it plays back does not have to be
+    /// authored a second time when the level's correct sequence is already concrete.
+    /// </summary>
+    public IReadOnlyList<ActionTypeEnum> CorrectSequence => m_CorrectSequence;
+
     /// <summary>True when the queue has reached its maximum length.</summary>
     public bool IsFull => m_Sequence.Count >= m_MaxSequenceLength;
 
@@ -77,12 +96,29 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     /// <summary>Fired whenever the sequence is modified (add, remove, or clear).</summary>
     public event Action OnSequenceChanged;
 
+    /// <summary>
+    /// Fired when a finished turn's sequence has been recorded into
+    /// <see cref="PreviousSequence"/>, i.e. once per attempt that actually ran.
+    /// </summary>
+    public event Action OnPreviousSequenceChanged;
+
     // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        ApplyConfig();
+    }
+
+    /// <summary>Copies the sequence settings from the level's config, if one is present.</summary>
+    private void ApplyConfig()
+    {
+        LevelConfig cfg = LevelContext.Instance != null ? LevelContext.Instance.Config : null;
+        if (cfg == null) return;
+
+        m_MaxSequenceLength = Mathf.Max(1, cfg.sequence.maxSequenceLength);
+        m_RequireFullSequence = cfg.sequence.requireFullSequence;
     }
 
     private void OnValidate()
@@ -125,8 +161,30 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         OnSequenceChanged?.Invoke();
     }
 
-    /// <summary>Clears the queue at turn end. Called by <see cref="GameManager.PlayEnded"/>.</summary>
-    public void OnTurnEnded() => ClearSequence();
+    /// <summary>
+    /// Records the attempt and clears the queue at turn end. Called by
+    /// <see cref="GameManager.StopExecution"/>, which every way a turn can finish runs
+    /// through — a completed run, a death, a checkpoint, or a trap.
+    /// </summary>
+    public void OnTurnEnded()
+    {
+        RecordAttempt();
+        ClearSequence();
+    }
+
+    // Snapshots the queue as the player's previous attempt, just before it is cleared.
+    //
+    // An empty queue is deliberately NOT recorded: it means no attempt ran (the turn was
+    // ended by something other than the player submitting a sequence), and blanking the
+    // recap in that case would take away the very thing the player is re-reading.
+    private void RecordAttempt()
+    {
+        if (IsEmpty) return;
+
+        m_PreviousSequence.Clear();
+        m_PreviousSequence.AddRange(m_Sequence);
+        OnPreviousSequenceChanged?.Invoke();
+    }
 
 }
 

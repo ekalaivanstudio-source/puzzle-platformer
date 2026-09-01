@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using UnityEditor.Rendering.LookDev;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -254,7 +253,7 @@ public class PlayerInputUIHelper : MonoBehaviour
             Sprite s = GetSpriteForAction(m_CorrectSequence[i]);
             if (s != null)
             {
-                inputsUI[i].sprite = s;
+                inputsUI[i].sprite = m_InteractSprite;
                 Image inputChild = inputsUI[i].transform.GetChild(0).GetComponent<Image>();
                 inputChild.sprite = s;
             }
@@ -262,7 +261,13 @@ public class PlayerInputUIHelper : MonoBehaviour
         }
     }
 
-    private Sprite GetSpriteForAction(ActionTypeEnum action)
+    /// <summary>
+    /// The sprite this HUD draws for <paramref name="action"/>, or null when none is assigned.
+    /// Public so anything else showing the same actions — <see cref="PreviousInputDisplay"/>'s
+    /// last-attempt recap — reads the icons from here rather than having them authored a
+    /// second time and drifting out of step with the HUD.
+    /// </summary>
+    public Sprite GetSpriteForAction(ActionTypeEnum action)
     {
         return action switch
         {

@@ -63,6 +63,9 @@ namespace ModernLevelSelection
         [SerializeField]
         private float _pressDuration = 0.12f;
 
+        Vector3 original;
+        Transform transformCached;
+
         #endregion
 
         #region Events
@@ -93,10 +96,14 @@ namespace ModernLevelSelection
 
         private void Awake()
         {
+
+            transformCached = _button.transform;
+            original = transformCached.localScale;
             if (_button != null)
             {
                 _button.onClick.AddListener(HandleClick);
             }
+
         }
 
         private void OnDestroy()
@@ -199,8 +206,6 @@ namespace ModernLevelSelection
             if (_button == null)
                 yield break;
 
-            var transformCached = _button.transform;
-            Vector3 original = transformCached.localScale;
             Vector3 target = original * _pressScale;
             float t = 0f;
             while (t < _pressDuration)

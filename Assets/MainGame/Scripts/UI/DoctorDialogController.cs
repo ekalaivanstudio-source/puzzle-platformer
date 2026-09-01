@@ -1,21 +1,37 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Shows a random line of doctor dialog for a given reaction.
-/// </summary>
 public class DoctorDialogController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TMP_Text m_DialogText;
+    [SerializeField] private UIFloatEffect m_UIFloatEffect;
 
     [Header("Dialogs")]
-    [SerializeField] private string[] m_HappyDialogs;
-    [SerializeField] private string[] m_SadDialogs;
+    [SerializeField] private DoctorDialog[] m_HappyDialogs;
+    [SerializeField] private DoctorDialog[] m_SadDialogs;
+
+    private DoctorDialog m_CurrentDialog;
+
+    private void Awake()
+    {
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.OnReachedTop += PlayVoiceOver;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.OnReachedTop -= PlayVoiceOver;
+        }
+    }
 
     public void ShowDialog(EvilDoctorAnimationController.DoctorAnimation animation)
     {
-        string[] pool = animation switch
+        DoctorDialog[] pool = animation switch
         {
             EvilDoctorAnimationController.DoctorAnimation.Happy => m_HappyDialogs,
             EvilDoctorAnimationController.DoctorAnimation.Sad => m_SadDialogs,
@@ -25,7 +41,7 @@ public class DoctorDialogController : MonoBehaviour
         SetRandomDialog(pool);
     }
 
-    private void SetRandomDialog(string[] dialogs)
+    private void SetRandomDialog(DoctorDialog[] dialogs)
     {
         if (m_DialogText == null)
         {
@@ -33,8 +49,42 @@ public class DoctorDialogController : MonoBehaviour
             return;
         }
 
-        m_DialogText.text = (dialogs != null && dialogs.Length > 0)
-            ? dialogs[Random.Range(0, dialogs.Length)]
-            : string.Empty;
+        if (dialogs == null || dialogs.Length == 0)
+        {
+            m_DialogText.text = string.Empty;
+            m_CurrentDialog = null;
+            return;
+        }
+
+        m_CurrentDialog = dialogs[Random.Range(0, dialogs.Length)];
+        m_DialogText.text = m_CurrentDialog.dialogText;
+
+        if (m_CurrentDialog.audioClip != null)
+        {
+            if (m_UIFloatEffect != null)
+                m_UIFloatEffect.SetStayDuration(m_CurrentDialog.audioClip.length + 0.2f);
+        }
+        else
+        {
+            if (m_UIFloatEffect != null)
+                m_UIFloatEffect.SetStayDuration(2f);
+        }
     }
+
+    private void PlayVoiceOver()
+    {
+        if (m_CurrentDialog != null && m_CurrentDialog.audioClip != null)
+        {
+            AudioManager.Instance?.PlayVoice(m_CurrentDialog.audioClip);
+        }
+    }
+}
+
+[System.Serializable]
+public class DoctorDialog
+{
+    [TextArea]
+    public string dialogText;
+
+    public AudioClip audioClip;
 }

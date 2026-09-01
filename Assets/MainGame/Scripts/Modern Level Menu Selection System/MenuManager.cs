@@ -111,10 +111,18 @@ public class MenuManager : MonoBehaviour
     {
         SaveManager.ResetProgress();
 
+        // Wipe collectable progress (Robot Parts / Memory Shards) for a fresh start.
+        Collectables.RobotCollectionService.ResetAll();
+
         // Make sure Level 1 is unlocked.
         SaveManager.SetHighestUnlocked(1);
 
-        SceneManager.LoadScene(1);
+        // The intro cutscene loads the level itself once it finishes. It declines when the home
+        // screen has no cutscene built, in which case we go straight in as before.
+        if (!MainGame.UI.Unified.IntroCutsceneScreen.TryPlay(1))
+        {
+            SceneManager.LoadScene(1);
+        }
     }
 
     /// <summary>

@@ -11,15 +11,45 @@ namespace ModernLevelSelection
         private const string HighestUnlockedKey = "MLS_HighestUnlocked";
         private const string StarsKeyFormat = "MLS_Stars_{0}"; // {level}
         private const string CompletedKeyFormat = "MLS_Completed_{0}"; // {level}
+        // Highest level index that ever had per-level data written, so ResetProgress knows how far to sweep.
+        private const string MaxTouchedLevelKey = "MLS_MaxTouchedLevel";
 
         /// <summary>
-        /// Resets all saved progress. Use with care.
+        /// Returns true when the player has any stored progress, i.e. a "Continue" entry point exists.
+        /// Prefer this over inspecting PlayerPrefs keys directly.
+        /// </summary>
+        public static bool HasSaveData()
+        {
+            return PlayerPrefs.HasKey(HighestUnlockedKey) && PlayerPrefs.GetInt(HighestUnlockedKey, 1) > 1;
+        }
+
+        /// <summary>
+        /// Resets all saved progress: the highest unlocked level plus every per-level star and completion flag.
+        /// Use with care.
         /// </summary>
         public static void ResetProgress()
         {
+            int maxTouched = PlayerPrefs.GetInt(MaxTouchedLevelKey, 0);
+            for (int level = 1; level <= maxTouched; level++)
+            {
+                PlayerPrefs.DeleteKey(string.Format(StarsKeyFormat, level));
+                PlayerPrefs.DeleteKey(string.Format(CompletedKeyFormat, level));
+            }
+
+            PlayerPrefs.DeleteKey(MaxTouchedLevelKey);
             PlayerPrefs.DeleteKey(HighestUnlockedKey);
-            // Note: We don't know how many levels were generated; best-effort: keep highestUnlocked cleared and let levels overwrite their stars.
             PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Records that per-level data exists for this level so <see cref="ResetProgress"/> can clear it later.
+        /// </summary>
+        private static void MarkLevelTouched(int level)
+        {
+            if (level > PlayerPrefs.GetInt(MaxTouchedLevelKey, 0))
+            {
+                PlayerPrefs.SetInt(MaxTouchedLevelKey, level);
+            }
         }
 
         /// <summary>
@@ -64,6 +94,7 @@ namespace ModernLevelSelection
             if (newStars > current)
             {
                 PlayerPrefs.SetInt(key, newStars);
+                MarkLevelTouched(level);
                 PlayerPrefs.Save();
             }
         }
@@ -76,6 +107,7 @@ namespace ModernLevelSelection
             if (level <= 0) return;
             string key = string.Format(CompletedKeyFormat, level);
             PlayerPrefs.SetInt(key, 1);
+            MarkLevelTouched(level);
             PlayerPrefs.Save();
         }
 

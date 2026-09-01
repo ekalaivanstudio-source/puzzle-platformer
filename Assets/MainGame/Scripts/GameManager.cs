@@ -23,6 +23,15 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public static event System.Action OnFullReset;
 
+    /// <summary>
+    /// Fired whenever the player returns to its initial spawn position — i.e. after a
+    /// full turn completes or the level is soft-reset (death). Unlike <see cref="OnTurnReset"/>
+    /// this does NOT fire when a lever/checkpoint aborts a run in place, so objects that
+    /// should "return home only when the player does" (moving platforms, platform-riding
+    /// bricks) can listen here without being reset mid-turn by a lever.
+    /// </summary>
+    public static event System.Action OnPlayerRespawn;
+
     /// <summary>Fired when execution begins so interactables can activate during a run.</summary>
     public static event System.Action OnExecutionStarted;
 
@@ -66,6 +75,7 @@ public class GameManager : MonoBehaviour
         IsKeyCollected = false;
         StopExecution();
         OnKeyReset?.Invoke();
+        OnPlayerRespawn?.Invoke();   // player is back at spawn — return platforms/riding bricks home
     }
 
     public void StopExecution()
@@ -84,9 +94,10 @@ public class GameManager : MonoBehaviour
     public void SoftResetLevel()
     {
         IsKeyCollected = false;
-        OnFullReset?.Invoke();   // bricks, redirectors → initial state
-        OnTurnReset?.Invoke();   // movable bricks, lock points
-        OnKeyReset?.Invoke();    // placeable key + key slot
+        OnFullReset?.Invoke();     // bricks, redirectors → initial state
+        OnTurnReset?.Invoke();     // movable bricks, lock points
+        OnKeyReset?.Invoke();      // placeable key + key slot
+        OnPlayerRespawn?.Invoke(); // player is back at spawn
         SequenceManager.Instance?.OnTurnEnded();
     }
 
@@ -111,6 +122,13 @@ public class GameManager : MonoBehaviour
 
     // ─── Scene Management ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Home screen scene name. Loaded by name because the build list is ordered
+    /// Launcher (0), Level1..LevelN (1..N), HomeScreen (last) so that every level's build index
+    /// still equals its level number.
+    /// </summary>
+    public const string HomeSceneName = "HomeScreen";
+
     /// <summary>Reloads the currently active scene.</summary>
     public void ReloadLevel()
     {
@@ -119,19 +137,43 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by the Restart UI button. Fires <see cref="OnFullReset"/> then reloads
+    /// Called by the Restart UI button and the R key. Fires <see cref="OnFullReset"/> then reloads
     /// the scene — use this instead of ReloadLevel() so both paths share the event.
     /// </summary>
     public void RestartLevel() => ReloadLevel();
 
-    /// <summary>Loads the next scene by build index, looping back to 0 after the last level.</summary>
+    /// <summary>
+    /// Loads the next scene by build index, returning to the home screen after the last level.
+    /// </summary>
     public void LoadNextLevel()
     {
         int next = SceneManager.GetActiveScene().buildIndex + 1;
-        if (next >= SceneManager.sceneCountInBuildSettings) next = 0;
+
+        // Levels are build indices 1..N. Past the last one — or from a scene that isn't in the
+        // build at all (buildIndex -1) — go home rather than wrapping onto the Launcher splash.
+        if (next <= 0 || next >= SceneManager.sceneCountInBuildSettings)
+        {
+            GoToMainMenu();
+            return;
+        }
+
         SceneManager.LoadScene(next);
     }
 
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape) && !RestartConfirmationUI.IsOpen)
+        {
+            RestartConfirmationUI.ShowHomeScreen();
+        }
+    }
+
+    public void GoToMainMenu()
+    {
+        // By name, not index: build index 0 is the Launcher splash, and the home screen sits at
+        // the end of the build list so the levels keep matching their build indices.
+        SceneManager.LoadScene(HomeSceneName);
+    }
     public void QuitApplication()
     {
 #if UNITY_EDITOR

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>The mutually-exclusive animation states the player can be in.</summary>
-public enum PlayerAnimState { Idle, Run, Jump, Dead }
+public enum PlayerAnimState { Idle, Run, Jump, GroundPound, Push }
 
 /// <summary>
 /// Drives the player's frame-by-frame sprite-sheet animations on a
@@ -13,10 +13,22 @@ public enum PlayerAnimState { Idle, Run, Jump, Dead }
 ///  • Idle — rotates between the four idle sheets. Each idle plays once, then a
 ///    *different* idle is chosen at random, giving continuous standing variety.
 ///  • Run / Jump — loop continuously.
-///  • Dead — plays once and holds on the last frame.
+///  • Push — plays once, then PlayerController hands the sprite back to Idle. The shove
+///    is a single action, not a cycle, and it runs alongside the brick's slide, which
+///    starts on the same frame.
+///  • GroundPound — plays once and holds on the last frame, so the dive pose stays
+///    held for however long the drop lasts.
+///
+/// There is no death clip: a hazard kill blows Byte apart into the pieces thrown by the
+/// death debris effect, and <see cref="PlayerController"/> hides this renderer outright for
+/// the length of that explosion rather than playing anything here.
+///
+/// A state whose sprite array was never filled in falls back to the nearest populated
+/// clip (GroundPound → Jump, Push → Run) rather than freezing the sprite.
 ///
 /// Uses unscaled time so animation keeps playing correctly during slow-motion and
-/// the (realtime) death pause — matching <see cref="SpriteSheetAnimator"/>.
+/// the (realtime) pauses the death and win flows take — matching
+/// <see cref="SpriteSheetAnimator"/>.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 public class PlayerAnimator : MonoBehaviour
@@ -36,9 +48,13 @@ public class PlayerAnimator : MonoBehaviour
     [SerializeField] private Sprite[] m_JumpFrames;
     [SerializeField] private float m_JumpFps = 10f;
 
-    [Header("Dead")]
-    [SerializeField] private Sprite[] m_DeadFrames;
-    [SerializeField] private float m_DeadFps = 8f;
+    [Header("Ground Pound (the dive held through a drop the jump arc couldn't finish)")]
+    [SerializeField] private Sprite[] m_GroundPoundFrames;
+    [SerializeField] private float m_GroundPoundFps = 12f;
+
+    [Header("Push (shoving a movable brick)")]
+    [SerializeField] private Sprite[] m_PushFrames;
+    [SerializeField] private float m_PushFps = 10f;
 
     private SpriteRenderer m_Renderer;
     private Sprite[][] m_IdleClips;
@@ -85,7 +101,7 @@ public class PlayerAnimator : MonoBehaviour
                 m_Frame = 0;
             else
             {
-                // Non-looping (Dead): hold the last frame.
+                // Non-looping (GroundPound / Push): hold the last frame.
                 m_Frame = m_Frames.Length - 1;
                 ApplyFrame();
                 return;
@@ -103,6 +119,11 @@ public class PlayerAnimator : MonoBehaviour
     /// </summary>
     public void Play(PlayerAnimState state)
     {
+        // An unassigned clip is substituted here rather than played: SetClip with an
+        // empty array leaves ApplyFrame nothing to write, so the sprite would freeze on
+        // whatever frame happened to be showing until the next state change.
+        state = ResolveAssigned(state);
+
         if (state == m_State) return;
         m_State = state;
 
@@ -111,9 +132,33 @@ public class PlayerAnimator : MonoBehaviour
             case PlayerAnimState.Idle: StartIdle(); break;
             case PlayerAnimState.Run:  SetClip(m_RunFrames, m_RunFps, loops: true); break;
             case PlayerAnimState.Jump: SetClip(m_JumpFrames, m_JumpFps, loops: true); break;
-            case PlayerAnimState.Dead: SetClip(m_DeadFrames, m_DeadFps, loops: false); break;
+
+            // One shove, not a cycle. Looping re-played the brace for as long as the push
+            // command lasted, which read as Byte shoving the brick several times. The
+            // controller drops the state as soon as this has played through once, so the
+            // last-frame hold below only ever covers a rounding frame or two.
+            case PlayerAnimState.Push:
+                SetClip(m_PushFrames, m_PushFps, loops: false); break;
+
+            // Held on its last frame: the drop it covers has no fixed length, and a
+            // looping dive would re-play the wind-up all the way down.
+            case PlayerAnimState.GroundPound:
+                SetClip(m_GroundPoundFrames, m_GroundPoundFps, loops: false); break;
         }
     }
+
+    // Maps a state whose frames were never assigned onto the closest clip that has some,
+    // so a half-wired animator degrades to the old behaviour instead of a stuck sprite.
+    private PlayerAnimState ResolveAssigned(PlayerAnimState state)
+    {
+        if (state == PlayerAnimState.GroundPound && IsEmpty(m_GroundPoundFrames))
+            return PlayerAnimState.Jump;
+        if (state == PlayerAnimState.Push && IsEmpty(m_PushFrames))
+            return PlayerAnimState.Run;
+        return state;
+    }
+
+    private static bool IsEmpty(Sprite[] frames) => frames == null || frames.Length == 0;
 
     // ─── Idle rotation ───────────────────────────────────────────────────────
 

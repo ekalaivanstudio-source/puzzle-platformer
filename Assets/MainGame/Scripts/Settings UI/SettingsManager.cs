@@ -11,34 +11,19 @@ namespace Setting.Menu
     [DisallowMultipleComponent]
     public class SettingsManager : MonoBehaviour
     {
-        #region Constants
-
-        private const string MasterVolumeParameter = "MasterVolume";
-        private const string MusicVolumeParameter = "MusicVolume";
-        private const string AmbienceVolumeParameter = "AmbienceVolume";
-        private const string SFXVolumeParameter = "SFXVolume";
-        private const string VoiceVolumeParameter = "VoiceVolume";
-
-        private const float MinMixerVolume = -80f;
-        private const float MaxMixerVolume = 0f;
-        private const float MinSliderValue = 0f;
-        private const float MaxSliderValue = 1f;
-
-        #endregion
-
         #region Inspector Fields
 
         [Header("Audio")]
         [SerializeField] private AudioMixer audioMixer;
 
-        [SerializeField] private Slider masterSlider;
-        [SerializeField] private Slider musicSlider;
-        [SerializeField] private Slider ambienceSlider;
-        [SerializeField] private Slider sfxSlider;
-        [SerializeField] private Slider voiceSlider;
+        [SerializeField] private SettingStepControl masterStepControl;
+        [SerializeField] private SettingStepControl musicStepControl;
+        [SerializeField] private SettingStepControl ambienceStepControl;
+        [SerializeField] private SettingStepControl sfxStepControl;
+        [SerializeField] private SettingStepControl voiceStepControl;
 
         [Header("Visual")]
-        [SerializeField] private Slider brightnessSlider;
+        [SerializeField] private SettingStepControl brightnessStepControl;
         [SerializeField] private Image brightnessOverlay;
 
         [Header("Display Mode")]
@@ -64,20 +49,29 @@ namespace Setting.Menu
         #region Unity Lifecycle
 
         /// <summary>
-        /// Initializes the manager, registers event handlers, loads settings, updates the UI, and applies the settings.
+        /// Initializes the manager, registers event handlers, loads settings and updates the UI.
         /// </summary>
         private void Awake()
         {
             RegisterButtons();
-            RegisterSliders();
+            RegisterStepControls();
 
             SettingsData loadedSettings = SettingsSaveSystem.LoadSettings();
             currentSettings = loadedSettings.Clone();
             lastAppliedSettings = loadedSettings.Clone();
 
             UpdateUIFromSettings();
-            ApplySettingsToRuntime();
             SetDirtyState(false);
+        }
+
+        /// <summary>
+        /// Applies the loaded settings to the runtime systems.
+        /// This runs in Start rather than Awake because the audio system applies the mixer's
+        /// start snapshot after Awake, which discards any AudioMixer.SetFloat call made there.
+        /// </summary>
+        private void Start()
+        {
+            ApplySettingsToRuntime();
         }
 
         #endregion
@@ -117,41 +111,41 @@ namespace Setting.Menu
 
         #endregion
 
-        #region Slider Registration
+        #region Step Control Registration
 
         /// <summary>
-        /// Registers all slider value change listeners in code.
+        /// Registers all step control value change listeners in code.
         /// </summary>
-        private void RegisterSliders()
+        private void RegisterStepControls()
         {
-            if (masterSlider != null)
+            if (masterStepControl != null)
             {
-                masterSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, MasterVolumeParameter));
+                masterStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.MasterVolumeParameter);
             }
 
-            if (musicSlider != null)
+            if (musicStepControl != null)
             {
-                musicSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, MusicVolumeParameter));
+                musicStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.MusicVolumeParameter);
             }
 
-            if (ambienceSlider != null)
+            if (ambienceStepControl != null)
             {
-                ambienceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, AmbienceVolumeParameter));
+                ambienceStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.AmbienceVolumeParameter);
             }
 
-            if (sfxSlider != null)
+            if (sfxStepControl != null)
             {
-                sfxSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, SFXVolumeParameter));
+                sfxStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.SFXVolumeParameter);
             }
 
-            if (voiceSlider != null)
+            if (voiceStepControl != null)
             {
-                voiceSlider.onValueChanged.AddListener(value => HandleAudioVolumeChanged(value, VoiceVolumeParameter));
+                voiceStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.VoiceVolumeParameter);
             }
 
-            if (brightnessSlider != null)
+            if (brightnessStepControl != null)
             {
-                brightnessSlider.onValueChanged.AddListener(HandleBrightnessChanged);
+                brightnessStepControl.OnValueChanged += HandleBrightnessStepChanged;
             }
         }
 
@@ -169,34 +163,34 @@ namespace Setting.Menu
                 currentSettings = new SettingsData();
             }
 
-            if (masterSlider != null)
+            if (masterStepControl != null)
             {
-                masterSlider.SetValueWithoutNotify(currentSettings.MasterVolume);
+                masterStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.MasterVolume * 10f));
             }
 
-            if (musicSlider != null)
+            if (musicStepControl != null)
             {
-                musicSlider.SetValueWithoutNotify(currentSettings.MusicVolume);
+                musicStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.MusicVolume * 10f));
             }
 
-            if (ambienceSlider != null)
+            if (ambienceStepControl != null)
             {
-                ambienceSlider.SetValueWithoutNotify(currentSettings.AmbienceVolume);
+                ambienceStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.AmbienceVolume * 10f));
             }
 
-            if (sfxSlider != null)
+            if (sfxStepControl != null)
             {
-                sfxSlider.SetValueWithoutNotify(currentSettings.SFXVolume);
+                sfxStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.SFXVolume * 10f));
             }
 
-            if (voiceSlider != null)
+            if (voiceStepControl != null)
             {
-                voiceSlider.SetValueWithoutNotify(currentSettings.VoiceVolume);
+                voiceStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.VoiceVolume * 10f));
             }
 
-            if (brightnessSlider != null)
+            if (brightnessStepControl != null)
             {
-                brightnessSlider.SetValueWithoutNotify(currentSettings.Brightness);
+                brightnessStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.Brightness * 10f));
             }
 
             UpdateDisplayModeText();
@@ -250,11 +244,11 @@ namespace Setting.Menu
                 return;
             }
 
-            audioMixer.SetFloat(MasterVolumeParameter, ConvertToMixerVolume(currentSettings.MasterVolume));
-            audioMixer.SetFloat(MusicVolumeParameter, ConvertToMixerVolume(currentSettings.MusicVolume));
-            audioMixer.SetFloat(AmbienceVolumeParameter, ConvertToMixerVolume(currentSettings.AmbienceVolume));
-            audioMixer.SetFloat(SFXVolumeParameter, ConvertToMixerVolume(currentSettings.SFXVolume));
-            audioMixer.SetFloat(VoiceVolumeParameter, ConvertToMixerVolume(currentSettings.VoiceVolume));
+            audioMixer.SetFloat(AudioMixerParameters.MasterVolumeParameter, ConvertToMixerVolume(currentSettings.MasterVolume));
+            audioMixer.SetFloat(AudioMixerParameters.MusicVolumeParameter, ConvertToMixerVolume(currentSettings.MusicVolume));
+            audioMixer.SetFloat(AudioMixerParameters.AmbienceVolumeParameter, ConvertToMixerVolume(currentSettings.AmbienceVolume));
+            audioMixer.SetFloat(AudioMixerParameters.SFXVolumeParameter, ConvertToMixerVolume(currentSettings.SFXVolume));
+            audioMixer.SetFloat(AudioMixerParameters.VoiceVolumeParameter, ConvertToMixerVolume(currentSettings.VoiceVolume));
         }
 
         /// <summary>
@@ -276,37 +270,12 @@ namespace Setting.Menu
         /// <param name="brightness">The brightness value to apply.</param>
         private void ApplyBrightnessValue(float brightness)
         {
-            // Adjust screen brightness on mobile devices
-            Screen.brightness = brightness;
-
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-            try
-            {
-                int brightnessInt = Mathf.RoundToInt(brightness * 100f);
-                brightnessInt = Mathf.Clamp(brightnessInt, 0, 100);
-
-                // Use WMI via PowerShell to change physical PC screen brightness
-                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-Command \"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, {brightnessInt})\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                System.Diagnostics.Process.Start(startInfo);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"Failed to apply physical PC screen brightness: {ex.Message}");
-            }
-#endif
-
             // Fallback: Adjust a UI screen overlay if one is assigned
             if (brightnessOverlay != null)
             {
                 // Max brightness (1.0) -> overlay is completely transparent (alpha = 0)
-                // Min brightness (0.0) -> overlay is 80% black (alpha = 0.8)
-                float alpha = Mathf.Lerp(0.8f, 0.0f, brightness);
+                // Min brightness (0.0) -> overlay is 95% black (alpha = 0.95)
+                float alpha = Mathf.Lerp(0.95f, 0.0f, brightness);
                 Color color = brightnessOverlay.color;
                 color.a = alpha;
                 brightnessOverlay.color = color;
@@ -372,54 +341,55 @@ namespace Setting.Menu
         #region Event Handlers
 
         /// <summary>
-        /// Handles changes to any audio slider. Updates local currentSettings values and applies changes to the mixer for real-time preview.
+        /// Handles changes to any audio step control. Updates settings, applies, and auto-saves.
         /// </summary>
-        /// <param name="value">The slider value from 0 to 1.</param>
-        /// <param name="parameterName">The AudioMixer parameter to update.</param>
-        private void HandleAudioVolumeChanged(float value, string parameterName)
+        private void HandleStepValueChanged(int stepValue, string parameterName)
         {
             if (currentSettings == null)
-            {
                 currentSettings = new SettingsData();
-            }
+
+            float floatValue = stepValue / 10f;
 
             switch (parameterName)
             {
-                case MasterVolumeParameter:
-                    currentSettings.MasterVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+                case AudioMixerParameters.MasterVolumeParameter:
+                    currentSettings.MasterVolume = floatValue;
                     break;
-                case MusicVolumeParameter:
-                    currentSettings.MusicVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+
+                case AudioMixerParameters.MusicVolumeParameter:
+                    currentSettings.MusicVolume = floatValue;
                     break;
-                case AmbienceVolumeParameter:
-                    currentSettings.AmbienceVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+
+                case AudioMixerParameters.AmbienceVolumeParameter:
+                    currentSettings.AmbienceVolume = floatValue;
                     break;
-                case SFXVolumeParameter:
-                    currentSettings.SFXVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+
+                case AudioMixerParameters.SFXVolumeParameter:
+                    currentSettings.SFXVolume = floatValue;
                     break;
-                case VoiceVolumeParameter:
-                    currentSettings.VoiceVolume = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+
+                case AudioMixerParameters.VoiceVolumeParameter:
+                    currentSettings.VoiceVolume = floatValue;
                     break;
             }
 
             ApplyAudioSettings();
-            RefreshDirtyState();
+            AutoSaveSettings();
         }
 
         /// <summary>
-        /// Handles brightness slider changes. Updates local currentSettings values and applies brightness for real-time preview.
+        /// Handles brightness step changes. Updates settings, applies, and auto-saves.
         /// </summary>
-        /// <param name="value">The new brightness value.</param>
-        private void HandleBrightnessChanged(float value)
+        private void HandleBrightnessStepChanged(int stepValue)
         {
             if (currentSettings == null)
             {
                 currentSettings = new SettingsData();
             }
 
-            currentSettings.Brightness = Mathf.Clamp(value, MinSliderValue, MaxSliderValue);
+            currentSettings.Brightness = stepValue / 10f;
             ApplyBrightnessSettings();
-            RefreshDirtyState();
+            AutoSaveSettings();
         }
 
         /// <summary>
@@ -439,7 +409,7 @@ namespace Setting.Menu
         }
 
         /// <summary>
-        /// Changes the display mode with wrapping logic, applies it for real-time preview, and marks the settings as dirty.
+        /// Changes the display mode with wrapping logic, applies it for real-time preview, and auto-saves.
         /// </summary>
         /// <param name="direction">The direction of movement through the display mode options.</param>
         private void ChangeDisplayMode(int direction)
@@ -456,41 +426,30 @@ namespace Setting.Menu
             currentSettings.Fullscreen = nextIndex == 1;
             UpdateDisplayModeText();
             ApplyDisplayMode();
-            RefreshDirtyState();
+            AutoSaveSettings();
         }
 
         /// <summary>
-        /// Applies the current settings, saves them to disk and disables the Apply button.
+        /// Manual apply button handler (for fallback/backwards compatibility).
         /// </summary>
         private void HandleApplyButtonClicked()
         {
-            if (currentSettings == null)
-            {
-                currentSettings = new SettingsData();
-            }
-
-            ApplySettingsToRuntime();
-
-            if (SettingsSaveSystem.SaveSettings(currentSettings))
-            {
-                lastAppliedSettings = currentSettings.Clone();
-                SetDirtyState(false);
-            }
+            AutoSaveSettings();
         }
 
         /// <summary>
-        /// Resets the current settings to their default values, updates the UI, applies them for preview, and marks the settings as dirty.
+        /// Resets the current settings to their default values, updates the UI, applies them for preview, and auto-saves.
         /// </summary>
         private void HandleResetButtonClicked()
         {
             currentSettings = SettingsSaveSystem.CreateDefaultSettingsData(saveImmediately: false).Clone();
             UpdateUIFromSettings();
             ApplySettingsToRuntime();
-            RefreshDirtyState();
+            AutoSaveSettings();
         }
 
         /// <summary>
-        /// Discards unsaved changes, reloads the last saved settings, updates the UI and resets the runtime parameters.
+        /// Discards unsaved changes (reloads last saved settings).
         /// </summary>
         private void HandleCancelButtonClicked()
         {
@@ -508,21 +467,60 @@ namespace Setting.Menu
         #region Helper Methods
 
         /// <summary>
+        /// Automatically saves current settings and synchronizes clean state.
+        /// </summary>
+        private void AutoSaveSettings()
+        {
+            if (currentSettings != null)
+            {
+                if (SettingsSaveSystem.SaveSettings(currentSettings))
+                {
+                    lastAppliedSettings = currentSettings.Clone();
+                    SetDirtyState(false);
+                }
+            }
+        }
+
+        /// <summary>
         /// Converts a 0-1 slider value into an AudioMixer volume value in decibels.
         /// </summary>
         /// <param name="sliderValue">The slider value.</param>
         /// <returns>An AudioMixer-friendly decibel value.</returns>
         private float ConvertToMixerVolume(float sliderValue)
         {
-            float clampedValue = Mathf.Clamp(sliderValue, MinSliderValue, MaxSliderValue);
+            sliderValue = Mathf.Clamp01(sliderValue);
 
-            if (clampedValue <= MinSliderValue)
+            if (sliderValue <= 0f)
             {
-                return MinMixerVolume;
+                return AudioMixerParameters.MinMixerVolume;
             }
 
-            return Mathf.Lerp(MinMixerVolume, MaxMixerVolume, Mathf.InverseLerp(MinSliderValue, MaxSliderValue, clampedValue));
+            // Logarithmic conversion to match human hearing (maps 0.0001-1.0 to -80dB-0dB)
+            return Mathf.Log10(sliderValue) * 20f;
         }
+
+        #endregion
+    }
+}
+namespace Setting.Menu
+{
+    /// <summary>
+    /// AudioMixer exposed parameter names.
+    /// </summary>
+    public static class AudioMixerParameters
+    {
+        #region Constants
+
+        public const string MasterVolumeParameter = "MasterVolume";
+        public const string MusicVolumeParameter = "MusicVolume";
+        public const string AmbienceVolumeParameter = "AmbienceVolume";
+        public const string SFXVolumeParameter = "SFXVolume";
+        public const string VoiceVolumeParameter = "VoiceVolume";
+
+        public const float MinMixerVolume = -80f;
+        public const float MaxMixerVolume = 0f;
+        public const float MinSliderValue = 0f;
+        public const float MaxSliderValue = 1f;
 
         #endregion
     }

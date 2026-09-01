@@ -177,7 +177,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3645185109527651536}
@@ -256,31 +256,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03baf45f5c9bb3d409dbe14b3748a364, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  m_MoveDistancePerCommand: 3
+  m_MoveDistancePerCommand: 5
   m_MoveDuration: 0.45
-  m_JumpHeight: 3
-  m_JumpForwardDistance: 4
+  m_JumpHeight: 6
+  m_JumpForwardDistance: 8
   m_JumpDuration: 1
   m_BeatGapTime: 0
-  m_CommandTimeout: 1
+  m_PushWindUpTime: 0.5
   m_GroundLayers:
   - serializedVersion: 2
     m_Bits: 64
   - serializedVersion: 2
     m_Bits: 192
-  m_GroundCheckRadius: 0.15
-  m_GroundCheckDistance: 0.1
-  m_LeftGroundCheck: {fileID: 1829714759078041871}
-  m_RightGroundCheck: {fileID: 2204781298614608187}
-  m_GroundRayLength: 0.15
+  m_FallGravity: 40
+  m_MaxFallSpeed: 25
+  m_FallTimeout: 6
+  m_GroundPoundDropDistance: 0.5
+  m_LedgeHopHeight: 1.2
+  m_LedgeHopGravityScale: 1
+  m_PortalDuration: 1
+  m_PortalSpins: 3
+  m_DoorEnterEffect: {fileID: 2020661361868494885, guid: 895c6d094b6b213418cddcfb520298e9, type: 3}
+  m_DoorEnterEffectScale: 0.2
+  m_SpawnDoorLead: 0.15
   m_InteractRadius: 0.5
   m_InteractLayer:
     serializedVersion: 2
     m_Bits: 0
-  m_DeathParticle: {fileID: 7581426562798727453, guid: 5eea17da54003c844baa005560e258db, type: 3}
+  m_DeathExplosion: {fileID: 6357510494957302069, guid: a6a9b15fd7ef3be4c9b2dfdf1ab1965c, type: 3}
+  m_DeathDebris: {fileID: 1357886225445476726, guid: 1dd886640b1bb0245a66e94df753162e, type: 3}
   m_DeathShakeMagnitude: 0.2
   m_DeathShakeDuration: 0.4
   m_Animator: {fileID: 0}
+  m_SpriteRenderer: {fileID: 252334386289264608}
   m_JumpStartDust: {fileID: 6187233113735160681, guid: dff2dd0114f021e4685b985cfaa5355d, type: 3}
   m_JumpEndDust: {fileID: 6187233113735160681, guid: d7543c0212c758d46be58e221bdf9749, type: 3}
 --- !u!61 &5416978944303430500
@@ -327,7 +335,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8, y: 1}
+  m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
 --- !u!50 &7558299849532869897
 Rigidbody2D:
@@ -337,9 +345,9 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1924888670265140245}
-  m_BodyType: 0
+  m_BodyType: 1
   m_Simulated: 1
-  m_UseFullKinematicContacts: 0
+  m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
@@ -354,7 +362,7 @@ Rigidbody2D:
     m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!114 &4170603423667912436
 MonoBehaviour:
@@ -381,7 +389,12 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 0a6ab87644568994990bcb52d2b4accd, type: 3}
   - {fileID: 21300000, guid: 5892f4ec3bcb05b4d9398b210ea49a87, type: 3}
   - {fileID: 21300000, guid: 4632b5da46fb6db4cb1aed49ac644215, type: 3}
-  m_Idle4: []
+  m_Idle4:
+  - {fileID: 21300000, guid: 12fb6de54340f5f4692a08162dfbd331, type: 3}
+  - {fileID: 21300000, guid: 4dc7840cdfa21e74298830be88f284b8, type: 3}
+  - {fileID: 21300000, guid: 9d8eea7bcc219c44eae0c8eca50ad41a, type: 3}
+  - {fileID: 21300000, guid: cb2bc02a38645ee40a0b0b61a1a34e58, type: 3}
+  - {fileID: 21300000, guid: de58884652f4b7343828d3ebcd665803, type: 3}
   m_IdleFps: 6
   m_RunFrames:
   - {fileID: 21300000, guid: ffd1ae43ed5c06545a6ee6c279d10850, type: 3}
@@ -397,12 +410,16 @@ MonoBehaviour:
   - {fileID: 21300000, guid: d18e2763485cab6429b08984e06dcf9c, type: 3}
   - {fileID: 21300000, guid: f856c31c7d5de1a4884182365b79c7ea, type: 3}
   m_JumpFps: 10
-  m_DeadFrames:
-  - {fileID: 21300000, guid: 5802077974ff6694f8e2283c3085a4ef, type: 3}
-  - {fileID: 21300000, guid: 8a0468615637ca140a77d1e0c31b0f97, type: 3}
-  - {fileID: 21300000, guid: 30d24fd85b5077544a3116c9c976cc03, type: 3}
-  - {fileID: 21300000, guid: 669b45cdbd04379478dce20b26b555db, type: 3}
-  - {fileID: 21300000, guid: 1bacb09adb6195e4a8be4abb73392813, type: 3}
-  - {fileID: 21300000, guid: bd7579bac5351fb4c97427c86eeb7759, type: 3}
-  - {fileID: 21300000, guid: ae5d1312540c5ee479b80635150df98c, type: 3}
-  m_DeadFps: 8
+  m_GroundPoundFrames:
+  - {fileID: 21300000, guid: b787645efd4e9f0479912fd62356986d, type: 3}
+  - {fileID: 21300000, guid: 8923af327a3e220489b7f1d22ece3f4b, type: 3}
+  - {fileID: 21300000, guid: d1749b9c706ae8b468a0423b601358a5, type: 3}
+  - {fileID: 21300000, guid: 13f679d4b9299794ca6e864bf75b1bf4, type: 3}
+  m_GroundPoundFps: 12
+  m_PushFrames:
+  - {fileID: 21300000, guid: a73632dca05cfd3438ae17f9812e0ef9, type: 3}
+  - {fileID: 21300000, guid: 0871ba70fc2bf2146b8d509f1a50fd0f, type: 3}
+  - {fileID: 21300000, guid: 5a9b9dde6d6e14d47872032ae1f1e8fe, type: 3}
+  - {fileID: 21300000, guid: 852a4b0236569784383085192ff9f412, type: 3}
+  - {fileID: 21300000, guid: 48dc286351b208b4d89906ad7a6d57c6, type: 3}
+  m_PushFps: 10
