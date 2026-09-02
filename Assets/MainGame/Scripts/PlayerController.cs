@@ -1,4 +1,4 @@
-using ModernLevelSelection;
+﻿using ModernLevelSelection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -156,6 +156,69 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump lands. Optional. Should carry a OneShotEffect.")]
     [SerializeField] private GameObject m_JumpEndDust;
+
+    [Header("Feel")]
+
+    // These carry no PunchDistance on purpose. The body is a kinematic Rigidbody2D driven
+    // by MovePosition, so a shove written onto its transform is overwritten by the next
+    // physics sync — the squash channel is the one that reads on the player. The camera
+    // shake and the world impulse are what carry the weight of an impact out into the level.
+
+    [Tooltip("Played the moment a jump takes off. Stretches the body upward — the squash " +
+             "axis is horizontal, so it goes tall and thin — and ticks the pad.")]
+    [SerializeField] private FeelPreset m_JumpFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.LightImpact,
+        SquashAmount = 0.09f,
+        PunchDuration = 0.18f,
+        PunchFrequency = 1.2f,
+    };
+
+    [Tooltip("Played when a jump or a fall puts the feet back down. The one that does the " +
+             "most work in the whole game: the body flattens, the ground props jolt, and a " +
+             "two-frame hold sells the weight.")]
+    [SerializeField] private FeelPreset m_LandFeel = new FeelPreset
+    {
+        CameraShake = new CameraShakeSettings(0.05f, 0.14f),
+        Haptic = HapticPattern.MediumImpact,
+        FreezeDuration = 0.035f,
+        FreezeTimeScale = 0.05f,
+        SquashAmount = 0.14f,
+        PunchDuration = 0.22f,
+        PunchFrequency = 1.6f,
+        ImpulseStrength = 0.7f,
+        ImpulseRadius = 2.2f,
+    };
+
+    [Tooltip("Played on the frame the player is blown apart. No squash — the body is " +
+             "switched off on that same frame and the debris takes over — so this is all " +
+             "hold, buzz, red screen and shockwave through the surrounding props. The " +
+             "double blink is what makes it read as an alarm rather than as an impact; " +
+             "drop Flash Count to 1 for a single wash, or the alpha to 0 to switch the " +
+             "red off entirely.")]
+    [SerializeField] private FeelPreset m_DeathFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Failure,
+        FreezeDuration = 0.1f,
+        FreezeTimeScale = 0.02f,
+        ImpulseStrength = 1.8f,
+        ImpulseRadius = 5f,
+        // Not pure red and not opaque: the level has to stay readable through it, or the
+        // flash reads as the game having cut to a colour rather than as a hit.
+        FlashColor = new Color(1f, 0.12f, 0.1f, 0.5f),
+        FlashHold = 0.04f,
+        FlashFade = 0.16f,
+        FlashCount = 2,
+    };
+
+    [Tooltip("Played on the touch that wins the level. A rising double pulse, no shake — " +
+             "the exit animation owns the screen from here.")]
+    [SerializeField] private FeelPreset m_WinFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Success,
+        ImpulseStrength = 0.8f,
+        ImpulseRadius = 3f,
+    };
 
     private Rigidbody2D m_Rigidbody;
     private Collider2D m_Collider;
@@ -951,6 +1014,10 @@ public class PlayerController : MonoBehaviour
         // Kick up dust at the take-off spot (player's grid position).
         SpawnGridEffect(m_JumpStartDust);
 
+        // Vector2.right, so the squash axis is horizontal and the body goes tall and thin
+        // rather than flat — a take-off stretches, it does not compress.
+        m_JumpFeel.Play(transform.position, transform, Vector2.right);
+
         // Effective gravity that peaks at m_JumpHeight in exactly half of m_JumpDuration:
         //   g = 2h / tHalf^2        v0y = g * tHalf
         float tHalf = m_JumpDuration * 0.5f;
@@ -1094,6 +1161,9 @@ public class PlayerController : MonoBehaviour
 
         // Puff of dust at the landing spot (player's settled grid position).
         SpawnGridEffect(m_JumpEndDust);
+
+        // Vector2.down: the impact came from below, so the body flattens and spreads.
+        m_LandFeel.Play(transform.position, transform, Vector2.down);
     }
 
     // Distance from the body origin to the bottom of the collider - how far above a
@@ -1277,6 +1347,7 @@ public class PlayerController : MonoBehaviour
         // Puff of dust at the arrival spot, the same one a jump lands with — the player has
         // just put their feet down on the start cell.
         SpawnGridEffect(m_JumpEndDust);
+        m_LandFeel.Play(transform.position, transform, Vector2.down);
     }
 
     /// <summary>
@@ -1711,6 +1782,19 @@ public class PlayerController : MonoBehaviour
         // less of a body standing in the level — it just resets them to spawn, where
         // they stay hittable like anywhere else.
 
+        // The attempt is over and the body is about to be pulled back to spawn. Leave a
+        // faded marker standing where it got to, so the next sequence is entered against a
+        // picture of where this one ran out. Recorded here rather than the moment the
+        // sequence ended, so the half second above has settled the body onto the ground
+        // first and the ghost is not left hanging in mid-air.
+        //
+        // Skipped for a body that is STILL falling when the reset comes: the sequence ran
+        // out over a drop and nothing has stopped it yet, so there is no spot to mark —
+        // only a ghost hanging in mid-air, or one at the bottom of a pit where the player
+        // will never see it.
+        if (!m_IsAirborne)
+            AttemptGhostService.Instance?.RecordStop(m_SpriteRenderer, m_StartPosition);
+
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_PassiveFallSpeed = 0f;
@@ -1768,6 +1852,13 @@ public class PlayerController : MonoBehaviour
         // The level is won — don't let a hazard kill the player during the entry or
         // the fade out.
         m_IsHazardable = false;
+
+        // The record of the failed attempts goes with the level: the ghosts are cleared on
+        // the touch that wins it, so the door animation plays over a clean level rather
+        // than over a crowd of everything that didn't work.
+        AttemptGhostService.ClearAll();
+
+        m_WinFeel.Play(transform.position);
 
         // The door interrupts whatever was running outright: the command in flight is
         // dropped where it stands, mid-arc if need be, and the portal takes over from that
@@ -1913,11 +2004,23 @@ public class PlayerController : MonoBehaviour
         // Unparented, so both effects keep playing where the player died while the reset
         // below teleports the body back to spawn underneath them.
         ParticleEffectSpawner.Spawn(m_DeathExplosion, transform.position);
-        ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
+        GameObject debris = ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
 
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
+        // Fired on the same frame as the explosion, from where the body was standing: the
+        // hold lands on the blast, and the shockwave rolls out through whatever props are
+        // near enough to feel it.
+        m_DeathFeel.Play(transform.position);
+
         yield return new WaitForSecondsRealtime(1f);
+
+        // The wreckage stays on the floor for the rest of the level, greyed out, marking
+        // where this attempt was killed. Read exactly here: a second is long enough for
+        // every piece to have arced, bounced and come to rest, and short enough that they
+        // are all still alive to be read off the systems — the debris lifetimes start at
+        // 1.1s, and the spawner destroys the whole effect at the end of them.
+        AttemptGhostService.Instance?.RecordBlast(debris, m_SpriteRenderer);
 
         // Count this death toward the combined failure tally — the doctor gloats on
         // every Nth failure. Awaited so the restart waits for the full reaction.

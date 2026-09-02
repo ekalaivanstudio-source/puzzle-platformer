@@ -57,6 +57,13 @@ public class PlayerInputUIHelper : MonoBehaviour
     [SerializeField] private float m_ShakeMagnitude = 0.08f;
     [SerializeField] private float m_ShakeDuration = 0.25f;
 
+    [Tooltip("Played when a queued command is rejected for not matching the level's " +
+             "solution. A two-pulse warning buzz — the same shape a phone uses to say no.")]
+    [SerializeField] private FeelPreset m_RejectFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Warning,
+    };
+
     // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void Awake()
@@ -172,6 +179,7 @@ public class PlayerInputUIHelper : MonoBehaviour
                     m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex].transform.GetChild(0).GetComponent<Image>()));
                 }
                 CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
+                m_RejectFeel.Play(Vector3.zero);
 
                 m_IsRejecting = true;
                 SequenceManager.Instance.RemoveLastAction();
