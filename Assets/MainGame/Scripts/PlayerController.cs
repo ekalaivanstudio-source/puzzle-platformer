@@ -299,6 +299,11 @@ public class PlayerController : MonoBehaviour
     // for a player left disabled in the scene, whose Start only runs once the door enables it.
     private bool m_IsEnteringFromDoor;
 
+    // The level's entry door, and whether it has been looked for yet — a death brings the
+    // player back in through it, and a level without one is a valid answer worth caching too.
+    private LevelEntryDoor m_EntryDoor;
+    private bool m_EntryDoorResolved;
+
     // Carried across FixedUpdate calls by the passive settle.
     private float m_PassiveFallSpeed;
 
@@ -1226,6 +1231,12 @@ public class PlayerController : MonoBehaviour
         if (UIManager.Instance != null)
             yield return UIManager.Instance.FadeRoutine(1f, 0f);
 
+        // The level assembles itself before the player spins in, exactly as it does for a
+        // level WITH an entry door — that door owns the build in its own opening, and this is
+        // the same beat for a level that has none.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.BuildRoutine();
+
         yield return ArriveRoutine(m_StartPosition);
     }
 
@@ -1795,6 +1806,27 @@ public class PlayerController : MonoBehaviour
         if (!m_IsAirborne)
             AttemptGhostService.Instance?.RecordStop(m_SpriteRenderer, m_StartPosition);
 
+        // The doorway is what puts the player back at spawn, exactly as it does after a
+        // death — a turn ending is an arrival like any other. Resolved before anything
+        // moves, because a level with no entry door keeps the plain snap-back below.
+        LevelEntryDoor entryDoor = ResolveEntryDoor();
+
+        // From here the reset can no longer be called off. The handle a checkpoint cancels
+        // a PENDING reset through is dropped before the player starts leaving the level: a
+        // lever firing mid-departure would otherwise stop this coroutine with the body spun
+        // down to nothing and nothing left running to bring it back.
+        m_EndTurnCoroutine = null;
+
+        // Out of the level where the sequence ran out, rather than being yanked off the
+        // spot: the same spin — and the same burst — that takes the player into the exit
+        // door on a win. The stop ghost has already been left standing there, so the body
+        // spinning away reads as being recalled off its own marker.
+        if (entryDoor != null)
+        {
+            SpawnParticleEffect(m_DoorEnterEffect, m_Rigidbody.position, m_DoorEnterEffectScale);
+            yield return PlayExitPortalRoutine();
+        }
+
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_PassiveFallSpeed = 0f;
@@ -1802,14 +1834,39 @@ public class PlayerController : MonoBehaviour
         m_IsPushing = false;
         m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
-        m_EndTurnCoroutine = null;
+
+        // Shrunk away again in the same breath as that facing restore — no frame renders
+        // between the two, so a body that has just spun out never flashes back on at
+        // spawn — and left that way for the doctor's reaction and the doorway's rise.
+        if (entryDoor != null) HideForArrival();
 
         // A turn that ended without winning is a failed attempt — count it toward the
         // combined tally; the doctor gloats on every Nth failure before input resets.
         if (EvilDoctorAnimationController.Instance != null)
             yield return EvilDoctorAnimationController.Instance.RegisterFailureRoutine();
 
+        // The level puts itself back together while the player is still out of it: platforms
+        // and riding bricks go home and the sequence is cleared BEFORE the doorway hands
+        // them back, so they come out onto a level that is ready to be played again.
         GameManager.Instance?.PlayEnded();
+
+        if (entryDoor != null)
+            yield return ArriveThroughDoorRoutine(entryDoor);
+    }
+
+    // The entry doorway handing the player back into the level: the body is taken out of
+    // play and shrunk away, the doorway rises out of the floor, opens, spins them out onto
+    // their start cell and sinks away again — and only then is the level theirs to play.
+    //
+    // Shared by the two ways a level takes the player back: a death, and a turn that ran
+    // out without winning. HideForArrival runs here as well as at each caller's own hiding
+    // point because the end of a turn gives input back to the UI on its way in (PlayEnded),
+    // and the doorway's rise and open is long enough to enter a whole new sequence during.
+    private IEnumerator ArriveThroughDoorRoutine(LevelEntryDoor door)
+    {
+        HideForArrival();
+        yield return door.DeliverPlayerRoutine();
+        DeviceInputProvider.Instance?.SetEnabled(true);
     }
 
     // ─── Collision ───────────────────────────────────────────────────────────────
@@ -1902,6 +1959,13 @@ public class PlayerController : MonoBehaviour
         LevelExitDoor exit = door != null ? door.GetComponentInParent<LevelExitDoor>() : null;
         if (exit != null)
             yield return exit.CloseRoutine();
+
+        // ...and the level takes itself apart behind them: the pipe run empties from the door
+        // end back to the socket and both doorways sink into the floor. The mirror of the
+        // build the level opened with, and awaited for the same reason the door close above
+        // is — the fade should carry away a level that has finished leaving, not interrupt it.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.TeardownRoutine();
 
         // Doctor reacts (sad) — wait for the full reaction before leaving the level.
         if (EvilDoctorAnimationController.Instance != null)
@@ -2054,10 +2118,39 @@ public class PlayerController : MonoBehaviour
         // level would be unplayable and should be fixed there, not masked here.)
         m_IsHazardable = true;
 
+        // A respawn is an arrival, so the level's entry door does it: the doorway comes back
+        // up out of the floor, opens, and hands the player out onto their start cell exactly
+        // as it did when the level began. Shrunk away BEFORE the fade — the level has to come
+        // up empty, or the body would be standing on the start cell in full view and then pop
+        // out of existence the moment the doorway opened.
+        LevelEntryDoor entryDoor = ResolveEntryDoor();
+        if (entryDoor != null) HideForArrival();
+
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(1f, 0f));
 
-        DeviceInputProvider.Instance?.SetEnabled(true);
+        // Awaited: the level is not the player's again until they are out of the doorway and
+        // standing at full size. A level with no entry door keeps the old behaviour — the body
+        // is simply back on its start cell when the fade lifts.
+        if (entryDoor != null)
+            yield return ArriveThroughDoorRoutine(entryDoor);
+        else
+            DeviceInputProvider.Instance?.SetEnabled(true);
+    }
+
+    // The level's entry door, found once and kept. Scene-scoped and inactive-inclusive, like
+    // every other lookup of a scene object here — see SceneObjects for why Unity's own search
+    // cannot be used. Resolved lazily rather than in Start, because Start returns early in the
+    // normal case where the door has already started the level's first arrival.
+    private LevelEntryDoor ResolveEntryDoor()
+    {
+        if (!m_EntryDoorResolved)
+        {
+            m_EntryDoorResolved = true;
+            m_EntryDoor = SceneObjects.FindInActiveScene<LevelEntryDoor>();
+        }
+
+        return m_EntryDoor;
     }
 
     /// <summary>Called by LaserShooter when the player touches any active laser segment.</summary>

@@ -227,8 +227,14 @@ public class FeelPreset
     };
 
     /// <summary>
-    /// Screen furniture — a button, a rejected input. Haptics and a camera tick only: a
-    /// squash needs a body in the world, and a UI element has none.
+    /// Screen furniture — a button, a rejected input. Haptics and a camera tick only,
+    /// because most screen moments have nothing of their own to move.
+    ///
+    /// A UI element passed as the actor DOES squash — it has a transform like anything else,
+    /// and <see cref="PlayerInputUIHelper"/> punches the input row that way. It is the WORLD
+    /// channels that have no world to act in on a canvas: the impulse, the particle burst,
+    /// and <see cref="PunchDistance"/>, which is measured in world units and vanishes against
+    /// a canvas measured in pixels.
     /// </summary>
     public static FeelPreset Ui(HapticPattern haptic = HapticPattern.Selection) => new FeelPreset
     {
