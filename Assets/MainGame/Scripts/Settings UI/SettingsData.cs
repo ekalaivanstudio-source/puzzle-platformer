@@ -24,6 +24,13 @@ namespace Setting.Menu
         [Header("Display")]
         public bool Fullscreen = true;
 
+        [Header("Haptics")]
+        // Read and written by HapticService, which is the only thing that touches it: a
+        // call site asking for a buzz never has to check whether the player wants one.
+        // Defaults to on, so a settings file written before this field existed — where
+        // JsonUtility leaves it at the value set here — keeps vibration switched on.
+        public bool HapticsEnabled = true;
+
         #endregion
 
         #region Public Methods
@@ -42,7 +49,8 @@ namespace Setting.Menu
                 SFXVolume = this.SFXVolume,
                 VoiceVolume = this.VoiceVolume,
                 Brightness = this.Brightness,
-                Fullscreen = this.Fullscreen
+                Fullscreen = this.Fullscreen,
+                HapticsEnabled = this.HapticsEnabled
             };
         }
 

@@ -11,7 +11,11 @@ using UnityEngine;
 ///   2. the door plays its open animation,
 ///   3. the player is enabled on <see cref="InteractionPosition"/>, spins in and moves to
 ///      its start cell — <see cref="PlayerController.EnterFromDoorRoutine"/>,
-///   4. the door plays the same animation backwards, closing behind them.
+///   4. the door plays the same animation backwards, closing behind them, and sinks away.
+///
+/// The same beats run again on every later arrival — <see cref="DeliverPlayerRoutine"/> is
+/// public for exactly that, and a death respawns the player through this door instead of
+/// teleporting them onto their start cell behind a fade.
 ///
 /// Put this on the doorway object and point it at an empty child placed on the ground in the
 /// middle of the doorway. One per level: a level without one leaves the intro to
@@ -54,10 +58,42 @@ public class LevelEntryDoor : MonoBehaviour
 
     private IEnumerator Start()
     {
-        PlayerController player = ResolvePlayer();
-
         if (UIManager.Instance != null)
             yield return UIManager.Instance.FadeRoutine(1f, 0f);
+
+        // The level builds itself in front of the player before this door is even there to
+        // open: ground, scenery, exit door and pipe run, and finally THIS doorway growing up
+        // out of the floor — which is the last thing the director does, so the delivery below
+        // starts on a door that has just landed. A level with no director is unchanged; the
+        // fade simply comes up on the finished level.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.BuildRoutine();
+
+        yield return DeliverPlayerRoutine();
+    }
+
+    /// <summary>
+    /// The doorway delivering the player into the level: it stands up out of the floor, opens,
+    /// hands the player out onto <see cref="InteractionPosition"/>, shuts behind them and sinks
+    /// away again.
+    ///
+    /// Awaited by this door's own Start for the level's opening, and by
+    /// <see cref="PlayerController"/> after a death — a respawn is an arrival like any other,
+    /// so the player comes back into the level the same way they first came out of it, rather
+    /// than being teleported onto their start cell behind a fade.
+    ///
+    /// The rise and the sink belong to <see cref="LevelBuildDirector"/>, which holds the
+    /// doorway's authored transform. Both are skipped in a level with no director, leaving the
+    /// plain open-enter-close delivery this door has always played.
+    /// </summary>
+    public IEnumerator DeliverPlayerRoutine()
+    {
+        PlayerController player = ResolvePlayer();
+
+        // Back up out of the floor first. Nothing to do on the level's opening — the build
+        // raised it a moment ago — but every arrival after that starts on an empty floor.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.RaiseEntryDoorRoutine();
 
         yield return PlayDoorRoutine(opening: true);
 
@@ -74,6 +110,13 @@ public class LevelEntryDoor : MonoBehaviour
         }
 
         yield return PlayDoorRoutine(opening: false);
+
+        // Shut behind them, and then gone: the doorway existed to deliver the player, so it
+        // goes back down into the floor it grew out of rather than standing in the level for
+        // the rest of the puzzle. The director owns the sink, the same way it owned the rise,
+        // and stands it back up for the next arrival.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.SinkEntryDoorRoutine();
     }
 
     // Plays m_DoorOpenFrames start to finish, or finish to start when closing, and holds on

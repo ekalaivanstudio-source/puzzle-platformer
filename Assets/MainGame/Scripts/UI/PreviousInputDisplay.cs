@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,6 +20,14 @@ using UnityEngine.UI;
 /// </summary>
 public class PreviousInputDisplay : MonoBehaviour
 {
+    [Header("Availability")]
+    [Tooltip("Off: the attempt markers AttemptGhostService leaves in the level replaced this " +
+             "corner recap. Hovering a faded marker shows the sequence that ended there, " +
+             "drawn with these same slot sprites — so every attempt still on screen can be " +
+             "asked about, and it is read where it happened rather than in a corner. Switch " +
+             "this back on to have both.")]
+    [SerializeField] private bool m_ShowRecap = false;
+
     [Header("Placement")]
     [Tooltip("Distance (reference pixels) the panel is inset from the bottom-left screen corner.")]
     [SerializeField] private Vector2 m_ScreenMargin = new Vector2(40f, 40f);
@@ -59,6 +67,14 @@ public class PreviousInputDisplay : MonoBehaviour
 
     private void Awake()
     {
+        // Nothing is built at all when the recap is off — no panel, no slot pool, and the
+        // subscriptions below never fire against a null root.
+        if (!m_ShowRecap)
+        {
+            enabled = false;
+            return;
+        }
+
         if (m_IconSource == null) m_IconSource = GetComponent<PlayerInputUIHelper>();
         if (m_IconSource == null) m_IconSource = SceneObjects.FindInActiveScene<PlayerInputUIHelper>();
 

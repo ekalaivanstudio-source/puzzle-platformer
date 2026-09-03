@@ -1,4 +1,4 @@
-using ModernLevelSelection;
+﻿using ModernLevelSelection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -157,6 +157,69 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump lands. Optional. Should carry a OneShotEffect.")]
     [SerializeField] private GameObject m_JumpEndDust;
 
+    [Header("Feel")]
+
+    // These carry no PunchDistance on purpose. The body is a kinematic Rigidbody2D driven
+    // by MovePosition, so a shove written onto its transform is overwritten by the next
+    // physics sync — the squash channel is the one that reads on the player. The camera
+    // shake and the world impulse are what carry the weight of an impact out into the level.
+
+    [Tooltip("Played the moment a jump takes off. Stretches the body upward — the squash " +
+             "axis is horizontal, so it goes tall and thin — and ticks the pad.")]
+    [SerializeField] private FeelPreset m_JumpFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.LightImpact,
+        SquashAmount = 0.09f,
+        PunchDuration = 0.18f,
+        PunchFrequency = 1.2f,
+    };
+
+    [Tooltip("Played when a jump or a fall puts the feet back down. The one that does the " +
+             "most work in the whole game: the body flattens, the ground props jolt, and a " +
+             "two-frame hold sells the weight.")]
+    [SerializeField] private FeelPreset m_LandFeel = new FeelPreset
+    {
+        CameraShake = new CameraShakeSettings(0.05f, 0.14f),
+        Haptic = HapticPattern.MediumImpact,
+        FreezeDuration = 0.035f,
+        FreezeTimeScale = 0.05f,
+        SquashAmount = 0.14f,
+        PunchDuration = 0.22f,
+        PunchFrequency = 1.6f,
+        ImpulseStrength = 0.7f,
+        ImpulseRadius = 2.2f,
+    };
+
+    [Tooltip("Played on the frame the player is blown apart. No squash — the body is " +
+             "switched off on that same frame and the debris takes over — so this is all " +
+             "hold, buzz, red screen and shockwave through the surrounding props. The " +
+             "double blink is what makes it read as an alarm rather than as an impact; " +
+             "drop Flash Count to 1 for a single wash, or the alpha to 0 to switch the " +
+             "red off entirely.")]
+    [SerializeField] private FeelPreset m_DeathFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Failure,
+        FreezeDuration = 0.1f,
+        FreezeTimeScale = 0.02f,
+        ImpulseStrength = 1.8f,
+        ImpulseRadius = 5f,
+        // Not pure red and not opaque: the level has to stay readable through it, or the
+        // flash reads as the game having cut to a colour rather than as a hit.
+        FlashColor = new Color(1f, 0.12f, 0.1f, 0.5f),
+        FlashHold = 0.04f,
+        FlashFade = 0.16f,
+        FlashCount = 2,
+    };
+
+    [Tooltip("Played on the touch that wins the level. A rising double pulse, no shake — " +
+             "the exit animation owns the screen from here.")]
+    [SerializeField] private FeelPreset m_WinFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Success,
+        ImpulseStrength = 0.8f,
+        ImpulseRadius = 3f,
+    };
+
     private Rigidbody2D m_Rigidbody;
     private Collider2D m_Collider;
     private bool m_IsDead;   // true while the death animation/reset is playing
@@ -235,6 +298,11 @@ public class PlayerController : MonoBehaviour
     // reads it to know the entry door has already brought this player in — the normal order
     // for a player left disabled in the scene, whose Start only runs once the door enables it.
     private bool m_IsEnteringFromDoor;
+
+    // The level's entry door, and whether it has been looked for yet — a death brings the
+    // player back in through it, and a level without one is a valid answer worth caching too.
+    private LevelEntryDoor m_EntryDoor;
+    private bool m_EntryDoorResolved;
 
     // Carried across FixedUpdate calls by the passive settle.
     private float m_PassiveFallSpeed;
@@ -951,6 +1019,10 @@ public class PlayerController : MonoBehaviour
         // Kick up dust at the take-off spot (player's grid position).
         SpawnGridEffect(m_JumpStartDust);
 
+        // Vector2.right, so the squash axis is horizontal and the body goes tall and thin
+        // rather than flat — a take-off stretches, it does not compress.
+        m_JumpFeel.Play(transform.position, transform, Vector2.right);
+
         // Effective gravity that peaks at m_JumpHeight in exactly half of m_JumpDuration:
         //   g = 2h / tHalf^2        v0y = g * tHalf
         float tHalf = m_JumpDuration * 0.5f;
@@ -1094,6 +1166,9 @@ public class PlayerController : MonoBehaviour
 
         // Puff of dust at the landing spot (player's settled grid position).
         SpawnGridEffect(m_JumpEndDust);
+
+        // Vector2.down: the impact came from below, so the body flattens and spreads.
+        m_LandFeel.Play(transform.position, transform, Vector2.down);
     }
 
     // Distance from the body origin to the bottom of the collider - how far above a
@@ -1155,6 +1230,12 @@ public class PlayerController : MonoBehaviour
 
         if (UIManager.Instance != null)
             yield return UIManager.Instance.FadeRoutine(1f, 0f);
+
+        // The level assembles itself before the player spins in, exactly as it does for a
+        // level WITH an entry door — that door owns the build in its own opening, and this is
+        // the same beat for a level that has none.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.BuildRoutine();
 
         yield return ArriveRoutine(m_StartPosition);
     }
@@ -1277,6 +1358,7 @@ public class PlayerController : MonoBehaviour
         // Puff of dust at the arrival spot, the same one a jump lands with — the player has
         // just put their feet down on the start cell.
         SpawnGridEffect(m_JumpEndDust);
+        m_LandFeel.Play(transform.position, transform, Vector2.down);
     }
 
     /// <summary>
@@ -1711,6 +1793,40 @@ public class PlayerController : MonoBehaviour
         // less of a body standing in the level — it just resets them to spawn, where
         // they stay hittable like anywhere else.
 
+        // The attempt is over and the body is about to be pulled back to spawn. Leave a
+        // faded marker standing where it got to, so the next sequence is entered against a
+        // picture of where this one ran out. Recorded here rather than the moment the
+        // sequence ended, so the half second above has settled the body onto the ground
+        // first and the ghost is not left hanging in mid-air.
+        //
+        // Skipped for a body that is STILL falling when the reset comes: the sequence ran
+        // out over a drop and nothing has stopped it yet, so there is no spot to mark —
+        // only a ghost hanging in mid-air, or one at the bottom of a pit where the player
+        // will never see it.
+        if (!m_IsAirborne)
+            AttemptGhostService.Instance?.RecordStop(m_SpriteRenderer, m_StartPosition);
+
+        // The doorway is what puts the player back at spawn, exactly as it does after a
+        // death — a turn ending is an arrival like any other. Resolved before anything
+        // moves, because a level with no entry door keeps the plain snap-back below.
+        LevelEntryDoor entryDoor = ResolveEntryDoor();
+
+        // From here the reset can no longer be called off. The handle a checkpoint cancels
+        // a PENDING reset through is dropped before the player starts leaving the level: a
+        // lever firing mid-departure would otherwise stop this coroutine with the body spun
+        // down to nothing and nothing left running to bring it back.
+        m_EndTurnCoroutine = null;
+
+        // Out of the level where the sequence ran out, rather than being yanked off the
+        // spot: the same spin — and the same burst — that takes the player into the exit
+        // door on a win. The stop ghost has already been left standing there, so the body
+        // spinning away reads as being recalled off its own marker.
+        if (entryDoor != null)
+        {
+            SpawnParticleEffect(m_DoorEnterEffect, m_Rigidbody.position, m_DoorEnterEffectScale);
+            yield return PlayExitPortalRoutine();
+        }
+
         // Use rigidbody position reset (not transform) to keep physics state consistent
         m_Rigidbody.position = m_StartPosition;
         m_PassiveFallSpeed = 0f;
@@ -1718,14 +1834,39 @@ public class PlayerController : MonoBehaviour
         m_IsPushing = false;
         m_IsGroundPounding = false;
         transform.localScale = m_OriginalScale;   // restore spawn facing
-        m_EndTurnCoroutine = null;
+
+        // Shrunk away again in the same breath as that facing restore — no frame renders
+        // between the two, so a body that has just spun out never flashes back on at
+        // spawn — and left that way for the doctor's reaction and the doorway's rise.
+        if (entryDoor != null) HideForArrival();
 
         // A turn that ended without winning is a failed attempt — count it toward the
         // combined tally; the doctor gloats on every Nth failure before input resets.
         if (EvilDoctorAnimationController.Instance != null)
             yield return EvilDoctorAnimationController.Instance.RegisterFailureRoutine();
 
+        // The level puts itself back together while the player is still out of it: platforms
+        // and riding bricks go home and the sequence is cleared BEFORE the doorway hands
+        // them back, so they come out onto a level that is ready to be played again.
         GameManager.Instance?.PlayEnded();
+
+        if (entryDoor != null)
+            yield return ArriveThroughDoorRoutine(entryDoor);
+    }
+
+    // The entry doorway handing the player back into the level: the body is taken out of
+    // play and shrunk away, the doorway rises out of the floor, opens, spins them out onto
+    // their start cell and sinks away again — and only then is the level theirs to play.
+    //
+    // Shared by the two ways a level takes the player back: a death, and a turn that ran
+    // out without winning. HideForArrival runs here as well as at each caller's own hiding
+    // point because the end of a turn gives input back to the UI on its way in (PlayEnded),
+    // and the doorway's rise and open is long enough to enter a whole new sequence during.
+    private IEnumerator ArriveThroughDoorRoutine(LevelEntryDoor door)
+    {
+        HideForArrival();
+        yield return door.DeliverPlayerRoutine();
+        DeviceInputProvider.Instance?.SetEnabled(true);
     }
 
     // ─── Collision ───────────────────────────────────────────────────────────────
@@ -1769,6 +1910,13 @@ public class PlayerController : MonoBehaviour
         // the fade out.
         m_IsHazardable = false;
 
+        // The record of the failed attempts goes with the level: the ghosts are cleared on
+        // the touch that wins it, so the door animation plays over a clean level rather
+        // than over a crowd of everything that didn't work.
+        AttemptGhostService.ClearAll();
+
+        m_WinFeel.Play(transform.position);
+
         // The door interrupts whatever was running outright: the command in flight is
         // dropped where it stands, mid-arc if need be, and the portal takes over from that
         // exact spot. Also cancels a pending end-of-turn reset, which would otherwise yank
@@ -1811,6 +1959,13 @@ public class PlayerController : MonoBehaviour
         LevelExitDoor exit = door != null ? door.GetComponentInParent<LevelExitDoor>() : null;
         if (exit != null)
             yield return exit.CloseRoutine();
+
+        // ...and the level takes itself apart behind them: the pipe run empties from the door
+        // end back to the socket and both doorways sink into the floor. The mirror of the
+        // build the level opened with, and awaited for the same reason the door close above
+        // is — the fade should carry away a level that has finished leaving, not interrupt it.
+        if (LevelBuildDirector.Instance != null)
+            yield return LevelBuildDirector.Instance.TeardownRoutine();
 
         // Doctor reacts (sad) — wait for the full reaction before leaving the level.
         if (EvilDoctorAnimationController.Instance != null)
@@ -1913,11 +2068,23 @@ public class PlayerController : MonoBehaviour
         // Unparented, so both effects keep playing where the player died while the reset
         // below teleports the body back to spawn underneath them.
         ParticleEffectSpawner.Spawn(m_DeathExplosion, transform.position);
-        ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
+        GameObject debris = ParticleEffectSpawner.Spawn(m_DeathDebris, transform.position);
 
         CameraController.Instance?.Shake(m_DeathShakeMagnitude, m_DeathShakeDuration);
 
+        // Fired on the same frame as the explosion, from where the body was standing: the
+        // hold lands on the blast, and the shockwave rolls out through whatever props are
+        // near enough to feel it.
+        m_DeathFeel.Play(transform.position);
+
         yield return new WaitForSecondsRealtime(1f);
+
+        // The wreckage stays on the floor for the rest of the level, greyed out, marking
+        // where this attempt was killed. Read exactly here: a second is long enough for
+        // every piece to have arced, bounced and come to rest, and short enough that they
+        // are all still alive to be read off the systems — the debris lifetimes start at
+        // 1.1s, and the spawner destroys the whole effect at the end of them.
+        AttemptGhostService.Instance?.RecordBlast(debris, m_SpriteRenderer);
 
         // Count this death toward the combined failure tally — the doctor gloats on
         // every Nth failure. Awaited so the restart waits for the full reaction.
@@ -1951,10 +2118,39 @@ public class PlayerController : MonoBehaviour
         // level would be unplayable and should be fixed there, not masked here.)
         m_IsHazardable = true;
 
+        // A respawn is an arrival, so the level's entry door does it: the doorway comes back
+        // up out of the floor, opens, and hands the player out onto their start cell exactly
+        // as it did when the level began. Shrunk away BEFORE the fade — the level has to come
+        // up empty, or the body would be standing on the start cell in full view and then pop
+        // out of existence the moment the doorway opened.
+        LevelEntryDoor entryDoor = ResolveEntryDoor();
+        if (entryDoor != null) HideForArrival();
+
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(1f, 0f));
 
-        DeviceInputProvider.Instance?.SetEnabled(true);
+        // Awaited: the level is not the player's again until they are out of the doorway and
+        // standing at full size. A level with no entry door keeps the old behaviour — the body
+        // is simply back on its start cell when the fade lifts.
+        if (entryDoor != null)
+            yield return ArriveThroughDoorRoutine(entryDoor);
+        else
+            DeviceInputProvider.Instance?.SetEnabled(true);
+    }
+
+    // The level's entry door, found once and kept. Scene-scoped and inactive-inclusive, like
+    // every other lookup of a scene object here — see SceneObjects for why Unity's own search
+    // cannot be used. Resolved lazily rather than in Start, because Start returns early in the
+    // normal case where the door has already started the level's first arrival.
+    private LevelEntryDoor ResolveEntryDoor()
+    {
+        if (!m_EntryDoorResolved)
+        {
+            m_EntryDoorResolved = true;
+            m_EntryDoor = SceneObjects.FindInActiveScene<LevelEntryDoor>();
+        }
+
+        return m_EntryDoor;
     }
 
     /// <summary>Called by LaserShooter when the player touches any active laser segment.</summary>
