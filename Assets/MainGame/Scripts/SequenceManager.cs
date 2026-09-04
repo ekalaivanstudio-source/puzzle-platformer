@@ -17,6 +17,26 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
 
     [HideInInspector, SerializeField] private bool m_RequireFullSequence = false;
 
+    [Header("Feel")]
+    [Tooltip("Played every time a command is queued. This is the single most-felt moment " +
+             "in the game — the player presses these dozens of times per level — so it is " +
+             "the lightest tick there is and nothing else. Sitting on the queue rather than " +
+             "on the input code covers the keyboard, the gamepad and the on-screen buttons " +
+             "from one place.")]
+    [SerializeField] private FeelPreset m_QueueFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Selection,
+    };
+
+    [Tooltip("Played instead when the queue is already full and the press does nothing. " +
+             "A different answer from the tick above is the whole point: the player should " +
+             "be able to feel that the press was refused without looking up.")]
+    [SerializeField] private FeelPreset m_QueueFullFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Warning,
+        Cooldown = 0.25f,
+    };
+
 
     private readonly List<ActionTypeEnum> m_Sequence = new List<ActionTypeEnum>();
 
@@ -137,10 +157,12 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
         if (IsFull)
         {
             Debug.Log($"[SequenceManager] Queue is full ({m_MaxSequenceLength} actions max).");
+            m_QueueFullFeel.Play(Vector3.zero);
             return false;
         }
 
         m_Sequence.Add(action);
+        m_QueueFeel.Play(Vector3.zero);
         OnSequenceChanged?.Invoke();
         return true;
     }
@@ -150,6 +172,7 @@ public class SequenceManager : MonoBehaviour, ISequenceSource
     {
         if (IsEmpty) return;
         m_Sequence.RemoveAt(m_Sequence.Count - 1);
+        m_QueueFeel.Play(Vector3.zero);
         OnSequenceChanged?.Invoke();
     }
 

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -93,6 +93,33 @@ public class PushBrick : MonoBehaviour
     [SerializeField] private GameObject m_DestroyParticle;
     [SerializeField] private float m_ShakeMagnitude = 0.15f;
     [SerializeField] private float m_ShakeDuration = 0.3f;
+
+    [Header("Feel")]
+    [Tooltip("Played on the frame the player's shoulder hits the brick. Squashes the brick " +
+             "along the direction of the shove and ticks the pad. No shove distance: the " +
+             "push routine owns the brick's position on this exact frame.")]
+    [SerializeField] private FeelPreset m_PushFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.MediumImpact,
+        SquashAmount = 0.09f,
+        PunchDuration = 0.2f,
+        PunchFrequency = 1.5f,
+        ImpulseStrength = 0.4f,
+        ImpulseRadius = 1.6f,
+        Cooldown = 0.05f,
+    };
+
+    [Tooltip("Played as the brick comes apart. Nothing is applied to the brick itself — it " +
+             "is switched off on the same frame — so this is the hold, the buzz and the " +
+             "shockwave through everything standing near it.")]
+    [SerializeField] private FeelPreset m_ShatterFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.HeavyImpact,
+        FreezeDuration = 0.07f,
+        FreezeTimeScale = 0.03f,
+        ImpulseStrength = 1.5f,
+        ImpulseRadius = 3.5f,
+    };
 
     // ─── State ────────────────────────────────────────────────────────────────
 
@@ -310,6 +337,9 @@ public class PushBrick : MonoBehaviour
     {
         m_PushHitShake.Play();
 
+        // Squashed along the way it was shoved, so it visibly gives before it slides.
+        m_PushFeel.Play(transform.position, transform, new Vector2(Mathf.Sign(signDir), 0f));
+
         if (m_PushHitParticle == null || m_Collider == null) return;
 
         // The contact point is the brick's near face, on the side the player stands.
@@ -334,6 +364,11 @@ public class PushBrick : MonoBehaviour
             Instantiate(m_DestroyParticle, transform.position, Quaternion.identity);
 
         CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
+
+        // Before the deactivate, not after: an impulse fired from a switched-off object
+        // still radiates, but the brick's own receiver has to be alive to cancel its
+        // outstanding punch, and OnDisable is what does that.
+        m_ShatterFeel.Play(transform.position);
 
         gameObject.SetActive(false);
     }
