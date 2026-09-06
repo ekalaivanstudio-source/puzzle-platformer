@@ -296,14 +296,102 @@ namespace MainGame.UI.Editor
 
             Transform bg = holder.Find("BG");
             Transform sign = holder.Find("Setting IMG");
+            Transform robotCollection = holder.Find("RobotCollection");
             Transform total = holder.Find("RobotCollection/Total");
             Transform back = holder.Find("Back B") ?? holder.Find("B Back");
 
+            // Elevate RobotCollection to centered vertical position (Y = +60, size = 1200x450)
+            if (robotCollection != null)
+            {
+                RectTransform rcRt = robotCollection.GetComponent<RectTransform>();
+                if (rcRt != null)
+                {
+                    rcRt.anchoredPosition = new Vector2(0f, 60f);
+                    rcRt.sizeDelta = new Vector2(1200f, 450f);
+                }
+            }
+
+            // Center and style Total counter
+            if (total != null)
+            {
+                TMPro.TMP_Text tmp = total.GetComponent<TMPro.TMP_Text>();
+                if (tmp != null)
+                {
+                    tmp.alignment = TMPro.TextAlignmentOptions.Center;
+                    tmp.fontSize = 24f;
+                    tmp.fontStyle = TMPro.FontStyles.Bold;
+                    tmp.color = new Color(0.85f, 0.94f, 1f, 0.95f);
+                }
+            }
+
+            // Format total counter on RobotCollectionView
+            Collectables.RobotCollectionView rcView = holder.GetComponentInChildren<Collectables.RobotCollectionView>();
+            if (rcView != null)
+            {
+                SerializedObject viewSo = new SerializedObject(rcView);
+                SerializedProperty formatProp = viewSo.FindProperty("m_TotalFormat");
+                if (formatProp != null)
+                {
+                    formatProp.stringValue = "TOTAL CHASSIS RECOVERED: {0} / {1}";
+                }
+                viewSo.ApplyModifiedProperties();
+            }
+
             Transform robots = holder.Find("RobotCollection/Robots");
+            if (robots != null)
+            {
+                RectTransform rbRt = robots.GetComponent<RectTransform>();
+                if (rbRt != null)
+                {
+                    rbRt.sizeDelta = new Vector2(1200f, 370f);
+                }
+                LayoutElement rbLe = robots.GetComponent<LayoutElement>();
+                if (rbLe == null) rbLe = robots.gameObject.AddComponent<LayoutElement>();
+                rbLe.preferredHeight = 370f;
+
+                HorizontalLayoutGroup hlg = robots.GetComponent<HorizontalLayoutGroup>();
+                if (hlg != null)
+                {
+                    hlg.spacing = 34f;
+                    hlg.childAlignment = TextAnchor.MiddleCenter;
+                    hlg.childControlWidth = false;
+                    hlg.childControlHeight = false;
+                    hlg.childForceExpandWidth = false;
+                    hlg.childForceExpandHeight = false;
+                }
+            }
+
             Transform echo = robots != null ? robots.Find("Slot_Echo") : null;
             Transform nova = robots != null ? robots.Find("Slot_Nova") : null;
             Transform patch = robots != null ? robots.Find("Slot_Patch") : null;
             Transform pixel = robots != null ? robots.Find("Slot_Pixel") : null;
+
+            Transform[] allSlots = new Transform[] { echo, nova, patch, pixel };
+            foreach (var slot in allSlots)
+            {
+                if (slot == null) continue;
+                RectTransform sRt = slot.GetComponent<RectTransform>();
+                if (sRt != null) sRt.sizeDelta = new Vector2(270f, 370f);
+
+                LayoutElement le = slot.GetComponent<LayoutElement>();
+                if (le == null) le = slot.gameObject.AddComponent<LayoutElement>();
+                le.preferredWidth = 270f;
+                le.preferredHeight = 370f;
+
+                Transform portrait = slot.Find("Portrait");
+                if (portrait != null)
+                {
+                    RectTransform pRt = portrait.GetComponent<RectTransform>();
+                    if (pRt != null) pRt.sizeDelta = new Vector2(260f, 260f);
+
+                    LayoutElement pLe = portrait.GetComponent<LayoutElement>();
+                    if (pLe != null)
+                    {
+                        pLe.preferredWidth = 260f;
+                        pLe.preferredHeight = 260f;
+                    }
+                }
+            }
 
             if (bg != null) SetObjProp(so, "m_PanelBackground", bg.GetComponent<RectTransform>());
             if (sign != null) SetObjProp(so, "m_CollectionSign", sign.GetComponent<RectTransform>());
@@ -361,10 +449,13 @@ namespace MainGame.UI.Editor
                 cPixel.navigation = navPixel;
             }
 
+            animator.EnsureHangarElements();
+
             if (collScreen != null)
             {
                 SerializedObject screenSo = new SerializedObject(collScreen);
                 SetObjProp(screenSo, "m_Animator", animator);
+                if (back != null) SetObjProp(screenSo, "m_BackButton", back.GetComponent<Button>());
                 screenSo.ApplyModifiedProperties();
             }
         }

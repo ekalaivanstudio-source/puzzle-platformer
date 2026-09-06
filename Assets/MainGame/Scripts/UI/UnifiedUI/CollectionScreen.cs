@@ -7,7 +7,8 @@ using UnityEngine.UI;
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Unified Collection Screen controller with physical card cascade and controller navigation.
+    /// Unified Collection Screen controller with cinematic Robot Inspection / Hangar
+    /// presentation and controller-first navigation.
     /// </summary>
     [DisallowMultipleComponent]
     public class CollectionScreen : UIScreen
@@ -53,17 +54,24 @@ namespace MainGame.UI.Unified
         {
             if (m_CharacterCards == null || m_CharacterCards.Length == 0)
             {
-                m_CharacterCards = GetComponentsInChildren<Selectable>(true);
-                // Exclude back button from cards array
-                List<Selectable> cards = new List<Selectable>();
-                for (int i = 0; i < m_CharacterCards.Length; i++)
+                var found = GetComponentsInChildren<CollectionCardSelectable>(true);
+                if (found != null && found.Length > 0)
                 {
-                    if (m_CharacterCards[i] != null && m_CharacterCards[i] != m_BackButton)
-                    {
-                        cards.Add(m_CharacterCards[i]);
-                    }
+                    m_CharacterCards = found;
                 }
-                m_CharacterCards = cards.ToArray();
+                else
+                {
+                    var allSelectables = GetComponentsInChildren<Selectable>(true);
+                    List<Selectable> cards = new List<Selectable>();
+                    for (int i = 0; i < allSelectables.Length; i++)
+                    {
+                        if (allSelectables[i] != null && allSelectables[i] != m_BackButton)
+                        {
+                            cards.Add(allSelectables[i]);
+                        }
+                    }
+                    m_CharacterCards = cards.ToArray();
+                }
             }
         }
 
@@ -75,14 +83,23 @@ namespace MainGame.UI.Unified
 
         public override void PlayEnterTransition(Action onComplete)
         {
-            Open();
+            base.Open();
 
             if (m_Animator != null)
             {
-                m_Animator.PlayEntrance(onComplete);
+                // Synchronously reset to hidden state at frame 0
+                m_Animator.PrepareEntranceState();
+
+                // Launch cinematic Robot Inspection / Hangar activation
+                m_Animator.PlayEntrance(() =>
+                {
+                    BuildNavigationLinks();
+                    onComplete?.Invoke();
+                });
             }
             else
             {
+                BuildNavigationLinks();
                 onComplete?.Invoke();
             }
         }
@@ -151,7 +168,7 @@ namespace MainGame.UI.Unified
             {
                 Navigation backNav = m_BackButton.navigation;
                 backNav.mode = Navigation.Mode.Explicit;
-                // Up from Back button returns to the middle/first card
+                // Up from Back button returns to the first card
                 backNav.selectOnUp = m_CharacterCards[0];
                 backNav.selectOnDown = null;
                 backNav.selectOnLeft = null;
