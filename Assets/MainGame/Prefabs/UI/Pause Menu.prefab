@@ -1490,6 +1490,7 @@ GameObject:
   - component: {fileID: 704039248529484405}
   - component: {fileID: 8344634143977331296}
   - component: {fileID: 7802484824534153892}
+  - component: {fileID: 8100000000000000001}
   m_Layer: 0
   m_Name: Pause screen
   m_TagString: Untagged
@@ -1585,6 +1586,7 @@ MonoBehaviour:
   m_LevelsButton: {fileID: 5199582255685002906}
   m_ExitButton: {fileID: 4551521593089126243}
   m_ConfirmationPopupScreen: {fileID: 8658581333333762883}
+  m_Animator: {fileID: 8100000000000000001}
   m_ResetTitleSprite: {fileID: 21300000, guid: 31cf17aa43f786048ac08e509a223334, type: 3}
   m_LevelsTitleSprite: {fileID: 21300000, guid: 71e3ab01a0c6e024192c8d36af7fdcd4, type: 3}
   m_ExitTitleSprite: {fileID: 21300000, guid: aaef1229fc9ddc4489a46f6ced66cf15, type: 3}
@@ -2012,3 +2014,27 @@ MonoBehaviour:
   m_ConfirmButton: {fileID: 3775834960255963423}
   m_CancelButton: {fileID: 275992631590393285}
   m_TitleImage: {fileID: 7667272366225763049}
+
+--- !u!114 &8100000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6245435339468095495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d29a531b74c420e98a1e582d091b901, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.PauseMenuAnimator
+  m_DarkOverlay: {fileID: 8344634143977331296}
+  m_OverlayTargetAlpha: 0.85
+  m_OverlayDuration: 0.08
+  m_PausePanel: {fileID: 4466132959748966274}
+  m_SlamDuration: 0.18
+  m_SlamDistance: 650
+  m_TitleDialog: {fileID: 4432872968850195251}
+  m_Buttons:
+  - {fileID: 3362869444329008991}
+  - {fileID: 1304217503162432367}
+  - {fileID: 1781122862813323045}

@@ -36,8 +36,48 @@ namespace MainGame.UI.Unified
         [Tooltip("UnityEvent invoked when the player confirms level reset.")]
         [SerializeField] private UnityEvent m_OnResetConfirmed;
 
+        [Header("Animator Reference")]
+        [SerializeField] private PauseMenuAnimator m_Animator;
+
         // Static flag used to tell the HomeScreen scene to auto-open the Level Selection screen on load
         public static bool AutoOpenLevelSelection { get; set; } = false;
+
+        protected override void Awake()
+        {
+            base.Awake();
+            if (m_Animator == null) m_Animator = GetComponent<PauseMenuAnimator>();
+            if (m_Animator == null) m_Animator = GetComponentInChildren<PauseMenuAnimator>(true);
+        }
+
+        public override void PlayEnterTransition(Action onComplete)
+        {
+            Open();
+            if (m_Animator != null)
+            {
+                m_Animator.PlayEntrance(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        public override void PlayExitTransition(Action onComplete)
+        {
+            if (m_Animator != null)
+            {
+                m_Animator.PlayExit(() =>
+                {
+                    Close();
+                    onComplete?.Invoke();
+                });
+            }
+            else
+            {
+                Close();
+                onComplete?.Invoke();
+            }
+        }
 
         private void OnEnable()
         {

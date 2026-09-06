@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
@@ -7,9 +8,9 @@ using Setting.Menu;
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Unified Options Screen controller.
-    /// Explicitly binds the vertical selection paths for settings rows and the back button.
+    /// Unified Options Screen controller with alternating row entrance transitions and explicit controller navigation.
     /// </summary>
+    [DisallowMultipleComponent]
     public class OptionsScreen : UIScreen
     {
         [Header("Controls")]
@@ -18,18 +19,63 @@ namespace MainGame.UI.Unified
         [Header("Settings Rows (Order Top to Bottom)")]
         [SerializeField] private SettingStepControl[] m_SettingsRows;
 
+        [Header("Animator Reference")]
+        [SerializeField] private SettingsScreenAnimator m_Animator;
+
         private readonly List<Selectable> m_NavigationChain = new List<Selectable>();
         private Coroutine m_BuildNavigationCoroutine;
 
-        /// <summary>
-        /// Focus starts on the first settings row, falling back to the inspector-assigned default.
-        /// </summary>
         public override GameObject DefaultSelectedObject
         {
             get
             {
                 SettingStepControl firstRow = GetFirstUsableRow();
                 return firstRow != null ? firstRow.gameObject : base.DefaultSelectedObject;
+            }
+        }
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            if (m_Animator == null)
+            {
+                m_Animator = GetComponent<SettingsScreenAnimator>();
+            }
+            if (m_Animator == null)
+            {
+                m_Animator = GetComponentInChildren<SettingsScreenAnimator>(true);
+            }
+        }
+
+        public override void PlayEnterTransition(Action onComplete)
+        {
+            Open();
+
+            if (m_Animator != null)
+            {
+                m_Animator.PlayEntrance(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        public override void PlayExitTransition(Action onComplete)
+        {
+            if (m_Animator != null)
+            {
+                m_Animator.PlayExit(() =>
+                {
+                    Close();
+                    onComplete?.Invoke();
+                });
+            }
+            else
+            {
+                Close();
+                onComplete?.Invoke();
             }
         }
 
@@ -56,23 +102,18 @@ namespace MainGame.UI.Unified
 
             for (int i = 0; i < m_SettingsRows.Length; i++)
             {
-                if (m_SettingsRows[i] != null) return m_SettingsRows[i];
+                if (m_SettingsRows[i] != null && m_SettingsRows[i].gameObject.activeInHierarchy) return m_SettingsRows[i];
             }
             return null;
         }
 
         private IEnumerator BuildExplicitNavigationNextFrame()
         {
-            yield return null; // Wait one frame for UI layouts to settle
-
+            yield return null;
             BuildExplicitNavigation();
             m_BuildNavigationCoroutine = null;
         }
 
-        /// <summary>
-        /// Chains every assigned settings row plus the back button into one wrapping vertical loop.
-        /// Null slots in the inspector array are skipped rather than breaking the chain.
-        /// </summary>
         private void BuildExplicitNavigation()
         {
             m_NavigationChain.Clear();
@@ -81,7 +122,10 @@ namespace MainGame.UI.Unified
             {
                 for (int i = 0; i < m_SettingsRows.Length; i++)
                 {
-                    if (m_SettingsRows[i] != null) m_NavigationChain.Add(m_SettingsRows[i]);
+                    if (m_SettingsRows[i] != null && m_SettingsRows[i].gameObject.activeInHierarchy)
+                    {
+                        m_NavigationChain.Add(m_SettingsRows[i]);
+                    }
                 }
             }
 
@@ -104,6 +148,27 @@ namespace MainGame.UI.Unified
 
         private void HandleBackClicked()
         {
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
+
+            if (m_BackButton != null)
+            {
+                UIAnimatedButton animBtn = m_BackButton.GetComponent<UIAnimatedButton>();
+                if (animBtn != null)
+                {
+                    animBtn.PlayConfirmPunch(() =>
+                    {
+                        if (UINavigationManager.Instance != null)
+                        {
+                            UINavigationManager.Instance.PopScreen();
+                        }
+                    });
+                    return;
+                }
+            }
+
             AudioManager.Instance?.PlayButton();
             if (UINavigationManager.Instance != null)
             {

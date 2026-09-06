@@ -2,12 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
+using System;
 
 namespace LevelSelection
 {
     /// <summary>
     /// Component representing a single level node in the level selection screen UI.
-    /// Supports dynamic selection arrow toggles on focus.
+    /// Supports dynamic selection arrow toggles on focus, map activation boot routines,
+    /// selection micro-lifts, and punch feedback.
     /// </summary>
     [DisallowMultipleComponent]
     public class LevelNodeUI : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler, IMoveHandler
@@ -35,6 +37,14 @@ namespace LevelSelection
 
         #endregion
 
+        #region Public Properties
+
+        public RectTransform RectTransform => (RectTransform)transform;
+        public bool IsUnlocked => m_IsUnlocked;
+        public bool HasMarker => selectionArrow != null && selectionArrow.activeSelf;
+
+        #endregion
+
         #region Private Fields
 
         private static readonly Color UnlockedColor = Color.white;
@@ -43,11 +53,19 @@ namespace LevelSelection
         private Button m_Button;
         private LevelSelectionManager m_Manager;
         private Coroutine m_PulseCoroutine;
+        private Coroutine m_LiftCoroutine;
+        private Coroutine m_BootCoroutine;
+        private bool m_IsLoading;
 
         // Resting transform of the arrow, captured before any pulse runs so the animation
         // can always be rewound exactly instead of drifting a little further each time.
         private Vector3 m_ArrowRestScale = Vector3.one;
         private Vector3 m_ArrowRestLocalPos;
+
+        // Node base transform for micro-lift and punch routines
+        private Vector3 m_NodeBasePos;
+        private Vector3 m_NodeBaseScale = Vector3.one;
+        private bool m_BaseCaptured;
 
         #endregion
 
@@ -66,6 +84,8 @@ namespace LevelSelection
                 m_ArrowRestScale = selectionArrow.transform.localScale;
                 m_ArrowRestLocalPos = selectionArrow.transform.localPosition;
             }
+
+            CaptureBaseTransform();
         }
 
         private void OnEnable()
@@ -77,6 +97,27 @@ namespace LevelSelection
         {
             if (m_Button != null) m_Button.onClick.RemoveListener(OnNodeClicked);
             StopPulse();
+            if (m_LiftCoroutine != null)
+            {
+                StopCoroutine(m_LiftCoroutine);
+                m_LiftCoroutine = null;
+            }
+            if (m_BootCoroutine != null)
+            {
+                StopCoroutine(m_BootCoroutine);
+                m_BootCoroutine = null;
+            }
+        }
+
+        #endregion
+
+        #region Base Transform Capture
+
+        public void CaptureBaseTransform()
+        {
+            m_NodeBasePos = transform.localPosition;
+            m_NodeBaseScale = Vector3.one;
+            m_BaseCaptured = true;
         }
 
         #endregion
@@ -86,11 +127,13 @@ namespace LevelSelection
         public void OnSelect(BaseEventData eventData)
         {
             SetArrowActive(true);
+            SetLift(true);
         }
 
         public void OnDeselect(BaseEventData eventData)
         {
             SetArrowActive(false);
+            SetLift(false);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -103,6 +146,7 @@ namespace LevelSelection
             else
             {
                 SetArrowActive(true);
+                SetLift(true);
             }
         }
 
@@ -149,6 +193,50 @@ namespace LevelSelection
                 m_Manager = FindAnyObjectByType<LevelSelectionManager>();
             }
             return m_Manager;
+        }
+
+        #endregion
+
+        #region Micro-Lift Animation
+
+        private void SetLift(bool lifted)
+        {
+            if (!m_BaseCaptured) CaptureBaseTransform();
+
+            if (m_LiftCoroutine != null) StopCoroutine(m_LiftCoroutine);
+            if (isActiveAndEnabled)
+            {
+                m_LiftCoroutine = StartCoroutine(LiftRoutine(lifted));
+            }
+            else
+            {
+                transform.localPosition = lifted ? (m_NodeBasePos + new Vector3(0f, 5f, 0f)) : m_NodeBasePos;
+                transform.localScale = lifted ? (m_NodeBaseScale * 1.04f) : m_NodeBaseScale;
+            }
+        }
+
+        private IEnumerator LiftRoutine(bool lifted)
+        {
+            Vector3 startPos = transform.localPosition;
+            Vector3 targetPos = lifted ? (m_NodeBasePos + new Vector3(0f, 5f, 0f)) : m_NodeBasePos;
+            Vector3 startScale = transform.localScale;
+            Vector3 targetScale = lifted ? (m_NodeBaseScale * 1.04f) : m_NodeBaseScale;
+
+            float elapsed = 0f;
+            float duration = 0.12f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                transform.localPosition = Vector3.Lerp(startPos, targetPos, t);
+                transform.localScale = Vector3.Lerp(startScale, targetScale, t);
+                yield return null;
+            }
+
+            transform.localPosition = targetPos;
+            transform.localScale = targetScale;
+            m_LiftCoroutine = null;
         }
 
         #endregion
@@ -210,16 +298,153 @@ namespace LevelSelection
 
         #endregion
 
+        #region Map Network Boot & Marker Drop Routines
+
+        /// <summary>
+        /// Resets the node to pre-boot state for the map network activation sequence.
+        /// </summary>
+        public void SetInitialBootState()
+        {
+            CaptureBaseTransform();
+            StopPulse();
+            if (selectionArrow != null) selectionArrow.SetActive(false);
+            if (m_BootCoroutine != null) { StopCoroutine(m_BootCoroutine); m_BootCoroutine = null; }
+            if (m_LiftCoroutine != null) { StopCoroutine(m_LiftCoroutine); m_LiftCoroutine = null; }
+
+            transform.localScale = Vector3.zero;
+            transform.localPosition = m_NodeBasePos;
+            m_IsLoading = false;
+        }
+
+        /// <summary>
+        /// Boots up this level node during the sequential map network activation.
+        /// </summary>
+        public IEnumerator PlayBootUpRoutine(bool isUnlocked, float delay)
+        {
+            CaptureBaseTransform();
+            transform.localScale = Vector3.zero;
+            transform.localPosition = m_NodeBasePos;
+
+            if (delay > 0f)
+            {
+                float timer = 0f;
+                while (timer < delay)
+                {
+                    timer += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            float elapsed = 0f;
+            float duration = isUnlocked ? 0.28f : 0.18f;
+            Color origColor = unlockedImage != null ? unlockedImage.color : Color.white;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                if (isUnlocked)
+                {
+                    // Overshoot scale: 0 -> 1.15 -> 1.0
+                    float s = (t < 0.6f) ? Mathf.LerpUnclamped(0f, 1.15f, EaseOutQuad(t / 0.6f)) : Mathf.Lerp(1.15f, 1f, EaseOutQuad((t - 0.6f) / 0.4f));
+                    transform.localScale = m_NodeBaseScale * s;
+
+                    // Vertical micro lift: +6px -> 0px
+                    float lift = (t < 0.5f) ? Mathf.Lerp(0f, 6f, t / 0.5f) : Mathf.Lerp(6f, 0f, (t - 0.5f) / 0.5f);
+                    transform.localPosition = m_NodeBasePos + new Vector3(0f, lift, 0f);
+
+                    // Flash effect
+                    if (unlockedImage != null && t < 0.4f)
+                    {
+                        unlockedImage.color = Color.Lerp(Color.white * 1.5f, origColor, t / 0.4f);
+                    }
+                }
+                else
+                {
+                    // Locked snap in with dim snap: 0 -> 1.0
+                    float s = Mathf.LerpUnclamped(0f, 1f, EaseOutBack(t));
+                    transform.localScale = m_NodeBaseScale * s;
+                }
+
+                yield return null;
+            }
+
+            transform.localScale = m_NodeBaseScale;
+            transform.localPosition = m_NodeBasePos;
+            if (unlockedImage != null) unlockedImage.color = origColor;
+            m_BootCoroutine = null;
+        }
+
+        /// <summary>
+        /// Drops the current level indicator arrow from above onto this node with physics bounce.
+        /// </summary>
+        public IEnumerator PlayMarkerDropRoutine(Action onDone = null)
+        {
+            StopPulse();
+            if (selectionArrow == null)
+            {
+                onDone?.Invoke();
+                yield break;
+            }
+
+            selectionArrow.SetActive(true);
+            Transform arrowT = selectionArrow.transform;
+
+            Vector3 startPos = m_ArrowRestLocalPos + new Vector3(0f, 45f, 0f);
+            Vector3 startScale = m_ArrowRestScale * 1.35f;
+            Quaternion startRot = Quaternion.Euler(0f, 0f, -8f);
+
+            arrowT.localPosition = startPos;
+            arrowT.localScale = startScale;
+            arrowT.localRotation = startRot;
+
+            float duration = 0.28f;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Spring bounce on position
+                float yOffset;
+                if (t < 0.5f)
+                {
+                    yOffset = Mathf.Lerp(45f, -4f, EaseInQuad(t / 0.5f));
+                }
+                else if (t < 0.75f)
+                {
+                    yOffset = Mathf.Lerp(-4f, 2f, EaseOutQuad((t - 0.5f) / 0.25f));
+                }
+                else
+                {
+                    yOffset = Mathf.Lerp(2f, 0f, EaseInOutQuad((t - 0.75f) / 0.25f));
+                }
+
+                arrowT.localPosition = new Vector3(m_ArrowRestLocalPos.x, m_ArrowRestLocalPos.y + yOffset, m_ArrowRestLocalPos.z);
+                arrowT.localScale = Vector3.Lerp(startScale, m_ArrowRestScale, EaseOutQuad(t));
+                arrowT.localRotation = Quaternion.Slerp(startRot, Quaternion.identity, EaseOutQuad(t));
+
+                yield return null;
+            }
+
+            arrowT.localPosition = m_ArrowRestLocalPos;
+            arrowT.localScale = m_ArrowRestScale;
+            arrowT.localRotation = Quaternion.identity;
+
+            // Start normal bob/pulse
+            m_PulseCoroutine = StartCoroutine(ArrowPulseRoutine());
+            onDone?.Invoke();
+        }
+
+        #endregion
+
         #region Public Methods
 
         /// <summary>
         /// Updates the visual state of the level node.
         /// </summary>
-        /// <remarks>
-        /// Locked nodes stay interactable on purpose: they remain reachable by keyboard/controller
-        /// navigation so the player can see what is coming. <see cref="OnNodeClicked"/> is what
-        /// refuses to load a locked level.
-        /// </remarks>
         public void SetupNode(bool isUnlocked, bool isCompleted, bool isSelected)
         {
             m_IsUnlocked = isUnlocked;
@@ -261,14 +486,45 @@ namespace LevelSelection
 
         #endregion
 
-        #region Private Methods
+        #region Private Methods & Easing
 
         private void OnNodeClicked()
         {
-            if (!m_IsUnlocked) return;
+            if (!m_IsUnlocked || m_IsLoading) return;
+
+            StartCoroutine(ConfirmPunchAndLoadRoutine());
+        }
+
+        private IEnumerator ConfirmPunchAndLoadRoutine()
+        {
+            m_IsLoading = true;
+            CaptureBaseTransform();
+
+            float elapsed = 0f;
+            float duration = 0.14f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                // Fast squash and punch out
+                float s = (t < 0.35f) ? Mathf.Lerp(1.04f, 0.9f, t / 0.35f) : Mathf.Lerp(0.9f, 1.15f, (t - 0.35f) / 0.65f);
+                transform.localScale = m_NodeBaseScale * s;
+                yield return null;
+            }
 
             // Load the scene corresponding to the level number
             UnityEngine.SceneManagement.SceneManager.LoadScene(levelNumber);
+        }
+
+        private static float EaseOutQuad(float t) => 1f - (1f - t) * (1f - t);
+        private static float EaseInQuad(float t) => t * t;
+        private static float EaseInOutQuad(float t) => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f;
+        private static float EaseOutBack(float t)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            return 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
         }
 
         #endregion

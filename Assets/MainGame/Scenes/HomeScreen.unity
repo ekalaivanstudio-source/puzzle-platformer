@@ -239,6 +239,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 30895931}
+  - component: {fileID: 910000015}
   m_Layer: 0
   m_Name: ScreenManager
   m_TagString: Untagged
@@ -1906,6 +1907,7 @@ GameObject:
   - component: {fileID: 177435529}
   - component: {fileID: 177435528}
   - component: {fileID: 177435527}
+  - component: {fileID: 910000009}
   m_Layer: 0
   m_Name: Slot_Patch
   m_TagString: Untagged
@@ -2378,6 +2380,8 @@ MonoBehaviour:
   labelImage: {fileID: 0}
   labelSelectedSprite: {fileID: 0}
   labelNormalSprite: {fileID: 0}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &199960139
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3283,6 +3287,7 @@ GameObject:
   - component: {fileID: 308255807}
   - component: {fileID: 308255808}
   - component: {fileID: 308255809}
+  - component: {fileID: 910000003}
   m_Layer: 0
   m_Name: Collection Panel
   m_TagString: Untagged
@@ -3336,6 +3341,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionScreen
   m_DefaultSelectedObject: {fileID: 1729778614}
   m_BackButton: {fileID: 1729778616}
+  m_CharacterCards: []
+  m_Animator: {fileID: 910000003}
 --- !u!1 &313827868
 GameObject:
   m_ObjectHideFlags: 0
@@ -3439,6 +3446,8 @@ MonoBehaviour:
   labelImage: {fileID: 1322554130}
   labelSelectedSprite: {fileID: 21300000, guid: 3f2375e31b9a0d74b81a628c8047653e, type: 3}
   labelNormalSprite: {fileID: 21300000, guid: 4b18cd08610747b4f831493f07776efb, type: 3}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &313827871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5041,6 +5050,8 @@ MonoBehaviour:
   labelImage: {fileID: 2147092768}
   labelSelectedSprite: {fileID: 21300000, guid: 10efe6c43caf8e84397915c0cf802979, type: 3}
   labelNormalSprite: {fileID: 21300000, guid: 044bf701baeb56843a35409cdfa186c7, type: 3}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &451215191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5754,6 +5765,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 517168283}
   m_LeftPointer: {fileID: 1320097332}
 --- !u!225 &517168289
@@ -5780,6 +5797,7 @@ GameObject:
   - component: {fileID: 524588103}
   - component: {fileID: 524588102}
   - component: {fileID: 524588101}
+  - component: {fileID: 910000007}
   m_Layer: 0
   m_Name: Slot_Echo
   m_TagString: Untagged
@@ -7039,6 +7057,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 602387701}
   m_LeftPointer: {fileID: 2015642110}
 --- !u!225 &602387707
@@ -8376,6 +8400,8 @@ MonoBehaviour:
   labelImage: {fileID: 142441494}
   labelSelectedSprite: {fileID: 21300000, guid: f594cd1bacb329343a1857fe7960b67a, type: 3}
   labelNormalSprite: {fileID: 21300000, guid: 471cfa3044f685e4aa9c05aa8116c255, type: 3}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &734673924
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8718,6 +8744,7 @@ GameObject:
   - component: {fileID: 760823881}
   - component: {fileID: 760823880}
   - component: {fileID: 760823879}
+  - component: {fileID: 910000014}
   m_Layer: 0
   m_Name: Back B
   m_TagString: Untagged
@@ -9675,6 +9702,417 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 903948015}
   m_CullTransparentMesh: 1
+--- !u!114 &910000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134092944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e53b3919a930419eaae7ed4fc4b021d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.HomeScreenAnimator
+  m_Background: {fileID: 2123186910}
+  m_BackgroundLayer2: {fileID: 456047790}
+  m_BgStartScale: 1.04
+  m_BgZoomDuration: 0.9
+  m_Logo: {fileID: 530157790}
+  m_LogoDropDistance: 45
+  m_LogoStartScale: 0.94
+  m_LogoStartRotationZ: 2.5
+  m_LogoDuration: 0.55
+  m_ContinueButton: {fileID: 1722940595}
+  m_NewGameButton: {fileID: 602387702}
+  m_CollectButton: {fileID: 1958619470}
+  m_OptionsButton: {fileID: 1097428296}
+  m_CreditsButton: {fileID: 1805191251}
+  m_ExitButton: {fileID: 517168284}
+  m_ButtonEntryDistance: 180
+  m_ButtonEntryDuration: 0.38
+  m_ButtonOvershoot: 1.25
+  m_ExitCascadeDuration: 0.28
+--- !u!114 &910000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953909467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7c0c302e0b94401a1eb28537472b0f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.LevelSelectionScreenAnimator
+  m_PanelBackground: {fileID: 688543295}
+  m_PanelStartScale: 0.96
+  m_PanelDuration: 0.38
+  m_ArcSign: {fileID: 16258779}
+  m_LevelsSign: {fileID: 186393162}
+  m_TitleLogo: {fileID: 1136308579}
+  m_BackButton: {fileID: 2096284959}
+  m_GridContainer: {fileID: 1387369879}
+--- !u!114 &910000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 308255806}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b62ff0b280304a40832f119d4f3d545a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionScreenAnimator
+  m_PanelBackground: {fileID: 1122297482}
+  m_PanelStartScale: 0.96
+  m_PanelDuration: 0.38
+  m_CollectionSign: {fileID: 2008854124}
+  m_TotalCounter: {fileID: 1835995190}
+  m_CardEcho: {fileID: 524588100}
+  m_CardNova: {fileID: 2138658335}
+  m_CardPatch: {fileID: 177435526}
+  m_CardPixel: {fileID: 2056020325}
+  m_BackButton: {fileID: 1729778615}
+--- !u!114 &910000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1522255090}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4866477c1a1c4b5692d8bc9008786bf4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.SettingsScreenAnimator
+  m_PanelBackground: {fileID: 578757313}
+  m_PanelSlideDistance: 300
+  m_PanelDuration: 0.36
+  m_SettingsSign: {fileID: 2091375945}
+  m_SettingsRows:
+  - {fileID: 734673921}
+  - {fileID: 313827869}
+  - {fileID: 1745892978}
+  - {fileID: 451215189}
+  m_BackButton: {fileID: 1217661458}
+--- !u!114 &910000005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1637794849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5e29320ef37468c9f649c62c406c870, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CreditsScreenAnimator
+  m_PanelBackground: {fileID: 111343577}
+  m_PanelSlideDistance: 300
+  m_PanelDuration: 0.4
+  m_CreditsSign: {fileID: 375726032}
+  m_ContentContainer: {fileID: 1287633705}
+  m_BackButton: {fileID: 760823878}
+--- !u!114 &910000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8756601930611816590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e73eee6bc564aacba959c17b5a73e2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.ConfirmationPopupAnimator
+  m_DarkOverlay: {fileID: 185302048581771470}
+  m_OverlayMaxAlpha: 0.65
+  m_DialogWindow: {fileID: 5599823866258938735}
+  m_DialogStartScale: 0.88
+  m_DialogDropY: 30
+  m_DialogDuration: 0.3
+  m_TitleImage: {fileID: 7053378868423701181}
+  m_YesButton: {fileID: 2330952932398759486}
+  m_NoButton: {fileID: 5730466692531579368}
+  m_ButtonOffset: 80
+--- !u!114 &910000007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 524588099}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36c1159962494a9494761fe535450f4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionCardSelectable
+  m_Navigation:
+    m_Mode: 4
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 1729778616}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 910000008}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  m_SelectMoveY: 8
+  m_SelectScale: 1.05
+  m_TransitionDuration: 0.12
+  m_CardVisual: {fileID: 524588100}
+--- !u!114 &910000008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2138658334}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36c1159962494a9494761fe535450f4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionCardSelectable
+  m_Navigation:
+    m_Mode: 4
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 1729778616}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 910000007}
+    m_SelectOnRight: {fileID: 910000009}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  m_SelectMoveY: 8
+  m_SelectScale: 1.05
+  m_TransitionDuration: 0.12
+  m_CardVisual: {fileID: 2138658335}
+--- !u!114 &910000009
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177435525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36c1159962494a9494761fe535450f4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionCardSelectable
+  m_Navigation:
+    m_Mode: 4
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 1729778616}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 910000008}
+    m_SelectOnRight: {fileID: 910000010}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  m_SelectMoveY: 8
+  m_SelectScale: 1.05
+  m_TransitionDuration: 0.12
+  m_CardVisual: {fileID: 177435526}
+--- !u!114 &910000010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2056020324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36c1159962494a9494761fe535450f4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CollectionCardSelectable
+  m_Navigation:
+    m_Mode: 4
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 1729778616}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 910000009}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 0}
+  m_SelectMoveY: 8
+  m_SelectScale: 1.05
+  m_TransitionDuration: 0.12
+  m_CardVisual: {fileID: 2056020325}
+--- !u!114 &910000011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2096284958}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0bab7bbfb081f4b9370d5506e487d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIAnimatedButton
+  m_SelectedOffsetX: 15
+  m_SelectedScale: 1.04
+  m_FocusInDuration: 0.12
+  m_FocusOutDuration: 0.08
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
+  m_ButtonVisual: {fileID: 2096284959}
+  m_LeftPointer: {fileID: 0}
+--- !u!114 &910000012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1729778614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0bab7bbfb081f4b9370d5506e487d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIAnimatedButton
+  m_SelectedOffsetX: 15
+  m_SelectedScale: 1.04
+  m_FocusInDuration: 0.12
+  m_FocusOutDuration: 0.08
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
+  m_ButtonVisual: {fileID: 1729778615}
+  m_LeftPointer: {fileID: 0}
+--- !u!114 &910000013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1217661457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0bab7bbfb081f4b9370d5506e487d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIAnimatedButton
+  m_SelectedOffsetX: 15
+  m_SelectedScale: 1.04
+  m_FocusInDuration: 0.12
+  m_FocusOutDuration: 0.08
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
+  m_ButtonVisual: {fileID: 1217661458}
+  m_LeftPointer: {fileID: 0}
+--- !u!114 &910000014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 760823877}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0bab7bbfb081f4b9370d5506e487d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UIAnimatedButton
+  m_SelectedOffsetX: 15
+  m_SelectedScale: 1.04
+  m_FocusInDuration: 0.12
+  m_FocusOutDuration: 0.08
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
+  m_ButtonVisual: {fileID: 760823878}
+  m_LeftPointer: {fileID: 0}
 --- !u!1 &925004690
 GameObject:
   m_ObjectHideFlags: 0
@@ -9946,6 +10384,7 @@ GameObject:
   - component: {fileID: 953909470}
   - component: {fileID: 953909469}
   - component: {fileID: 953909472}
+  - component: {fileID: 910000002}
   m_Layer: 0
   m_Name: Level Selection
   m_TagString: Untagged
@@ -10046,6 +10485,7 @@ MonoBehaviour:
   m_DefaultSelectedObject: {fileID: 1134092944}
   m_BackButton: {fileID: 2096284960}
   m_LevelSelectionManager: {fileID: 0}
+  m_Animator: {fileID: 910000002}
 --- !u!1 &968000931
 GameObject:
   m_ObjectHideFlags: 0
@@ -10570,6 +11010,8 @@ MonoBehaviour:
   labelImage: {fileID: 0}
   labelSelectedSprite: {fileID: 0}
   labelNormalSprite: {fileID: 0}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &1020159840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11027,6 +11469,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.UINavigationManager
   m_InitialScreen: {fileID: 1134092947}
   m_UIInputActionAsset: {fileID: -944628639613478452, guid: 67607d93eacdd344e8ca1bddc27209e4, type: 3}
+  m_TransitionOverlapDelay: 0.12
+  m_NavigateSound: {fileID: 0}
+  m_ConfirmSound: {fileID: 0}
+  m_BackSound: {fileID: 8300000, guid: 3da427dfcd2f8774fb93a1b315cfbc72, type: 3}
+  m_PanelOpenSound: {fileID: 8300000, guid: d0c516c414c17534d8a24a6c465d6932, type: 3}
+  m_PanelCloseSound: {fileID: 8300000, guid: 3da427dfcd2f8774fb93a1b315cfbc72, type: 3}
+  m_PopupOpenSound: {fileID: 0}
   m_VerboseLogging: 0
 --- !u!114 &1084002685
 MonoBehaviour:
@@ -11310,6 +11759,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 1097428294}
   m_LeftPointer: {fileID: 1165329641}
 --- !u!225 &1097428300
@@ -11575,6 +12030,7 @@ GameObject:
   - component: {fileID: 1134092946}
   - component: {fileID: 1134092947}
   - component: {fileID: 1134092948}
+  - component: {fileID: 910000001}
   m_Layer: 0
   m_Name: HomeScreenPanel  New
   m_TagString: Untagged
@@ -11641,6 +12097,7 @@ MonoBehaviour:
   m_ConfirmationPopupScreen: {fileID: 8756601930611816591}
   m_ExitTitleSprite: {fileID: 0}
   m_FirstLevelBuildIndex: 1
+  m_HomeScreenAnimator: {fileID: 910000001}
 --- !u!114 &1134092948
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12144,6 +12601,7 @@ GameObject:
   - component: {fileID: 1217661460}
   - component: {fileID: 1217661459}
   - component: {fileID: 1217661461}
+  - component: {fileID: 910000013}
   m_Layer: 0
   m_Name: Back B
   m_TagString: Untagged
@@ -14648,6 +15106,7 @@ GameObject:
   - component: {fileID: 1522255091}
   - component: {fileID: 1522255094}
   - component: {fileID: 1522255095}
+  - component: {fileID: 910000004}
   m_Layer: 0
   m_Name: SettingsPanel
   m_TagString: Untagged
@@ -14706,6 +15165,7 @@ MonoBehaviour:
   - {fileID: 313827870}
   - {fileID: 1745892979}
   - {fileID: 451215190}
+  m_Animator: {fileID: 910000004}
 --- !u!1 &1523391560
 GameObject:
   m_ObjectHideFlags: 0
@@ -15195,6 +15655,7 @@ GameObject:
   - component: {fileID: 1637794850}
   - component: {fileID: 1637794851}
   - component: {fileID: 1637794852}
+  - component: {fileID: 910000005}
   m_Layer: 0
   m_Name: Credits panel
   m_TagString: Untagged
@@ -15248,6 +15709,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.CreditsScreen
   m_DefaultSelectedObject: {fileID: 1134092944}
   m_BackButton: {fileID: 760823879}
+  m_Animator: {fileID: 910000005}
 --- !u!1 &1640642915
 GameObject:
   m_ObjectHideFlags: 0
@@ -15896,6 +16358,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 1722940594}
   m_LeftPointer: {fileID: 980116075}
 --- !u!225 &1722940600
@@ -15922,6 +16390,7 @@ GameObject:
   - component: {fileID: 1729778618}
   - component: {fileID: 1729778617}
   - component: {fileID: 1729778616}
+  - component: {fileID: 910000012}
   m_Layer: 0
   m_Name: Back B
   m_TagString: Untagged
@@ -15961,10 +16430,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
   m_Navigation:
-    m_Mode: 3
+    m_Mode: 4
     m_WrapAround: 0
     m_SelectOnUp: {fileID: 0}
-    m_SelectOnDown: {fileID: 0}
+    m_SelectOnDown: {fileID: 910000007}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
@@ -16511,6 +16980,8 @@ MonoBehaviour:
   labelImage: {fileID: 682859045}
   labelSelectedSprite: {fileID: 21300000, guid: 78fe89eb949642444aad14762cc40abc, type: 3}
   labelNormalSprite: {fileID: 21300000, guid: 192e3d4611bb6b24094487c26e0ed7cd, type: 3}
+  selectScale: 1.03
+  selectShiftX: 8
 --- !u!114 &1745892980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17071,6 +17542,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 1805191250}
   m_LeftPointer: {fileID: 1736745251}
 --- !u!225 &1805191256
@@ -18316,6 +18793,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 1958619468}
   m_LeftPointer: {fileID: 1973009580}
 --- !u!225 &1958619474
@@ -18626,6 +19109,7 @@ MonoBehaviour:
   m_DefaultSelectedObject: {fileID: 1134092944}
   m_BackButton: {fileID: 1375706322}
   m_LevelSelectionManager: {fileID: 0}
+  m_Animator: {fileID: 0}
 --- !u!114 &1990970846
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19159,6 +19643,7 @@ GameObject:
   - component: {fileID: 2056020328}
   - component: {fileID: 2056020327}
   - component: {fileID: 2056020326}
+  - component: {fileID: 910000010}
   m_Layer: 0
   m_Name: Slot_Pixel
   m_TagString: Untagged
@@ -19617,6 +20102,7 @@ GameObject:
   - component: {fileID: 2096284962}
   - component: {fileID: 2096284961}
   - component: {fileID: 2096284960}
+  - component: {fileID: 910000011}
   m_Layer: 0
   m_Name: B Back
   m_TagString: Untagged
@@ -20162,6 +20648,7 @@ GameObject:
   - component: {fileID: 2138658338}
   - component: {fileID: 2138658337}
   - component: {fileID: 2138658336}
+  - component: {fileID: 910000008}
   m_Layer: 0
   m_Name: Slot_Nova
   m_TagString: Untagged
@@ -21010,6 +21497,7 @@ GameObject:
   - component: {fileID: 8151305092634145943}
   - component: {fileID: 8756601930611816591}
   - component: {fileID: 8756601930611816592}
+  - component: {fileID: 910000006}
   m_Layer: 0
   m_Name: ConfirmationPopup
   m_TagString: Untagged
@@ -21033,6 +21521,7 @@ MonoBehaviour:
   m_ConfirmButton: {fileID: 8896834327853880349}
   m_CancelButton: {fileID: 7230709549614784832}
   m_TitleImage: {fileID: 5777721010709304678}
+  m_Animator: {fileID: 910000006}
 --- !u!114 &8756601930611816592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21109,6 +21598,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.05
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 1
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 2330952932398759486}
   m_LeftPointer: {fileID: 978831473}
 --- !u!225 &8896834327853880351
@@ -21160,6 +21655,12 @@ MonoBehaviour:
   m_SelectedScale: 1.04
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.05
+  m_ConfirmDuration: 0.14
+  m_ConfirmPressedScale: 0.96
+  m_ConfirmPunchOffset: 4
+  m_IsDestructiveOrBack: 0
+  m_SelectAudioClip: {fileID: 0}
+  m_ConfirmAudioClip: {fileID: 0}
   m_ButtonVisual: {fileID: 5730466692531579368}
   m_LeftPointer: {fileID: 1586045218}
 --- !u!225 &9076446943450946550
@@ -21199,3 +21700,20 @@ SceneRoots:
   - {fileID: 647501779}
   - {fileID: 1084002687}
   - {fileID: 925004696}
+
+--- !u!114 &910000015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 30895930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3dfe77a28814a9c8fd6683836193db0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_TargetTransform: {fileID: 30895931}
+  m_DefaultIntensity: 4
+  m_DefaultDuration: 0.1
+  m_ShakeFrequency: 50

@@ -114,6 +114,47 @@ namespace LevelSelection
             }
         }
 
+        /// <summary>
+        /// Sets the progressive procedural drawing scale along the line segment (0.0 to 1.0).
+        /// </summary>
+        public void SetProgressiveScale(float progress)
+        {
+            transform.localScale = new Vector3(Mathf.Clamp01(progress), 1f, 1f);
+        }
+
+        /// <summary>
+        /// Resets the line segment scale and color state cleanly.
+        /// </summary>
+        public void ResetSegment(bool isUnlocked)
+        {
+            transform.localScale = Vector3.one;
+            SetFilled(isUnlocked);
+        }
+
+        /// <summary>
+        /// Plays a traveling energetic flash/highlight along the segment.
+        /// </summary>
+        public IEnumerator PlayEnergyFlash(float duration = 0.12f)
+        {
+            if (lineImage == null) lineImage = GetComponent<Image>();
+            if (lineImage == null) yield break;
+
+            Color baseColor = lineImage.color;
+            Color flashColor = Color.white;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float pop = Mathf.Sin(t * Mathf.PI);
+                lineImage.color = Color.Lerp(baseColor, flashColor, pop);
+                yield return null;
+            }
+
+            lineImage.color = baseColor;
+        }
+
         #endregion
     }
 }

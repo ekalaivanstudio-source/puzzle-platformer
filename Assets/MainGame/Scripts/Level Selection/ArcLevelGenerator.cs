@@ -47,10 +47,20 @@ namespace LevelSelection
 
         #endregion
 
+        #region Events
+
+        /// <summary>
+        /// Fired when level nodes and path segments have been completely generated and linked.
+        /// </summary>
+        public event System.Action<List<LevelNodeUI>, List<UIPathSegment>> OnGenerationCompleted;
+
+        #endregion
+
         #region Properties
 
         public List<LevelNodeUI> SpawnedNodes => spawnedNodes;
         public List<UIPathSegment> GeneratedSegments => generatedSegments;
+        public bool HasGeneratedArc => spawnedNodes.Count > 0;
 
         public int ArcCount => (arcs != null && arcs.Count > 0) ? arcs.Count : 1;
 
@@ -198,6 +208,9 @@ namespace LevelSelection
 
             // 6. Link the spawned nodes into a single left/right chain that follows the S-curve order
             BuildLevelButtonNavigation();
+
+            // 7. Fire generation completion callback
+            OnGenerationCompleted?.Invoke(spawnedNodes, generatedSegments);
         }
 
         /// <summary>

@@ -45,6 +45,23 @@ namespace LevelSelection
 
         #endregion
 
+        #region Events
+
+        /// <summary>
+        /// Fired when an arc page has completed generation and is ready for animation: (nodes, pathSegments, highestUnlockedLevel).
+        /// </summary>
+        public event System.Action<List<LevelNodeUI>, List<UIPathSegment>, int> OnArcReady;
+
+        #endregion
+
+        #region Properties
+
+        public List<LevelNodeUI> LevelNodes => levelNodes;
+        public List<UIPathSegment> PathSegments => pathSegments;
+        public bool HasGeneratedArc => m_HasGeneratedArc && levelNodes != null && levelNodes.Count > 0;
+
+        #endregion
+
         #region Private Fields
 
         private List<LevelNodeUI> levelNodes = new List<LevelNodeUI>();
@@ -142,15 +159,52 @@ namespace LevelSelection
         }
 
         /// <summary>
-        /// Generates the arc nodes and sets selection focus directly on the player's highest unlocked level.
+        /// Requests arc data. If already generated and valid, notifies listeners immediately without recreating GameObjects.
+        /// Otherwise, generates the arc and fires OnArcReady.
         /// </summary>
-        public void InitializeAndFocusCurrentLevel()
+        public void RequestArcData(bool forceRegenerate = false)
         {
             if (arcGenerator == null) return;
 
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
             currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
-            RefreshArcDisplay();
+
+            if (HasGeneratedArc && !forceRegenerate)
+            {
+                // Update navigation button states & title
+                if (prevArcButton != null) prevArcButton.interactable = CanGoToPrevArc();
+                if (nextArcButton != null) nextArcButton.interactable = CanGoToNextArc();
+                if (arcTitleImage != null) arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
+
+                OnArcReady?.Invoke(levelNodes, pathSegments, highestUnlockedLevel);
+            }
+            else
+            {
+                RefreshArcDisplay(FocusCurrentLevel, autoFocus: false);
+            }
+        }
+
+        /// <summary>
+        /// Generates the arc nodes and sets selection focus directly on the player's highest unlocked level.
+        /// </summary>
+        public void InitializeAndFocusCurrentLevel()
+        {
+            RequestArcData(forceRegenerate: false);
+        }
+
+        /// <summary>
+        /// Restores controller/keyboard selection focus to the current unlocked level node.
+        /// Must only be called after the entrance map construction animation has finished!
+        /// </summary>
+        public void FocusCurrentLevelNode()
+        {
+            if (UINavigationManager.Instance == null || levelNodes == null || levelNodes.Count == 0) return;
+
+            GameObject selectTarget = GetCurrentUnlockedLevelNodeObject();
+            if (selectTarget != null)
+            {
+                UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+            }
         }
 
         /// <summary>
@@ -216,13 +270,9 @@ namespace LevelSelection
         }
 
         /// <summary>
-        /// Rebuilds the current arc page and restores selection focus.
+        /// Rebuilds the current arc page and fires OnArcReady. Focus is only set if autoFocus is true.
         /// </summary>
-        /// <param name="focusTargetNodeIndex">
-        /// Node index to focus, or <see cref="FocusCurrentLevel"/> to focus the player's highest unlocked level.
-        /// Indices are clamped to the generated node range.
-        /// </param>
-        private void RefreshArcDisplay(int focusTargetNodeIndex = FocusCurrentLevel)
+        private void RefreshArcDisplay(int focusTargetNodeIndex = FocusCurrentLevel, bool autoFocus = false)
         {
             if (arcGenerator == null) return;
 
@@ -252,24 +302,28 @@ namespace LevelSelection
                 arcTitleImage.sprite = arcGenerator.GetArcSprite(currentArcIndex);
             }
 
-            // 5. Restore EventSystem focus
-            if (UINavigationManager.Instance == null || levelNodes.Count == 0) return;
+            // 5. Fire completion callback for animation synchronization
+            OnArcReady?.Invoke(levelNodes, pathSegments, highestUnlockedLevel);
 
-            GameObject selectTarget;
-            if (focusTargetNodeIndex == FocusCurrentLevel)
+            // 6. Restore EventSystem focus only when explicitly requested (e.g. manual page change)
+            if (autoFocus && UINavigationManager.Instance != null && levelNodes.Count > 0)
             {
-                selectTarget = GetCurrentUnlockedLevelNodeObject();
-            }
-            else
-            {
-                int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
-                LevelNodeUI target = levelNodes[targetIdx];
-                selectTarget = target != null ? target.gameObject : null;
-            }
+                GameObject selectTarget;
+                if (focusTargetNodeIndex == FocusCurrentLevel)
+                {
+                    selectTarget = GetCurrentUnlockedLevelNodeObject();
+                }
+                else
+                {
+                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
+                    LevelNodeUI target = levelNodes[targetIdx];
+                    selectTarget = target != null ? target.gameObject : null;
+                }
 
-            if (selectTarget != null)
-            {
-                UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+                if (selectTarget != null)
+                {
+                    UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+                }
             }
         }
 
@@ -278,7 +332,7 @@ namespace LevelSelection
             if (!CanGoToNextArc()) return;
 
             currentArcIndex++;
-            RefreshArcDisplay(FocusFirstNode);
+            RefreshArcDisplay(FocusFirstNode, autoFocus: true);
         }
 
         private void OnPrevArcClicked()
@@ -286,7 +340,7 @@ namespace LevelSelection
             if (!CanGoToPrevArc()) return;
 
             currentArcIndex--;
-            RefreshArcDisplay(FocusLastNode);
+            RefreshArcDisplay(FocusLastNode, autoFocus: true);
         }
 
         private IEnumerator UnlockSequence(int completedLevelIndex)

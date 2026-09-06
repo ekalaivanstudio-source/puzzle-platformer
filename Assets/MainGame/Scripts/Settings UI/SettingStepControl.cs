@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -40,6 +41,12 @@ namespace Setting.Menu
         [Tooltip("Sprite used for the label in normal state.")]
         [SerializeField] private Sprite labelNormalSprite;
 
+        [Header("Physical Selection Motion")]
+        [Tooltip("Scale factor of the row when selected/focused.")]
+        [SerializeField] private float selectScale = 1.03f;
+        [Tooltip("Horizontal shift of the label when selected/focused.")]
+        [SerializeField] private float selectShiftX = 8f;
+
         #endregion
 
         #region Constants
@@ -55,6 +62,10 @@ namespace Setting.Menu
         #region Private Fields
 
         private int currentValue = 0; // Range: 0 to MaxValue
+        private Coroutine m_BlockPunchCoroutine;
+        private Coroutine m_SelectMotionCoroutine;
+        private Vector2 m_OriginalLabelPos;
+        private bool m_CapturedLabelPos;
 
         #endregion
 
@@ -147,19 +158,66 @@ namespace Setting.Menu
         {
             base.OnSelect(eventData);
             UpdateLabelSprite(true);
+            AnimateSelectionFocus(true);
         }
 
         public override void OnDeselect(BaseEventData eventData)
         {
             base.OnDeselect(eventData);
             UpdateLabelSprite(false);
+            AnimateSelectionFocus(false);
         }
 
         public override void OnPointerEnter(PointerEventData eventData)
         {
             base.OnPointerEnter(eventData);
-            // Select on mouse hover
             Select();
+        }
+
+        private void AnimateSelectionFocus(bool focused)
+        {
+            if (labelImage != null)
+            {
+                RectTransform labelRt = labelImage.rectTransform;
+                if (!m_CapturedLabelPos)
+                {
+                    m_OriginalLabelPos = labelRt.anchoredPosition;
+                    m_CapturedLabelPos = true;
+                }
+
+                if (m_SelectMotionCoroutine != null) StopCoroutine(m_SelectMotionCoroutine);
+                m_SelectMotionCoroutine = StartCoroutine(SelectionMotionRoutine(labelRt, focused));
+            }
+        }
+
+        private IEnumerator SelectionMotionRoutine(RectTransform labelRt, bool focused)
+        {
+            float duration = 0.12f;
+            float elapsed = 0f;
+            Vector2 startPos = labelRt.anchoredPosition;
+            Vector2 targetPos = focused 
+                ? new Vector2(m_OriginalLabelPos.x + selectShiftX, m_OriginalLabelPos.y) 
+                : m_OriginalLabelPos;
+
+            Vector3 startScale = transform.localScale;
+            Vector3 targetScale = focused 
+                ? new Vector3(selectScale, selectScale, 1f) 
+                : Vector3.one;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float ease = 1f - Mathf.Pow(1f - t, 3f);
+
+                labelRt.anchoredPosition = Vector2.Lerp(startPos, targetPos, ease);
+                transform.localScale = Vector3.Lerp(startScale, targetScale, ease);
+                yield return null;
+            }
+
+            labelRt.anchoredPosition = targetPos;
+            transform.localScale = targetScale;
+            m_SelectMotionCoroutine = null;
         }
 
         private void UpdateLabelSprite(bool selected)
@@ -246,10 +304,43 @@ namespace Setting.Menu
             int newValue = Mathf.Clamp(value, 0, MaxValue);
             if (currentValue != newValue)
             {
+                int changedIndex = (newValue > currentValue) ? newValue - 1 : currentValue - 1;
                 currentValue = newValue;
                 UpdateVisuals();
+                PunchBlock(changedIndex);
                 OnValueChanged?.Invoke(currentValue);
             }
+        }
+
+        private void PunchBlock(int index)
+        {
+            if (stepImages == null || index < 0 || index >= stepImages.Length) return;
+            Image img = stepImages[index];
+            if (img == null) return;
+
+            if (m_BlockPunchCoroutine != null) StopCoroutine(m_BlockPunchCoroutine);
+            m_BlockPunchCoroutine = StartCoroutine(BlockPunchRoutine(img.rectTransform));
+        }
+
+        private IEnumerator BlockPunchRoutine(RectTransform target)
+        {
+            if (target == null) yield break;
+            float duration = 0.12f;
+            float elapsed = 0f;
+            Vector3 startScale = new Vector3(1.25f, 1.25f, 1f);
+            Vector3 endScale = Vector3.one;
+
+            target.localScale = startScale;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float ease = 1f - Mathf.Pow(1f - t, 2f);
+                target.localScale = Vector3.Lerp(startScale, endScale, ease);
+                yield return null;
+            }
+            target.localScale = endScale;
+            m_BlockPunchCoroutine = null;
         }
 
         #endregion
