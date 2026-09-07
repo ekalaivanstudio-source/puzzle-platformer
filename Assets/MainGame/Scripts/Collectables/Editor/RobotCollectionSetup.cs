@@ -739,7 +739,7 @@ namespace Collectables.EditorTools
             label.color = color;
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;
-            label.enableWordWrapping = false;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
 
             var element = go.AddComponent<LayoutElement>();
             element.preferredHeight = height;
