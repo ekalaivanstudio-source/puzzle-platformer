@@ -11,7 +11,7 @@ namespace MainGame.UI.Unified
     /// <summary>
     /// Animates the Level Selection screen entrance and exit as a procedural Map Network Activation:
     /// 1. Map panel arrives via unfold / perspective deployment (+80px, scale X 0.92 -> 1.02 -> 1.00).
-    /// 2. Pixel-art scanline sweeps across the grid.
+    /// 2. Stylized pixel-art bubble and particle activation effect across map and nodes.
     /// 3. ARC 1 and LEVELS header signs assemble from left/right with opposing rotation snap.
     /// 4. RETRY logo glitched horizontal strip assembly.
     /// 5. Back button signboard arrives from below.
@@ -74,7 +74,38 @@ namespace MainGame.UI.Unified
         private Coroutine m_LevelsBreezeRoutine;
         private bool m_HasCapturedRest = false;
 
-        private Image m_ScanlineImage;
+        #region Pixel Bubble Activation System
+
+        private class PixelBubbleItem
+        {
+            public GameObject root;
+            public RectTransform rectTransform;
+            public Image mainImage;
+            public CanvasGroup canvasGroup;
+            public RectTransform[] shards;
+            public Image[] shardImages;
+        }
+
+        private enum BubbleStyle
+        {
+            TinyDriftLeft,
+            TinyDriftRight,
+            SmallOutward,
+            MediumAroundNode,
+            PixelFragment
+        }
+
+        private RectTransform m_BubbleContainer;
+        private List<PixelBubbleItem> m_BubblePool;
+        private const int BUBBLE_POOL_SIZE = 22;
+
+        private static Sprite s_PixelTinyBubbleSprite;
+        private static Sprite s_PixelSmallBubbleSprite;
+        private static Sprite s_PixelMediumBubbleSprite;
+        private static Sprite s_PixelFragmentSprite;
+        private static Sprite s_PixelShardSprite;
+
+        #endregion
 
         #endregion
 
@@ -253,13 +284,41 @@ namespace MainGame.UI.Unified
                 m_Pointer.ResetPointerState();
             }
 
+            ResetBubblePool();
+
+            if (m_PanelBackground != null)
+            {
+                Transform oldScan = m_PanelBackground.Find("MapScanline");
+                if (oldScan != null) Destroy(oldScan.gameObject);
+            }
+
+            // Ensure the main shared scene background is always visible behind the level selection panel
+            Transform screenManager = transform.parent;
+            if (screenManager != null)
+            {
+                Transform bgLayer1 = screenManager.Find("Backagrond/Layer 01") ?? screenManager.Find("Background/Layer 01");
+                if (bgLayer1 != null)
+                {
+                    CanvasGroup bgCg = bgLayer1.GetComponent<CanvasGroup>();
+                    if (bgCg != null) bgCg.alpha = 1f;
+                    bgLayer1.localScale = Vector3.one;
+                }
+                Transform bgLayer2 = screenManager.Find("Backagrond/Layer 02") ?? screenManager.Find("Background/Layer 02");
+                if (bgLayer2 != null)
+                {
+                    CanvasGroup bgCg2 = bgLayer2.GetComponent<CanvasGroup>();
+                    if (bgCg2 != null) bgCg2.alpha = 1f;
+                    bgLayer2.localScale = Vector3.one;
+                }
+            }
+
             if (m_PanelBackground != null)
             {
                 CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
                 if (cg == null) cg = m_PanelBackground.gameObject.AddComponent<CanvasGroup>();
-                cg.alpha = 0f;
-                m_PanelBackground.anchoredPosition = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
-                m_PanelBackground.localScale = new Vector3(0.92f, 1.05f, 1f);
+                cg.alpha = 1f;
+                m_PanelBackground.anchoredPosition = m_PanelRestPos;
+                m_PanelBackground.localScale = m_PanelRestScale;
             }
 
             if (m_ArcSign != null)
@@ -446,18 +505,7 @@ namespace MainGame.UI.Unified
                 }
             }
 
-            // 2. Scanline sweep across the map grid
-            StartCoroutine(ScanlineSweepRoutine(0.24f));
-
-            // 3. Short beat for sweep to start
-            float timer = 0f;
-            while (timer < 0.08f)
-            {
-                timer += Time.unscaledDeltaTime;
-                yield return null;
-            }
-
-            // 4. Map Network Activation
+            // 2. Map Network Activation (Path reveal + Node boot-up + Camera scanline sweep + Pointer lock)
             yield return StartCoroutine(MapNetworkActivationRoutine(nodes, segments, highestUnlockedLevel, onComplete, focusTargetNodeIndex));
         }
 
@@ -533,10 +581,7 @@ namespace MainGame.UI.Unified
                 m_Pointer.ResetPointerState();
             }
 
-            if (m_ScanlineImage != null)
-            {
-                m_ScanlineImage.gameObject.SetActive(false);
-            }
+            ResetBubblePool();
         }
 
         #endregion
@@ -553,16 +598,13 @@ namespace MainGame.UI.Unified
             // 1. Prepare entrance states
             PrepareEntranceState(nodes, segments);
 
-            // 2. Animate Map Panel Unfold (Phase 2)
+            // 2. Animate Map Panel rapid expansion toward player (Beat 4)
             if (m_PanelBackground != null)
             {
                 StartCoroutine(PanelUnfoldRoutine(m_PanelDuration));
             }
 
-            // 3. Scanline sweep across the map (Phase 3)
-            StartCoroutine(ScanlineSweepRoutine(0.28f));
-
-            // 4. Header elements entrance (Phases 4 & 5)
+            // 3. Header elements entrance
             if (m_ArcSign != null) StartCoroutine(ArcSignEntranceRoutine());
             if (m_LevelsSign != null) StartCoroutine(LevelsSignEntranceRoutine());
             if (m_TitleLogo != null) StartCoroutine(TitleGlitchEntranceRoutine(0.26f));
@@ -602,13 +644,12 @@ namespace MainGame.UI.Unified
             CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
             if (cg == null) cg = m_PanelBackground.gameObject.AddComponent<CanvasGroup>();
 
-            Vector2 startPos = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
-            Vector3 startScale = new Vector3(0.92f, 1.05f, 1f);
-            Vector3 overshootScale = new Vector3(1.02f, 0.98f, 1f);
+            Vector3 startScale = new Vector3(0.95f, 0.95f, 1f);
+            Vector3 overshootScale = new Vector3(1.025f, 1.025f, 1f);
 
-            m_PanelBackground.anchoredPosition = startPos;
+            m_PanelBackground.anchoredPosition = m_PanelRestPos;
             m_PanelBackground.localScale = startScale;
-            cg.alpha = 0f;
+            cg.alpha = 1f;
 
             float elapsed = 0f;
             while (elapsed < duration)
@@ -616,18 +657,18 @@ namespace MainGame.UI.Unified
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
 
-                cg.alpha = Mathf.Lerp(0f, 1f, t * 2.5f);
-                m_PanelBackground.anchoredPosition = Vector2.Lerp(startPos, m_PanelRestPos, UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.12f));
+                cg.alpha = 1f;
+                m_PanelBackground.anchoredPosition = m_PanelRestPos;
 
-                // Unfold perspective illusion
-                if (t < 0.7f)
+                // Rapid forward expansion toward player with punchy settle
+                if (t < 0.72f)
                 {
-                    float sT = t / 0.7f;
+                    float sT = t / 0.72f;
                     m_PanelBackground.localScale = Vector3.Lerp(startScale, overshootScale, UIEasing.Evaluate(EasingType.EaseOutQuad, sT));
                 }
                 else
                 {
-                    float sT = (t - 0.7f) / 0.3f;
+                    float sT = (t - 0.72f) / 0.28f;
                     m_PanelBackground.localScale = Vector3.Lerp(overshootScale, m_PanelRestScale, UIEasing.Evaluate(EasingType.EaseInOutQuad, sT));
                 }
 
@@ -638,68 +679,558 @@ namespace MainGame.UI.Unified
             m_PanelBackground.localScale = m_PanelRestScale;
             cg.alpha = 1f;
 
-            UIMicroShake.Shake(0.5f, 0.05f);
+            UIMicroShake.Shake(1.6f, 0.08f);
         }
 
-        private void EnsureScanline()
+        #region Pixel-Art Bubble Map Activation System
+
+        private static Sprite GetTinyBubbleSprite()
         {
-            if (m_ScanlineImage != null) return;
+            if (s_PixelTinyBubbleSprite != null) return s_PixelTinyBubbleSprite;
+            Texture2D tex = new Texture2D(6, 6, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "PixelTinyBubble"
+            };
+            Color[] cols = new Color[36];
+            Color cClear = Color.clear;
+            Color cRim = new Color(0.25f, 0.75f, 0.95f, 0.90f);
+            Color cBody = new Color(0.40f, 0.90f, 1.0f, 0.80f);
+            Color cGlint = new Color(1f, 1f, 1f, 0.98f);
 
-            Transform targetParent = m_PanelBackground != null ? m_PanelBackground.transform : transform;
-            GameObject scanObj = new GameObject("MapScanline", typeof(RectTransform), typeof(Image));
-            scanObj.transform.SetParent(targetParent, false);
-
-            RectTransform rt = scanObj.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0.5f, 0f);
-            rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(24f, 0f);
-            rt.anchoredPosition = Vector2.zero;
-
-            m_ScanlineImage = scanObj.GetComponent<Image>();
-            m_ScanlineImage.color = new Color(0.35f, 0.75f, 1f, 0.35f);
-            m_ScanlineImage.raycastTarget = false;
-            scanObj.SetActive(false);
+            string[] pattern = new string[]
+            {
+                "..##..",
+                ".####.",
+                "######",
+                "##G###",
+                ".####.",
+                "..##.."
+            };
+            for (int y = 0; y < 6; y++)
+            {
+                for (int x = 0; x < 6; x++)
+                {
+                    char ch = pattern[5 - y][x];
+                    cols[y * 6 + x] = (ch == '.') ? cClear : (ch == 'G') ? cGlint : (ch == '#') ? cBody : cRim;
+                }
+            }
+            tex.SetPixels(cols);
+            tex.Apply();
+            s_PixelTinyBubbleSprite = Sprite.Create(tex, new Rect(0, 0, 6, 6), new Vector2(0.5f, 0.5f), 1f);
+            return s_PixelTinyBubbleSprite;
         }
 
-        private IEnumerator ScanlineSweepRoutine(float duration)
+        private static Sprite GetSmallBubbleSprite()
         {
-            EnsureScanline();
-            if (m_ScanlineImage == null) yield break;
+            if (s_PixelSmallBubbleSprite != null) return s_PixelSmallBubbleSprite;
+            Texture2D tex = new Texture2D(10, 10, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "PixelSmallBubble"
+            };
+            Color[] cols = new Color[100];
+            Color cClear = Color.clear;
+            Color cRim = new Color(0.20f, 0.65f, 0.92f, 0.95f);
+            Color cCore = new Color(0.35f, 0.85f, 1.0f, 0.35f);
+            Color cGlint = new Color(1f, 1f, 1f, 0.98f);
 
-            GameObject scanObj = m_ScanlineImage.gameObject;
-            scanObj.SetActive(true);
-            scanObj.transform.SetAsLastSibling();
-            RectTransform rt = m_ScanlineImage.rectTransform;
+            string[] pattern = new string[]
+            {
+                "...####...",
+                "..######..",
+                ".##GG..##.",
+                ".##G....##.",
+                "##......##",
+                "##......##",
+                ".##....##.",
+                ".##....##.",
+                "..######..",
+                "...####..."
+            };
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 10; x++)
+                {
+                    char ch = pattern[9 - y][x];
+                    cols[y * 10 + x] = (ch == '.') ? (x > 1 && x < 8 && y > 1 && y < 8 ? cCore : cClear) : (ch == 'G') ? cGlint : cRim;
+                }
+            }
+            tex.SetPixels(cols);
+            tex.Apply();
+            s_PixelSmallBubbleSprite = Sprite.Create(tex, new Rect(0, 0, 10, 10), new Vector2(0.5f, 0.5f), 1f);
+            return s_PixelSmallBubbleSprite;
+        }
 
-            float parentWidth = 1400f;
+        private static Sprite GetMediumBubbleSprite()
+        {
+            if (s_PixelMediumBubbleSprite != null) return s_PixelMediumBubbleSprite;
+            Texture2D tex = new Texture2D(14, 14, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "PixelMediumBubble"
+            };
+            Color[] cols = new Color[196];
+            Color cClear = Color.clear;
+            Color cRim = new Color(0.18f, 0.58f, 0.88f, 0.95f);
+            Color cCore = new Color(0.35f, 0.85f, 1.0f, 0.28f);
+            Color cGlint = new Color(1f, 1f, 1f, 0.98f);
+
+            string[] pattern = new string[]
+            {
+                "....######....",
+                "..##########..",
+                ".##........##.",
+                ".##GG......##.",
+                "##GGG.......##",
+                "##.G........##",
+                "##..........##",
+                "##..........##",
+                "##..........##",
+                "##..........##",
+                ".##........##.",
+                ".##........##.",
+                "..##########..",
+                "....######...."
+            };
+            for (int y = 0; y < 14; y++)
+            {
+                for (int x = 0; x < 14; x++)
+                {
+                    char ch = pattern[13 - y][x];
+                    cols[y * 14 + x] = (ch == '.') ? (x > 1 && x < 12 && y > 1 && y < 12 ? cCore : cClear) : (ch == 'G') ? cGlint : cRim;
+                }
+            }
+            tex.SetPixels(cols);
+            tex.Apply();
+            s_PixelMediumBubbleSprite = Sprite.Create(tex, new Rect(0, 0, 14, 14), new Vector2(0.5f, 0.5f), 1f);
+            return s_PixelMediumBubbleSprite;
+        }
+
+        private static Sprite GetPixelFragmentSprite()
+        {
+            if (s_PixelFragmentSprite != null) return s_PixelFragmentSprite;
+            Texture2D tex = new Texture2D(4, 4, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "PixelFragment"
+            };
+            Color[] cols = new Color[16];
+            Color cClear = Color.clear;
+            Color cBody = new Color(0.35f, 0.88f, 1.0f, 0.95f);
+            Color cGlint = new Color(1f, 1f, 1f, 1.0f);
+
+            string[] pattern = new string[]
+            {
+                ".##.",
+                "#G##",
+                "####",
+                ".##."
+            };
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    char ch = pattern[3 - y][x];
+                    cols[y * 4 + x] = (ch == '.') ? cClear : (ch == 'G') ? cGlint : cBody;
+                }
+            }
+            tex.SetPixels(cols);
+            tex.Apply();
+            s_PixelFragmentSprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 1f);
+            return s_PixelFragmentSprite;
+        }
+
+        private static Sprite GetPixelShardSprite()
+        {
+            if (s_PixelShardSprite != null) return s_PixelShardSprite;
+            Texture2D tex = new Texture2D(3, 3, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "PixelShard"
+            };
+            Color[] cols = new Color[9];
+            Color cClear = Color.clear;
+            Color cColor = new Color(0.40f, 0.90f, 1.0f, 0.95f);
+            Color cGlint = new Color(1f, 1f, 1f, 1.0f);
+
+            string[] pattern = new string[]
+            {
+                ".#.",
+                "#G#",
+                ".#."
+            };
+            for (int y = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 3; x++)
+                {
+                    char ch = pattern[2 - y][x];
+                    cols[y * 3 + x] = (ch == '.') ? cClear : (ch == 'G') ? cGlint : cColor;
+                }
+            }
+            tex.SetPixels(cols);
+            tex.Apply();
+            s_PixelShardSprite = Sprite.Create(tex, new Rect(0, 0, 3, 3), new Vector2(0.5f, 0.5f), 1f);
+            return s_PixelShardSprite;
+        }
+
+        private void EnsureBubblePool()
+        {
+            if (m_BubblePool != null && m_BubbleContainer != null) return;
+
+            Transform targetParent = m_GridContainer != null ? m_GridContainer.transform : (m_PanelBackground != null ? m_PanelBackground.transform : transform);
+
+            // Clean up any legacy scanline GameObject if present
+            Transform oldScan = targetParent.Find("MapScanline");
+            if (oldScan != null) Destroy(oldScan.gameObject);
             if (m_PanelBackground != null)
             {
-                parentWidth = m_PanelBackground.rect.width > 100f ? m_PanelBackground.rect.width : 1400f;
+                Transform pScan = m_PanelBackground.Find("MapScanline");
+                if (pScan != null) Destroy(pScan.gameObject);
             }
 
-            float startX = -parentWidth * 0.5f - 30f;
-            float endX = parentWidth * 0.5f + 30f;
+            if (m_BubbleContainer == null)
+            {
+                Transform existing = targetParent.Find("BubbleFXContainer");
+                if (existing != null)
+                {
+                    m_BubbleContainer = existing as RectTransform;
+                }
+                else
+                {
+                    GameObject containerObj = new GameObject("BubbleFXContainer", typeof(RectTransform));
+                    containerObj.transform.SetParent(targetParent, false);
+                    m_BubbleContainer = containerObj.GetComponent<RectTransform>();
+                    m_BubbleContainer.anchorMin = new Vector2(0.5f, 0.5f);
+                    m_BubbleContainer.anchorMax = new Vector2(0.5f, 0.5f);
+                    m_BubbleContainer.pivot = new Vector2(0.5f, 0.5f);
+                    m_BubbleContainer.sizeDelta = targetParent is RectTransform rt ? rt.sizeDelta : new Vector2(1400f, 900f);
+                    m_BubbleContainer.anchoredPosition = Vector2.zero;
+                }
+            }
 
-            rt.anchoredPosition = new Vector2(startX, 0f);
+            // Ensure bubble container renders behind node buttons so level numbers are never obscured
+            m_BubbleContainer.SetSiblingIndex(0);
 
+            if (m_BubblePool == null)
+            {
+                m_BubblePool = new List<PixelBubbleItem>(BUBBLE_POOL_SIZE);
+                for (int i = 0; i < BUBBLE_POOL_SIZE; i++)
+                {
+                    GameObject bubbleObj = new GameObject($"PixelBubble_{i}", typeof(RectTransform), typeof(CanvasGroup));
+                    bubbleObj.transform.SetParent(m_BubbleContainer, false);
+
+                    RectTransform rt = bubbleObj.GetComponent<RectTransform>();
+                    CanvasGroup cg = bubbleObj.GetComponent<CanvasGroup>();
+
+                    GameObject mainImgObj = new GameObject("MainSprite", typeof(RectTransform), typeof(Image));
+                    mainImgObj.transform.SetParent(bubbleObj.transform, false);
+                    RectTransform mainRt = mainImgObj.GetComponent<RectTransform>();
+                    mainRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    mainRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    mainRt.pivot = new Vector2(0.5f, 0.5f);
+                    mainRt.anchoredPosition = Vector2.zero;
+                    mainRt.sizeDelta = new Vector2(16f, 16f);
+
+                    Image img = mainImgObj.GetComponent<Image>();
+                    img.raycastTarget = false;
+
+                    RectTransform[] shards = new RectTransform[4];
+                    Image[] shardImages = new Image[4];
+                    Sprite shardSprite = GetPixelShardSprite();
+
+                    for (int s = 0; s < 4; s++)
+                    {
+                        GameObject shardObj = new GameObject($"Shard_{s}", typeof(RectTransform), typeof(Image));
+                        shardObj.transform.SetParent(bubbleObj.transform, false);
+                        RectTransform srt = shardObj.GetComponent<RectTransform>();
+                        srt.anchorMin = new Vector2(0.5f, 0.5f);
+                        srt.anchorMax = new Vector2(0.5f, 0.5f);
+                        srt.pivot = new Vector2(0.5f, 0.5f);
+                        srt.sizeDelta = new Vector2(6f, 6f);
+                        srt.anchoredPosition = Vector2.zero;
+
+                        Image sImg = shardObj.GetComponent<Image>();
+                        sImg.sprite = shardSprite;
+                        sImg.raycastTarget = false;
+                        shardObj.SetActive(false);
+
+                        shards[s] = srt;
+                        shardImages[s] = sImg;
+                    }
+
+                    bubbleObj.SetActive(false);
+
+                    m_BubblePool.Add(new PixelBubbleItem
+                    {
+                        root = bubbleObj,
+                        rectTransform = rt,
+                        mainImage = img,
+                        canvasGroup = cg,
+                        shards = shards,
+                        shardImages = shardImages
+                    });
+                }
+            }
+
+            ResetBubblePool();
+        }
+
+        private void ResetBubblePool()
+        {
+            if (m_BubblePool != null)
+            {
+                for (int i = 0; i < m_BubblePool.Count; i++)
+                {
+                    PixelBubbleItem item = m_BubblePool[i];
+                    if (item == null || item.root == null) continue;
+
+                    item.root.SetActive(false);
+                    if (item.mainImage != null) item.mainImage.gameObject.SetActive(true);
+                    if (item.rectTransform != null)
+                    {
+                        item.rectTransform.localScale = Vector3.zero;
+                        item.rectTransform.localEulerAngles = Vector3.zero;
+                    }
+                    if (item.canvasGroup != null) item.canvasGroup.alpha = 0f;
+                    if (item.shards != null)
+                    {
+                        for (int s = 0; s < item.shards.Length; s++)
+                        {
+                            if (item.shards[s] != null) item.shards[s].gameObject.SetActive(false);
+                        }
+                    }
+                }
+            }
+
+            if (m_BubbleContainer != null)
+            {
+                m_BubbleContainer.gameObject.SetActive(false);
+            }
+        }
+
+        private IEnumerator PixelBubbleActivationRoutine(
+            List<LevelNodeUI> nodes,
+            List<UIPathSegment> segments)
+        {
+            EnsureBubblePool();
+            if (m_BubblePool == null || m_BubblePool.Count == 0 || m_BubbleContainer == null) yield break;
+
+            m_BubbleContainer.gameObject.SetActive(true);
+
+            // Collect anchor points around runtime-generated nodes
+            List<Vector2> anchorPositions = new List<Vector2>();
+
+            if (nodes != null && nodes.Count > 0)
+            {
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    if (nodes[i] != null)
+                    {
+                        Vector3 worldPos = nodes[i].transform.position;
+                        Vector2 localPos = m_BubbleContainer.InverseTransformPoint(worldPos);
+                        anchorPositions.Add(localPos);
+                    }
+                }
+            }
+
+            if (anchorPositions.Count == 0)
+            {
+                anchorPositions.Add(new Vector2(-300f, -100f));
+                anchorPositions.Add(new Vector2(0f, 0f));
+                anchorPositions.Add(new Vector2(300f, 100f));
+            }
+
+            float totalDuration = 0.48f;
+            int bubbleCount = Mathf.Min(BUBBLE_POOL_SIZE, 20);
+
+            for (int i = 0; i < bubbleCount; i++)
+            {
+                PixelBubbleItem item = m_BubblePool[i];
+                if (item == null) continue;
+
+                Vector2 basePos = anchorPositions[i % anchorPositions.Count];
+
+                BubbleStyle style;
+                if (i % 5 == 0) style = BubbleStyle.MediumAroundNode;
+                else if (i % 5 == 1) style = BubbleStyle.TinyDriftLeft;
+                else if (i % 5 == 2) style = BubbleStyle.TinyDriftRight;
+                else if (i % 5 == 3) style = BubbleStyle.SmallOutward;
+                else style = BubbleStyle.PixelFragment;
+
+                // Position offset: 42px to 80px away from node center so level numbers stay crisp & clear
+                float angle = (i * 49f + 25f) * Mathf.Deg2Rad;
+                float radius = UnityEngine.Random.Range(42f, 80f);
+                Vector2 spawnPos = basePos + new Vector2(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius);
+
+                float delay = UnityEngine.Random.Range(0f, 0.12f);
+                float life = UnityEngine.Random.Range(0.30f, 0.38f);
+
+                StartCoroutine(AnimateSingleBubble(item, spawnPos, style, delay, life));
+            }
+
+            float timer = 0f;
+            while (timer < totalDuration)
+            {
+                timer += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            ResetBubblePool();
+        }
+
+        private IEnumerator AnimateSingleBubble(
+            PixelBubbleItem item,
+            Vector2 spawnPos,
+            BubbleStyle style,
+            float delay,
+            float lifetime)
+        {
+            if (delay > 0f)
+            {
+                float d = 0f;
+                while (d < delay)
+                {
+                    d += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            Sprite sprite;
+            Vector2 baseSize;
+            Vector2 moveDelta;
+            float rotSpeed = 0f;
+
+            switch (style)
+            {
+                case BubbleStyle.TinyDriftLeft:
+                    sprite = GetTinyBubbleSprite();
+                    baseSize = new Vector2(12f, 12f);
+                    moveDelta = new Vector2(UnityEngine.Random.Range(-25f, -10f), UnityEngine.Random.Range(32f, 52f));
+                    break;
+                case BubbleStyle.TinyDriftRight:
+                    sprite = GetTinyBubbleSprite();
+                    baseSize = new Vector2(12f, 12f);
+                    moveDelta = new Vector2(UnityEngine.Random.Range(10f, 25f), UnityEngine.Random.Range(32f, 52f));
+                    break;
+                case BubbleStyle.SmallOutward:
+                    sprite = GetSmallBubbleSprite();
+                    baseSize = new Vector2(18f, 18f);
+                    moveDelta = new Vector2(UnityEngine.Random.Range(-28f, 28f), UnityEngine.Random.Range(15f, 38f));
+                    break;
+                case BubbleStyle.MediumAroundNode:
+                    sprite = GetMediumBubbleSprite();
+                    baseSize = new Vector2(24f, 24f);
+                    moveDelta = new Vector2(UnityEngine.Random.Range(-15f, 15f), UnityEngine.Random.Range(18f, 35f));
+                    break;
+                case BubbleStyle.PixelFragment:
+                default:
+                    sprite = GetPixelFragmentSprite();
+                    baseSize = new Vector2(10f, 10f);
+                    moveDelta = new Vector2(UnityEngine.Random.Range(-30f, 30f), UnityEngine.Random.Range(18f, 42f));
+                    rotSpeed = UnityEngine.Random.Range(-120f, 120f);
+                    break;
+            }
+
+            item.mainImage.sprite = sprite;
+            item.mainImage.gameObject.SetActive(true);
+            item.rectTransform.sizeDelta = baseSize;
+            item.rectTransform.anchoredPosition = spawnPos;
+            item.rectTransform.localScale = Vector3.zero;
+            item.rectTransform.localEulerAngles = Vector3.zero;
+            item.canvasGroup.alpha = 1f;
+
+            for (int s = 0; s < item.shards.Length; s++)
+            {
+                item.shards[s].gameObject.SetActive(false);
+            }
+
+            item.root.SetActive(true);
+
+            // Phase 1: Float, drift, scale expansion
             float elapsed = 0f;
-            while (elapsed < duration)
+            float popPhaseDuration = 0.08f;
+            float floatDuration = Mathf.Max(0.10f, lifetime - popPhaseDuration);
+            float startRot = UnityEngine.Random.Range(0f, 360f);
+
+            while (elapsed < floatDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float ease = UIEasing.Evaluate(EasingType.EaseInOutQuad, t);
+                float t = Mathf.Clamp01(elapsed / floatDuration);
 
-                rt.anchoredPosition = new Vector2(Mathf.Lerp(startX, endX, ease), 0f);
+                // Quick scale-in and subtle float breathe
+                float scale;
+                if (t < 0.25f)
+                {
+                    scale = Mathf.Lerp(0f, 1.12f, t / 0.25f);
+                }
+                else
+                {
+                    scale = Mathf.Lerp(1.12f, 1.0f, (t - 0.25f) / 0.75f);
+                }
+                item.rectTransform.localScale = new Vector3(scale, scale, 1f);
 
-                float alpha = Mathf.Sin(t * Mathf.PI) * 0.35f;
-                m_ScanlineImage.color = new Color(0.35f, 0.75f, 1f, alpha);
+                // Varied movement with subtle sine wobble
+                float wobble = Mathf.Sin(t * Mathf.PI * 2.5f) * 6f;
+                Vector2 currentPos = Vector2.Lerp(spawnPos, spawnPos + moveDelta, t) + new Vector2(wobble, 0f);
+                item.rectTransform.anchoredPosition = currentPos;
+
+                if (rotSpeed != 0f)
+                {
+                    item.rectTransform.localEulerAngles = new Vector3(0f, 0f, startRot + rotSpeed * t);
+                }
 
                 yield return null;
             }
 
-            scanObj.SetActive(false);
+            // Phase 2: Bubble Pop with 4-shard pixel burst
+            item.mainImage.gameObject.SetActive(false);
+
+            Vector2[] shardDirs = new Vector2[]
+            {
+                new Vector2(-0.707f, 0.707f),
+                new Vector2(0.707f, 0.707f),
+                new Vector2(-0.707f, -0.707f),
+                new Vector2(0.707f, -0.707f)
+            };
+
+            for (int s = 0; s < item.shards.Length; s++)
+            {
+                item.shards[s].sizeDelta = new Vector2(6f, 6f);
+                item.shards[s].anchoredPosition = Vector2.zero;
+                item.shards[s].localScale = Vector3.one;
+                item.shardImages[s].color = new Color(0.40f, 0.90f, 1.0f, 1.0f);
+                item.shards[s].gameObject.SetActive(true);
+            }
+
+            float burstElapsed = 0f;
+            float burstDistance = UnityEngine.Random.Range(10f, 16f);
+
+            while (burstElapsed < popPhaseDuration)
+            {
+                burstElapsed += Time.unscaledDeltaTime;
+                float bt = Mathf.Clamp01(burstElapsed / popPhaseDuration);
+
+                float shardAlpha = 1f - bt;
+                for (int s = 0; s < item.shards.Length; s++)
+                {
+                    item.shards[s].anchoredPosition = shardDirs[s] * (burstDistance * bt);
+                    item.shards[s].localScale = Vector3.one * (1f - bt * 0.4f);
+                    item.shardImages[s].color = new Color(0.40f, 0.90f, 1.0f, shardAlpha);
+                }
+
+                yield return null;
+            }
+
+            item.root.SetActive(false);
         }
+
+        #endregion
 
         private IEnumerator ArcSignEntranceRoutine()
         {
@@ -911,7 +1442,7 @@ namespace MainGame.UI.Unified
             }
 
             // Step 2: Ensure all nodes have completed boot-up
-            float nodeSettleWait = 0.12f;
+            float nodeSettleWait = 0.10f;
             float timer = 0f;
             while (timer < nodeSettleWait)
             {
@@ -919,7 +1450,10 @@ namespace MainGame.UI.Unified
                 yield return null;
             }
 
-            // Step 3: Route Energy Circuit Pulse from Start to Current Level (only on initial entrance when focusing current level)
+            // Step 2.5: Pixel-Art Bubble & Particle Map Activation Effect
+            yield return StartCoroutine(PixelBubbleActivationRoutine(nodes, segments));
+
+            // Step 3 (Beat 8): Route Energy Circuit Pulse from Start to Current Level (only on initial entrance when focusing current level)
             LevelNodeUI currentLevelNode = null;
             int currentNodeIndex = -1;
             bool currentLevelInThisArc = false;
@@ -1020,6 +1554,8 @@ namespace MainGame.UI.Unified
             {
                 m_Pointer.ResetPointerState();
             }
+
+            ResetBubblePool();
 
             if (m_ArcBreezeRoutine != null) { StopCoroutine(m_ArcBreezeRoutine); m_ArcBreezeRoutine = null; }
             if (m_LevelsBreezeRoutine != null) { StopCoroutine(m_LevelsBreezeRoutine); m_LevelsBreezeRoutine = null; }

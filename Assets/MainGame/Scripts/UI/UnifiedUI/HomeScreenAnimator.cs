@@ -63,6 +63,8 @@ namespace MainGame.UI.Unified
         private Vector2 m_Bg2RestPos;
         private Vector3 m_BgRestScale = Vector3.one;
         private Vector3 m_Bg2RestScale = Vector3.one;
+        private RectTransform m_ScreenPanelRoot;
+        private Vector3 m_PanelRootRestScale = Vector3.one;
 
         private RectTransform[] m_ButtonRects;
         private Vector2[] m_ButtonRestPositions;
@@ -87,6 +89,15 @@ namespace MainGame.UI.Unified
         public void CaptureRestState()
         {
             if (m_HasCapturedRest) return;
+
+            if (m_ScreenPanelRoot == null)
+            {
+                m_ScreenPanelRoot = GetComponent<RectTransform>();
+                if (m_ScreenPanelRoot != null)
+                {
+                    m_PanelRootRestScale = m_ScreenPanelRoot.localScale;
+                }
+            }
 
             if (m_Background == null)
             {
@@ -274,16 +285,25 @@ namespace MainGame.UI.Unified
             StopActiveAnimation();
             CaptureRestState();
 
+            if (m_ScreenPanelRoot != null)
+            {
+                m_ScreenPanelRoot.localScale = m_PanelRootRestScale;
+            }
+
             if (m_Background != null)
             {
                 m_Background.anchoredPosition = m_Bg1RestPos;
                 m_Background.localScale = m_BgRestScale * m_BgStartScale;
+                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
+                if (bgCg != null) bgCg.alpha = 1f;
             }
 
             if (m_BackgroundLayer2 != null)
             {
                 m_BackgroundLayer2.anchoredPosition = m_Bg2RestPos;
                 m_BackgroundLayer2.localScale = m_Bg2RestScale;
+                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
+                if (bgCg2 != null) bgCg2.alpha = 1f;
             }
 
             if (m_CharacterArtwork != null)
@@ -329,16 +349,25 @@ namespace MainGame.UI.Unified
             StopActiveAnimation();
             if (!m_HasCapturedRest) return;
 
+            if (m_ScreenPanelRoot != null)
+            {
+                m_ScreenPanelRoot.localScale = m_PanelRootRestScale;
+            }
+
             if (m_Background != null)
             {
                 m_Background.anchoredPosition = m_Bg1RestPos;
                 m_Background.localScale = m_BgRestScale;
+                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
+                if (bgCg != null) bgCg.alpha = 1f;
             }
 
             if (m_BackgroundLayer2 != null)
             {
                 m_BackgroundLayer2.anchoredPosition = m_Bg2RestPos;
                 m_BackgroundLayer2.localScale = m_Bg2RestScale;
+                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
+                if (bgCg2 != null) bgCg2.alpha = 1f;
             }
 
             if (m_CharacterArtwork != null)
@@ -784,8 +813,6 @@ namespace MainGame.UI.Unified
 
         private IEnumerator ExitRoutine(Action onComplete)
         {
-            float duration = 0.22f; // Fast, punchy exit
-
             if (m_LogoIdleRoutine != null)
             {
                 StopCoroutine(m_LogoIdleRoutine);
@@ -796,6 +823,43 @@ namespace MainGame.UI.Unified
             {
                 StopCoroutine(m_ParallaxRoutine);
                 m_ParallaxRoutine = null;
+            }
+
+            // Beat 2: Screen briefly compresses (anticipation punch before dispersal)
+            if (m_ScreenPanelRoot != null)
+            {
+                float compDuration = 0.08f;
+                float compElapsed = 0f;
+                Vector3 compTarget = new Vector3(m_PanelRootRestScale.x * 0.96f, m_PanelRootRestScale.y * 0.94f, 1f);
+                while (compElapsed < compDuration)
+                {
+                    compElapsed += Time.unscaledDeltaTime;
+                    float t = Mathf.Clamp01(compElapsed / compDuration);
+                    m_ScreenPanelRoot.localScale = Vector3.Lerp(m_PanelRootRestScale, compTarget, UIEasing.Evaluate(EasingType.EaseInQuad, t));
+                    yield return null;
+                }
+            }
+
+            float duration = 0.24f; // Fast, punchy exit
+
+            // Background remains fully visible
+            if (m_Background != null)
+            {
+                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
+                if (bgCg != null) bgCg.alpha = 1f;
+                m_Background.localScale = m_BgRestScale;
+            }
+
+            if (m_BackgroundLayer2 != null)
+            {
+                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
+                if (bgCg2 != null) bgCg2.alpha = 1f;
+                m_BackgroundLayer2.localScale = m_Bg2RestScale;
+            }
+
+            if (m_ScreenPanelRoot != null)
+            {
+                TrackChildCoroutine(AnimateScale(m_ScreenPanelRoot, m_ScreenPanelRoot.localScale, m_PanelRootRestScale, duration, EasingType.EaseOutQuad));
             }
 
             // Directionally distinct button exits
@@ -884,6 +948,51 @@ namespace MainGame.UI.Unified
 
             m_ActiveRoutine = null;
             onComplete?.Invoke();
+        }
+
+        private IEnumerator AnimateScaleAndAlpha(
+            RectTransform target,
+            Vector3 startScale, Vector3 targetScale,
+            float startAlpha, float targetAlpha,
+            float duration, float delay,
+            EasingType easing, float overshoot)
+        {
+            if (delay > 0f)
+            {
+                float delayTimer = 0f;
+                while (delayTimer < delay)
+                {
+                    delayTimer += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            CanvasGroup cg = target != null ? target.GetComponent<CanvasGroup>() : null;
+            if (cg == null && target != null)
+            {
+                cg = target.gameObject.AddComponent<CanvasGroup>();
+            }
+
+            float elapsed = 0f;
+            while (elapsed < duration && target != null)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float ease = UIEasing.Evaluate(easing, t, overshoot);
+
+                target.localScale = Vector3.LerpUnclamped(startScale, targetScale, ease);
+                if (cg != null)
+                {
+                    cg.alpha = Mathf.Lerp(startAlpha, targetAlpha, t);
+                }
+                yield return null;
+            }
+
+            if (target != null)
+            {
+                target.localScale = targetScale;
+                if (cg != null) cg.alpha = targetAlpha;
+            }
         }
 
         private IEnumerator LogoIdleRoutine()
