@@ -3,6 +3,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -274,8 +276,31 @@ namespace MainGame.UI.Unified
             }
 
             // Slam impact!
-            if (m_DialogWindow != null) m_DialogWindow.anchoredPosition = overshootPos;
+            if (m_DialogWindow != null)
+            {
+                m_DialogWindow.anchoredPosition = overshootPos;
+
+                RoboticUIPanelEffect panelFX = m_DialogWindow.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX == null)
+                {
+                    Image dlgImg = m_DialogWindow.GetComponent<Image>();
+                    if (dlgImg != null)
+                    {
+                        panelFX = RoboticUIManager.GetOrAddPanelEffect(dlgImg, new Color(1.0f, 0.45f, 0.15f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                    }
+                }
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerUp(0.22f);
+                }
+
+                if (RoboticUIManager.Instance != null)
+                {
+                    RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_DialogWindow, new Color(1.0f, 0.55f, 0.2f), 8, 22f);
+                }
+            }
             UIMicroShake.Shake(1.35f, 0.09f);
+            UIFeedbackAudio.PlaySfx(UISfxType.PopupSlam, 1.0f, 0.02f);
 
             // Phase 2: Landing compression sequence:
             // Scale: 0.90 -> 1.05 -> 0.98 -> 1.00

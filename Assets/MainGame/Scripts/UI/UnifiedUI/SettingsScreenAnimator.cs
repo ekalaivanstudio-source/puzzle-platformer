@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
 using Setting.Menu;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -296,6 +298,12 @@ namespace MainGame.UI.Unified
             Transform valChild = (m_RowValues != null && index < m_RowValues.Length) ? m_RowValues[index] : null;
             Transform target = valChild != null ? valChild : row;
 
+            if (RoboticUIManager.Instance != null && target != null)
+            {
+                RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, target, new Color(0.40f, 0.90f, 1.0f), 3, 10f);
+            }
+            UIFeedbackAudio.PlaySfx(UISfxType.SliderTick, 0.85f, 0.04f);
+
             float duration = 0.14f;
             float elapsed = 0f;
             Vector3 punchScale = new Vector3(1.08f, 1.08f, 1f);
@@ -326,9 +334,26 @@ namespace MainGame.UI.Unified
             {
                 Vector2 startPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 m_PanelBackground.anchoredPosition = startPanel;
+
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX == null)
+                {
+                    Image bgImg = m_PanelBackground.GetComponent<Image>();
+                    if (bgImg != null)
+                    {
+                        panelFX = RoboticUIManager.GetOrAddPanelEffect(bgImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                    }
+                }
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerUp(m_PanelDuration);
+                }
+
+                UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.80f, 0.02f);
                 StartCoroutine(AnimateMotion(m_PanelBackground, startPanel, m_PanelRestPos, 0f, 0f, m_PanelDuration, 0f, EasingType.EaseOutCubic, 1f, () =>
                 {
                     UIMicroShake.Shake(0.70f, 0.07f);
+                    UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.65f, 0.03f);
                 }));
             }
 
@@ -556,6 +581,11 @@ namespace MainGame.UI.Unified
             // Panel exits right (+950px)
             if (m_PanelBackground != null)
             {
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerDown(duration);
+                }
                 Vector2 targetPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 StartCoroutine(AnimateMotion(m_PanelBackground, m_PanelBackground.anchoredPosition, targetPanel, 0f, 0f, duration, 0.04f, EasingType.EaseInBack, 1.1f));
             }

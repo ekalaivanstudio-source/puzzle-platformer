@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using MainGame.UI.RoboticEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -153,9 +154,16 @@ namespace MainGame.UI.Unified
                     Log($"Selection changed to: {currentSel.name}");
 
                     // Selection sound hook
-                    if (m_NavigateSound != null && AudioManager.Instance != null && !m_IsTransitioning)
+                    if (!m_IsTransitioning)
                     {
-                        AudioManager.Instance.PlayUi(m_NavigateSound);
+                        if (m_NavigateSound != null && AudioManager.Instance != null)
+                        {
+                            AudioManager.Instance.PlayUi(m_NavigateSound);
+                        }
+                        else
+                        {
+                            MainGame.UI.Feedback.UIFeedbackAudio.PlaySfx(MainGame.UI.Feedback.UISfxType.Navigate, 0.85f, 0.03f);
+                        }
                     }
 
                     // Remember selection for active screen
@@ -285,11 +293,13 @@ namespace MainGame.UI.Unified
             // Audio hook
             if (newScreen.name.Contains("Confirmation") || newScreen.name.Contains("Popup"))
             {
-                PlayAudio(m_PopupOpenSound);
+                if (m_PopupOpenSound != null) PlayAudio(m_PopupOpenSound);
+                else MainGame.UI.Feedback.UIFeedbackAudio.PlaySfx(MainGame.UI.Feedback.UISfxType.PopupSlam, 1.0f, 0.02f);
             }
             else
             {
-                PlayAudio(m_PanelOpenSound);
+                if (m_PanelOpenSound != null) PlayAudio(m_PanelOpenSound);
+                else MainGame.UI.Feedback.UIFeedbackAudio.PlaySfx(MainGame.UI.Feedback.UISfxType.Deploy, 0.85f, 0.02f);
             }
 
             bool oldExitFinished = false;
@@ -341,7 +351,14 @@ namespace MainGame.UI.Unified
             }
 
             // Audio hook
-            PlayAudio(m_BackSound != null ? m_BackSound : m_PanelCloseSound);
+            if (m_BackSound != null || m_PanelCloseSound != null)
+            {
+                PlayAudio(m_BackSound != null ? m_BackSound : m_PanelCloseSound);
+            }
+            else
+            {
+                MainGame.UI.Feedback.UIFeedbackAudio.PlaySfx(MainGame.UI.Feedback.UISfxType.Retract, 0.85f, 0.02f);
+            }
 
             bool exitFinished = false;
             if (poppedScreen != null)
@@ -363,6 +380,11 @@ namespace MainGame.UI.Unified
                     overlapElapsed += Time.unscaledDeltaTime;
                     yield return null;
                 }
+            }
+
+            if (RoboticUIManager.Instance != null)
+            {
+                RoboticUIManager.Instance.TriggerScreenGlitch(0.06f);
             }
 
             bool enterFinished = false;

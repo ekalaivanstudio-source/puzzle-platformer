@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -16,11 +18,14 @@ namespace MainGame.UI.Unified
     public class UIAnimatedButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Selection Animation Settings")]
-        [Tooltip("Position shift when selected (0 -> -5px).")]
-        [SerializeField] private float m_SelectedOffsetX = -5f;
+        [Tooltip("Position shift when selected (0 -> -4px).")]
+        [SerializeField] private float m_SelectedOffsetX = -4f;
 
-        [Tooltip("Scale modifier when selected (1.00 -> 1.04).")]
-        [SerializeField] private float m_SelectedScale = 1.04f;
+        [Tooltip("Scale modifier when selected (1.00 -> 1.035).")]
+        [SerializeField] private float m_SelectedScale = 1.035f;
+
+        [Tooltip("Angular tilt in degrees when selected (+1.2 deg).")]
+        [SerializeField] private float m_SelectedTilt = 1.2f;
 
         [Tooltip("Duration of focus in transition (0.12 - 0.16s).")]
         [SerializeField] private float m_FocusInDuration = 0.14f;
@@ -168,6 +173,10 @@ namespace MainGame.UI.Unified
             {
                 AudioManager.Instance.PlayUi(m_SelectAudioClip);
             }
+            else
+            {
+                UIFeedbackAudio.PlaySfx(UISfxType.Navigate, 0.85f, 0.03f);
+            }
         }
 
         private void PlayConfirmAudio()
@@ -176,9 +185,13 @@ namespace MainGame.UI.Unified
             {
                 AudioManager.Instance.PlayUi(m_ConfirmAudioClip);
             }
-            else if (AudioManager.Instance != null)
+            else if (m_IsDestructiveOrBack)
             {
-                AudioManager.Instance.PlayButton();
+                UIFeedbackAudio.PlaySfx(UISfxType.Back, 0.90f, 0.02f);
+            }
+            else
+            {
+                UIFeedbackAudio.PlaySfx(UISfxType.Confirm, 1.0f, 0.02f);
             }
         }
 
@@ -223,9 +236,21 @@ namespace MainGame.UI.Unified
                 ? new Vector3(m_SelectedScale, m_SelectedScale, 1f) 
                 : Vector3.one;
 
+            Vector3 startRot = m_ButtonVisual.localEulerAngles;
+            Vector3 targetRot = focusIn ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
+
             if (focusIn)
             {
                 if (m_LeftPointer != null) m_LeftPointer.gameObject.SetActive(true);
+
+                if (m_ButtonVisual != null)
+                {
+                    Image btnImg = m_ButtonVisual.GetComponent<Image>();
+                    if (btnImg != null)
+                    {
+                        StartCoroutine(ButtonHolographicFlashRoutine(btnImg, 0.12f));
+                    }
+                }
             }
             else
             {
@@ -246,18 +271,20 @@ namespace MainGame.UI.Unified
                 {
                     if (focusIn)
                     {
-                        // Small physical accent pulse (1.00 -> 1.06 -> 1.04, 0 -> -6px -> -5px)
+                        // Small physical accent pulse (1.00 -> 1.06 -> 1.035, 0 -> -5px -> -4px)
                         float pulseFactor = Mathf.Sin(t * Mathf.PI);
                         Vector3 currentScale = Vector3.Lerp(startScale, targetScale, t) + new Vector3(0.02f * pulseFactor, 0.02f * pulseFactor, 0f);
                         Vector2 currentPos = Vector2.Lerp(startPos, targetPos, t) + new Vector2(-1f * pulseFactor, 0f);
                         m_ButtonVisual.localScale = currentScale;
                         m_ButtonVisual.anchoredPosition = currentPos;
+                        m_ButtonVisual.localEulerAngles = Vector3.Lerp(startRot, targetRot, t);
                     }
                     else
                     {
                         float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
                         m_ButtonVisual.anchoredPosition = Vector2.Lerp(startPos, targetPos, ease);
                         m_ButtonVisual.localScale = Vector3.Lerp(startScale, targetScale, ease);
+                        m_ButtonVisual.localEulerAngles = Vector3.Lerp(startRot, targetRot, ease);
                     }
                 }
 
@@ -272,6 +299,7 @@ namespace MainGame.UI.Unified
 
             m_ButtonVisual.anchoredPosition = targetPos;
             m_ButtonVisual.localScale = targetScale;
+            m_ButtonVisual.localEulerAngles = targetRot;
             if (m_LeftPointer != null && focusIn) m_LeftPointer.anchoredPosition = targetPointerPos;
             m_AnimationCoroutine = null;
 
@@ -311,6 +339,17 @@ namespace MainGame.UI.Unified
             // Immediate micro-shake impulse for physical punch impact
             UIMicroShake.Shake(1.2f, 0.09f);
 
+            if (RoboticPixelFXPool.Instance != null && m_ButtonVisual != null)
+            {
+                Color sparkCol = m_IsDestructiveOrBack ? new Color(1.0f, 0.45f, 0.2f) : new Color(1.0f, 0.87f, 0.35f);
+                RoboticPixelFXPool.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonVisual, sparkCol, 6, 16f);
+            }
+            else if (RoboticUIManager.Instance != null && m_ButtonVisual != null)
+            {
+                Color sparkCol = m_IsDestructiveOrBack ? new Color(1.0f, 0.45f, 0.2f) : new Color(0.35f, 0.85f, 1.0f);
+                RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonVisual, sparkCol, 5, 14f);
+            }
+
             float duration = m_ConfirmDuration;
             float halfDuration = duration * 0.45f;
             float returnDuration = duration - halfDuration;
@@ -322,8 +361,10 @@ namespace MainGame.UI.Unified
 
             Vector3 baseScale = m_IsFocused ? new Vector3(m_SelectedScale, m_SelectedScale, 1f) : Vector3.one;
             Vector3 pressedScale = new Vector3(m_ConfirmPressedScale, m_ConfirmPressedScale, 1f);
+            Vector3 baseRot = m_IsFocused ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
+            Vector3 pressedRot = new Vector3(0f, 0f, -1.5f);
 
-            // Phase 1: Physical compression (1.05 -> 0.94)
+            // Phase 1: Physical compression (1.035 -> 0.94)
             float elapsed = 0f;
             while (elapsed < halfDuration)
             {
@@ -333,6 +374,7 @@ namespace MainGame.UI.Unified
 
                 m_ButtonVisual.anchoredPosition = Vector2.Lerp(basePos, punchPos, ease);
                 m_ButtonVisual.localScale = Vector3.Lerp(baseScale, pressedScale, ease);
+                m_ButtonVisual.localEulerAngles = Vector3.Lerp(baseRot, pressedRot, ease);
                 yield return null;
             }
 
@@ -348,11 +390,13 @@ namespace MainGame.UI.Unified
 
                 m_ButtonVisual.anchoredPosition = Vector2.LerpUnclamped(punchPos, basePos, ease);
                 m_ButtonVisual.localScale = Vector3.LerpUnclamped(pressedScale, baseScale, ease);
+                m_ButtonVisual.localEulerAngles = Vector3.LerpUnclamped(pressedRot, baseRot, ease);
                 yield return null;
             }
 
             m_ButtonVisual.anchoredPosition = basePos;
             m_ButtonVisual.localScale = baseScale;
+            m_ButtonVisual.localEulerAngles = baseRot;
             m_ConfirmCoroutine = null;
 
             if (m_IsFocused)
@@ -398,6 +442,29 @@ namespace MainGame.UI.Unified
                 m_LeftPointer.anchoredPosition = m_OriginalPointerPos;
                 m_LeftPointer.gameObject.SetActive(false);
             }
+        }
+
+        private IEnumerator ButtonHolographicFlashRoutine(Image img, float duration)
+        {
+            if (img == null) yield break;
+            Color baseColor = img.color;
+            Color flashColor = new Color(
+                Mathf.Min(1f, baseColor.r * 1.25f + 0.1f),
+                Mathf.Min(1f, baseColor.g * 1.25f + 0.1f),
+                Mathf.Min(1f, baseColor.b * 1.25f + 0.1f),
+                baseColor.a
+            );
+
+            float elapsed = 0f;
+            while (elapsed < duration && img != null)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float s = Mathf.Sin(t * Mathf.PI);
+                img.color = Color.Lerp(baseColor, flashColor, s);
+                yield return null;
+            }
+            if (img != null) img.color = baseColor;
         }
     }
 }

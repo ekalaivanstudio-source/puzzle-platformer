@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
 using LevelSelection;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -644,12 +646,28 @@ namespace MainGame.UI.Unified
             CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
             if (cg == null) cg = m_PanelBackground.gameObject.AddComponent<CanvasGroup>();
 
-            Vector3 startScale = new Vector3(0.95f, 0.95f, 1f);
+            Vector3 startScale = new Vector3(0.70f, 0.70f, 1f);
             Vector3 overshootScale = new Vector3(1.025f, 1.025f, 1f);
 
             m_PanelBackground.anchoredPosition = m_PanelRestPos;
             m_PanelBackground.localScale = startScale;
             cg.alpha = 1f;
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.85f, 0.02f);
+
+            RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+            if (panelFX == null)
+            {
+                Image bgImg = m_PanelBackground.GetComponent<Image>();
+                if (bgImg != null)
+                {
+                    panelFX = RoboticUIManager.GetOrAddPanelEffect(bgImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                }
+            }
+            if (panelFX != null)
+            {
+                panelFX.PlayPowerUp(duration);
+            }
 
             float elapsed = 0f;
             while (elapsed < duration)
@@ -680,6 +698,7 @@ namespace MainGame.UI.Unified
             cg.alpha = 1f;
 
             UIMicroShake.Shake(1.6f, 0.08f);
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.03f);
         }
 
         #region Pixel-Art Bubble Map Activation System
@@ -1189,6 +1208,7 @@ namespace MainGame.UI.Unified
             }
 
             // Phase 2: Bubble Pop with 4-shard pixel burst
+            UIFeedbackAudio.PlaySfx(UISfxType.BubblePop, 0.45f, 0.08f);
             item.mainImage.gameObject.SetActive(false);
 
             Vector2[] shardDirs = new Vector2[]
@@ -1406,6 +1426,7 @@ namespace MainGame.UI.Unified
             if (nodes != null && nodes.Count > 0)
             {
                 // First node boots up immediately
+                UIFeedbackAudio.PlaySteppedSfx(UISfxType.NodeActivate, 0, nodes.Count);
                 StartCoroutine(nodes[0].PlayBootUpRoutine(nodes[0].IsUnlocked, 0f));
             }
 
@@ -1435,6 +1456,7 @@ namespace MainGame.UI.Unified
                         LevelNodeUI targetNode = nodes[i + 1];
                         if (targetNode != null)
                         {
+                            UIFeedbackAudio.PlaySteppedSfx(UISfxType.NodeActivate, i + 1, nodes.Count);
                             StartCoroutine(targetNode.PlayBootUpRoutine(targetNode.IsUnlocked, 0f));
                         }
                     }
@@ -1452,6 +1474,26 @@ namespace MainGame.UI.Unified
 
             // Step 2.5: Pixel-Art Bubble & Particle Map Activation Effect
             yield return StartCoroutine(PixelBubbleActivationRoutine(nodes, segments));
+
+            // Step 2.6: Small Node Ripples across unlocked nodes
+            if (nodes != null && nodes.Count > 0)
+            {
+                float rippleDuration = 0.08f;
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    LevelNodeUI node = nodes[i];
+                    if (node != null && node.IsUnlocked)
+                    {
+                        StartCoroutine(NodeRippleRoutine(node.transform, rippleDuration));
+                    }
+                }
+                float rTimer = 0f;
+                while (rTimer < rippleDuration)
+                {
+                    rTimer += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
 
             // Step 3 (Beat 8): Route Energy Circuit Pulse from Start to Current Level (only on initial entrance when focusing current level)
             LevelNodeUI currentLevelNode = null;
@@ -1474,6 +1516,7 @@ namespace MainGame.UI.Unified
 
             if (segments != null && focusTargetNodeIndex < 0 && currentLevelInThisArc && currentNodeIndex > 0)
             {
+                UIFeedbackAudio.PlaySfx(UISfxType.Pulse, 0.70f, 0.03f);
                 int unlockedSegCount = Mathf.Min(currentNodeIndex, segments.Count);
                 float energySpeed = Mathf.Clamp(0.24f / Mathf.Max(1, unlockedSegCount), 0.03f, 0.06f);
 
@@ -1519,6 +1562,8 @@ namespace MainGame.UI.Unified
                     if (mgr != null) m_Pointer = mgr.Pointer;
                 }
 
+                UIFeedbackAudio.PlaySfx(UISfxType.PointerSnap, 0.85f, 0.02f);
+
                 if (m_Pointer != null)
                 {
                     bool dropDone = false;
@@ -1537,6 +1582,23 @@ namespace MainGame.UI.Unified
             // Step 5: Finished! Navigation is now ready to be unlocked
             m_ActiveRoutine = null;
             onComplete?.Invoke();
+        }
+
+        private IEnumerator NodeRippleRoutine(Transform target, float duration)
+        {
+            if (target == null) yield break;
+            Vector3 baseScale = target.localScale;
+            Vector3 rippleScale = baseScale * 1.08f;
+            float elapsed = 0f;
+            while (elapsed < duration && target != null)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float s = Mathf.Sin(t * Mathf.PI);
+                target.localScale = Vector3.Lerp(baseScale, rippleScale, s);
+                yield return null;
+            }
+            if (target != null) target.localScale = baseScale;
         }
 
         #endregion
@@ -1610,6 +1672,11 @@ namespace MainGame.UI.Unified
             // 6. Panel background folds away (Scale X: 1.0 -> 0.90, Pos +80px, alpha -> 0)
             if (m_PanelBackground != null)
             {
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerDown(duration);
+                }
                 StartCoroutine(AnimateFoldExit(m_PanelBackground, duration));
             }
 

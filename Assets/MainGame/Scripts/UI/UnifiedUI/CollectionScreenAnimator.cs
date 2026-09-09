@@ -6,6 +6,8 @@ using UnityEngine.UI;
 using TMPro;
 using MainGame.UI.Animation;
 using Collectables;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -1222,6 +1224,20 @@ namespace MainGame.UI.Unified
             CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
             Vector3 startScale = m_PanelRestScale * m_PanelStartScale;
 
+            RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+            if (panelFX == null)
+            {
+                Image bgImg = m_PanelBackground.GetComponent<Image>();
+                if (bgImg != null)
+                {
+                    panelFX = RoboticUIManager.GetOrAddPanelEffect(bgImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                }
+            }
+            if (panelFX != null)
+            {
+                panelFX.PlayPowerUp(duration);
+            }
+
             float elapsed = 0f;
             while (elapsed < duration)
             {
@@ -1402,6 +1418,7 @@ namespace MainGame.UI.Unified
                 Color c = card.PlatformGlow.color;
                 StartCoroutine(AnimateImageAlpha(card.PlatformGlow, c.a, 0.85f, 0.15f));
             }
+            UIFeedbackAudio.PlaySfx(UISfxType.RobotBoot, 0.85f, 0.02f);
 
             // 2. Selection frame activates directly over robot portrait
             if (m_SelectionFrame != null)
@@ -1421,6 +1438,7 @@ namespace MainGame.UI.Unified
             // 3. Holographic inspection beam sweeps over robot portrait
             if (m_InspectionBeam != null && card.IsUnlocked)
             {
+                UIFeedbackAudio.PlaySfx(UISfxType.RobotScan, 0.75f, 0.02f);
                 m_InspectionBeam.gameObject.SetActive(true);
                 m_InspectionBeam.SetParent(targetPortrait, false);
                 LayoutElement ble = m_InspectionBeam.GetComponent<LayoutElement>();
@@ -1443,24 +1461,52 @@ namespace MainGame.UI.Unified
                 }
 
                 m_InspectionBeam.gameObject.SetActive(false);
+
+                if (card.IsUnlocked && RoboticUIManager.Instance != null)
+                {
+                    Color dataColor = new Color(0.35f, 0.85f, 1.0f);
+                    RoboticUIManager.Instance.SpawnDataFloat(Vector2.zero, targetPortrait, dataColor, 5, 30f);
+                }
             }
 
-            // 4. Robot highlights & micro-lifts (+5px)
+            // 4. Robot highlights & dominates the bay: +18px lift, 1.18x scale
             card.SetVisualState(true, 1f);
 
+            // Dim and scale down unselected cards
+            if (m_CardSelectables != null)
+            {
+                for (int i = 0; i < m_CardSelectables.Length; i++)
+                {
+                    CollectionCardSelectable other = m_CardSelectables[i];
+                    if (other != null && other != card)
+                    {
+                        other.SetVisualState(false, 0.65f);
+                        if (other.CardVisual != null)
+                        {
+                            other.CardVisual.anchoredPosition = other.RestPosition;
+                            other.CardVisual.localScale = new Vector3(0.92f, 0.92f, 1f);
+                        }
+                    }
+                }
+            }
+
             Vector2 basePos = card.RestPosition;
-            Vector2 liftPos = basePos + new Vector2(0f, 5f);
-            float liftDur = 0.15f;
+            Vector2 liftPos = basePos + new Vector2(0f, 18f);
+            Vector3 targetScale = new Vector3(1.18f, 1.18f, 1f);
+            Vector3 initialScale = cardRt.localScale;
+            float liftDur = 0.18f;
             float lElapsed = 0f;
             while (lElapsed < liftDur)
             {
                 lElapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(lElapsed / liftDur);
-                float ease = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.25f);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.20f);
                 cardRt.anchoredPosition = Vector2.LerpUnclamped(basePos, liftPos, ease);
+                cardRt.localScale = Vector3.LerpUnclamped(initialScale, targetScale, ease);
                 yield return null;
             }
             cardRt.anchoredPosition = liftPos;
+            cardRt.localScale = targetScale;
         }
 
         private IEnumerator ConstructDiagnosticsPanelRoutine()
@@ -1889,6 +1935,11 @@ namespace MainGame.UI.Unified
             // 9. Panel folds away (Scale: 1.0 -> 0.90, alpha: 1 -> 0)
             if (m_PanelBackground != null)
             {
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerDown(duration);
+                }
                 CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
                 StartCoroutine(AnimateScale(m_PanelBackground, m_PanelBackground.localScale, m_PanelRestScale * 0.90f, duration, EasingType.EaseInCubic, 1f));
                 if (cg != null) StartCoroutine(AnimateCanvasGroupAlpha(cg, cg.alpha, 0f, duration));

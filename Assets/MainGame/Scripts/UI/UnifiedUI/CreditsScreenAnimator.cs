@@ -1,7 +1,10 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 using MainGame.UI.Animation;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -173,9 +176,26 @@ namespace MainGame.UI.Unified
             {
                 Vector2 startPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 m_PanelBackground.anchoredPosition = startPanel;
+
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX == null)
+                {
+                    Image bgImg = m_PanelBackground.GetComponent<Image>();
+                    if (bgImg != null)
+                    {
+                        panelFX = RoboticUIManager.GetOrAddPanelEffect(bgImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                    }
+                }
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerUp(m_PanelDuration);
+                }
+
+                UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.75f, 0.02f);
                 StartCoroutine(AnimateMotion(m_PanelBackground, startPanel, m_PanelRestPos, 0f, 0f, m_PanelDuration, 0f, EasingType.EaseOutCubic, 1f, () =>
                 {
                     UIMicroShake.Shake(0.35f, 0.05f);
+                    UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.50f, 0.03f);
                 }));
             }
 
@@ -316,6 +336,11 @@ namespace MainGame.UI.Unified
             // Panel exits right (+950px)
             if (m_PanelBackground != null)
             {
+                RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerDown(duration);
+                }
                 Vector2 targetPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 StartCoroutine(AnimateMotion(m_PanelBackground, m_PanelBackground.anchoredPosition, targetPanel, 0f, 0f, duration, 0.03f, EasingType.EaseInBack, 1.1f));
             }

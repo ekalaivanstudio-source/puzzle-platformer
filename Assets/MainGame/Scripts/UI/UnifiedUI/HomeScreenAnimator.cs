@@ -4,45 +4,47 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Drives the high-velocity, authored physical motion design for the Home Screen:
-    /// - Distinct HERO animation for Title/Logo: dynamic RectMask2D lettering wipe reveal + vertical drop plunge + impact stretch/squash + settle.
-    /// - Authored Physical Signboard identities for buttons: rotational fall (-12 deg -> +2 deg -> 0 deg), fast ballistic descent, impact squash (1.06x / 0.92y), rebound, and secondary text / accent reveal (0.04s later).
-    /// - Start Order != Landing Order: Collect (lands 0.44s) overtakes New Game (lands 0.72s), Exit (lands 0.78s) overtakes Credits (lands 0.96s).
-    /// - Directionally distinct exits: Title flings up, Continue/Collect fly right, New Game flings up, Options/Exit drop down, Credits flings diagonally down-right.
-    /// - Replays FULL choreography on every entry and re-entry (Home -> LevelSelection -> Home), never skipping or compressing timings.
-    /// - Zero GC allocations during runtime animation, driven by unscaled time.
+    /// Master cinematic animator for the Main Menu screen.
+    /// Drives the "Machine Wakes Up" assembly sequence where every element has distinct physical weight:
+    /// - 0.00s: Background establishes with subtle parallax/breathing
+    /// - 0.05s: RETRY Logo Hero plunge from ceiling with top-to-bottom mask wipe reveal, hard impact, squash, micro-shake, sparks, and pendulum settle
+    /// - 0.10s: Character (Dr. Glitch) subtle breathing & Robot (Byte) system boot-up (mechanical lift, cyan pulse, digital sparks, boot chime)
+    /// - 0.15s: CONTINUE: Fast diagonal arrival from upper-right with tilt, overshoot, pendulum wobble, and secondary child counter-motion
+    /// - 0.22s: NEW GAME: Heavy horizontal slide from far right with rigid 0 deg tilt, hard reverse brake snap, and secondary counter-motion
+    /// - 0.30s: COLLECT: Rising curved arc from lower-right with rotation, overshoot, landing snap, and particle burst
+    /// - 0.38s: OPTIONS: Short mechanical drop from upper-right with quick squash and rapid snap
+    /// - 0.46s: CREDITS: Smooth vertical rise from below with soft elastic settle
+    /// - 0.54s: EXIT: Heaviest signboard! Fast ceiling drop plunge, hard impact, horizontal squash, popup slam SFX, micro-shake, and warning sparks
+    /// - 0.85s+: All elements settle into clean, stable rest state (no endless wobbling). Navigation unlocked.
     /// </summary>
     [DisallowMultipleComponent]
     public class HomeScreenAnimator : MonoBehaviour
     {
-        [Header("Background & Scene Establishment")]
-        [Tooltip("Background container or layer RectTransform.")]
+        [Header("Background Elements")]
         [SerializeField] private RectTransform m_Background;
         [SerializeField] private RectTransform m_BackgroundLayer2;
-        [SerializeField] private float m_BgStartScale = 1.04f;
+        [SerializeField] private float m_BgStartScale = 1.03f;
         [SerializeField] private float m_BgZoomDuration = 0.90f;
 
-        [Header("Main Character Artwork (Optional Left Hero/Villain Layer)")]
-        [Tooltip("Character artwork on left if separated from background.")]
+        [Header("Character & Robot (Living Lab Presence)")]
+        [Tooltip("Dr. Glitch character artwork transform for subtle breathing motion.")]
         [SerializeField] private RectTransform m_CharacterArtwork;
-        [SerializeField] private float m_CharacterEntryDistanceX = -750f;
-        [SerializeField] private float m_CharacterDuration = 0.70f;
+        [Tooltip("Byte robot artwork transform for system boot-up and mechanical lift.")]
+        [SerializeField] private RectTransform m_RobotArtwork;
 
         [Header("RETRY Logo (Hero Animation)")]
-        [Tooltip("Game logo container transform with heavy ceiling plunge and impact settling.")]
+        [Tooltip("Container holding the logo visual.")]
         [SerializeField] private RectTransform m_Logo;
-        [Tooltip("RectMask2D used for the top-to-bottom lettering wipe reveal.")]
+        [Tooltip("RectMask2D for the top-to-bottom lettering wipe reveal.")]
         [SerializeField] private RectMask2D m_LogoMask;
-        [SerializeField] private float m_MaskWipeDuration = 0.24f;
-        [SerializeField] private UIElementMotionConfig m_LogoMotion = new UIElementMotionConfig(
-            "Logo", new Vector2(0f, 1f), 700f, 0.04f, 0.38f, -4f, new Vector2(0.94f, 1.06f), 22f
-        );
 
-        [Header("Buttons (In Layout Order: Continue, NewGame, Collect, Options, Credits, Exit)")]
+        [Header("Buttons (In Layout Order)")]
         [SerializeField] private Button m_ContinueButton;
         [SerializeField] private Button m_NewGameButton;
         [SerializeField] private Button m_CollectButton;
@@ -50,15 +52,13 @@ namespace MainGame.UI.Unified
         [SerializeField] private Button m_CreditsButton;
         [SerializeField] private Button m_ExitButton;
 
-        [Header("Authored Physical Button Motion Profiles")]
-        [Tooltip("Exposed physical motion profiles for each button. Distinct velocities, directions, delays, and impacts.")]
-        [SerializeField] private UIElementMotionConfig[] m_ButtonMotions;
-
+        // Baseline Rest Transforms (Permanently captured once to eliminate drift)
         private Vector2 m_LogoRestPos;
         private Vector3 m_LogoRestScale = Vector3.one;
         private Vector3 m_LogoRestAngles = Vector3.zero;
 
-        private Vector2 m_CharacterRestPos;
+        private Vector2 m_CharRestPos;
+        private Vector2 m_RobotRestPos;
         private Vector2 m_Bg1RestPos;
         private Vector2 m_Bg2RestPos;
         private Vector3 m_BgRestScale = Vector3.one;
@@ -69,10 +69,10 @@ namespace MainGame.UI.Unified
         private RectTransform[] m_ButtonRects;
         private Vector2[] m_ButtonRestPositions;
         private RectTransform[] m_ButtonAccents;
+        private Vector2[] m_AccentRestPositions;
 
         private Coroutine m_ActiveRoutine;
-        private Coroutine m_LogoIdleRoutine;
-        private Coroutine m_ParallaxRoutine;
+        private Coroutine m_AmbientRoutine;
         private readonly List<Coroutine> m_ChildCoroutines = new List<Coroutine>(16);
         private bool m_HasCapturedRest = false;
 
@@ -99,24 +99,33 @@ namespace MainGame.UI.Unified
                 }
             }
 
+            // Auto-resolve background
             if (m_Background == null)
             {
                 Transform bg = transform.parent != null ? (transform.parent.Find("Backagrond/Layer 01") ?? transform.parent.Find("Background/Layer 01")) : null;
                 if (bg != null) m_Background = bg as RectTransform;
             }
-
             if (m_BackgroundLayer2 == null)
             {
                 Transform bg2 = transform.parent != null ? (transform.parent.Find("Backagrond/Layer 02") ?? transform.parent.Find("Background/Layer 02")) : null;
                 if (bg2 != null) m_BackgroundLayer2 = bg2 as RectTransform;
             }
 
+            // Auto-resolve character & robot
             if (m_CharacterArtwork == null)
             {
-                Transform charArt = transform.Find("Character") ?? transform.Find("Hero") ?? transform.Find("Villain");
-                if (charArt != null) m_CharacterArtwork = charArt as RectTransform;
+                Transform cArt = transform.parent != null ? transform.parent.Find("Backagrond/CharacterArtwork") : null;
+                if (cArt == null) cArt = transform.Find("CharacterArtwork") ?? transform.Find("Character") ?? transform.Find("Hero");
+                if (cArt != null) m_CharacterArtwork = cArt as RectTransform;
+            }
+            if (m_RobotArtwork == null)
+            {
+                Transform rArt = transform.parent != null ? transform.parent.Find("Backagrond/Robot") : null;
+                if (rArt == null) rArt = transform.Find("Robot") ?? transform.Find("ByteRobot") ?? transform.Find("Bot");
+                if (rArt != null) m_RobotArtwork = rArt as RectTransform;
             }
 
+            // Auto-resolve logo
             if (m_Logo == null)
             {
                 Transform logo = transform.Find("Holder Tittle") ?? transform.Find("Title/Holder Tittle");
@@ -125,6 +134,7 @@ namespace MainGame.UI.Unified
 
             EnsureLogoMask();
 
+            // Auto-resolve buttons
             if (m_ContinueButton == null || m_NewGameButton == null)
             {
                 MainMenuScreen menu = GetComponent<MainMenuScreen>() ?? GetComponentInParent<MainMenuScreen>();
@@ -144,7 +154,6 @@ namespace MainGame.UI.Unified
                 m_Bg1RestPos = m_Background.anchoredPosition;
                 m_BgRestScale = m_Background.localScale;
             }
-
             if (m_BackgroundLayer2 != null)
             {
                 m_Bg2RestPos = m_BackgroundLayer2.anchoredPosition;
@@ -153,7 +162,11 @@ namespace MainGame.UI.Unified
 
             if (m_CharacterArtwork != null)
             {
-                m_CharacterRestPos = m_CharacterArtwork.anchoredPosition;
+                m_CharRestPos = m_CharacterArtwork.anchoredPosition;
+            }
+            if (m_RobotArtwork != null)
+            {
+                m_RobotRestPos = m_RobotArtwork.anchoredPosition;
             }
 
             if (m_Logo != null)
@@ -176,6 +189,7 @@ namespace MainGame.UI.Unified
             m_ButtonRects = new RectTransform[buttons.Length];
             m_ButtonRestPositions = new Vector2[buttons.Length];
             m_ButtonAccents = new RectTransform[buttons.Length];
+            m_AccentRestPositions = new Vector2[buttons.Length];
 
             for (int i = 0; i < buttons.Length; i++)
             {
@@ -191,11 +205,11 @@ namespace MainGame.UI.Unified
                     if (selectIcon != null)
                     {
                         m_ButtonAccents[i] = selectIcon as RectTransform;
+                        m_AccentRestPositions[i] = m_ButtonAccents[i].anchoredPosition;
                     }
                 }
             }
 
-            EnsureMotionConfigs();
             m_HasCapturedRest = true;
         }
 
@@ -212,7 +226,6 @@ namespace MainGame.UI.Unified
                 }
                 else
                 {
-                    // Create dedicated mask container between m_Logo and titleChild
                     GameObject maskGo = new GameObject("LogoMask", typeof(RectTransform), typeof(RectMask2D));
                     RectTransform maskRt = maskGo.GetComponent<RectTransform>();
                     RectTransform titleRt = titleChild.GetComponent<RectTransform>();
@@ -244,41 +257,8 @@ namespace MainGame.UI.Unified
             }
         }
 
-        private void EnsureMotionConfigs()
-        {
-            if (m_ButtonMotions == null || m_ButtonMotions.Length != 6)
-            {
-                m_ButtonMotions = new UIElementMotionConfig[]
-                {
-                    // 0. CONTINUE: Upper-right, fast rotational descent, lands at 0.44s
-                    new UIElementMotionConfig("Continue", new Vector2(0.707f, 0.707f), 750f, 0.10f, 0.34f, -12f, new Vector2(1.06f, 0.94f), 18f),
-
-                    // 1. NEW GAME: High vertical drop from top, lands at 0.72s (AFTER Collect!)
-                    new UIElementMotionConfig("NewGame", new Vector2(0f, 1f), 850f, 0.24f, 0.48f, 6f, new Vector2(1.08f, 0.92f), 22f),
-
-                    // 2. COLLECT: Horizontal right slide, VERY FAST ballistic flight, lands at 0.44s (BEFORE New Game!)
-                    new UIElementMotionConfig("Collect", new Vector2(1f, 0f), 800f, 0.18f, 0.26f, -6f, new Vector2(1.09f, 0.91f), 20f),
-
-                    // 3. OPTIONS: Diagonal upper-right drop, lands at 0.74s
-                    new UIElementMotionConfig("Options", new Vector2(0.8f, 0.6f), 750f, 0.32f, 0.42f, -8f, new Vector2(1.05f, 0.95f), 16f),
-
-                    // 4. CREDITS: High diagonal drop, heavier/slower wooden sign, lands at 0.96s (Lands LAST!)
-                    new UIElementMotionConfig("Credits", new Vector2(0.6f, 0.8f), 850f, 0.40f, 0.56f, 8f, new Vector2(1.04f, 0.96f), 12f),
-
-                    // 5. EXIT: Rising from bottom-right, snappy, lands at 0.78s (BEFORE Credits!)
-                    new UIElementMotionConfig("Exit", new Vector2(0.85f, -0.55f), 800f, 0.48f, 0.30f, -10f, new Vector2(1.08f, 0.92f), 22f)
-                };
-            }
-
-            if (m_LogoMotion == null)
-            {
-                m_LogoMotion = new UIElementMotionConfig("Logo", new Vector2(0f, 1f), 700f, 0.04f, 0.38f, -4f, new Vector2(0.94f, 1.06f), 22f);
-            }
-        }
-
         /// <summary>
-        /// Instantly places all elements into their starting off-screen/masked poses.
-        /// Must be called before making the screen active to prevent visible rest pops on re-entry.
+        /// Instantly prepares off-screen hidden poses before the screen is visible, eliminating any pop.
         /// </summary>
         public void PrepareEntranceState()
         {
@@ -290,129 +270,85 @@ namespace MainGame.UI.Unified
                 m_ScreenPanelRoot.localScale = m_PanelRootRestScale;
             }
 
+            // 1. Background
             if (m_Background != null)
             {
                 m_Background.anchoredPosition = m_Bg1RestPos;
                 m_Background.localScale = m_BgRestScale * m_BgStartScale;
-                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
-                if (bgCg != null) bgCg.alpha = 1f;
             }
-
             if (m_BackgroundLayer2 != null)
             {
                 m_BackgroundLayer2.anchoredPosition = m_Bg2RestPos;
                 m_BackgroundLayer2.localScale = m_Bg2RestScale;
-                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
-                if (bgCg2 != null) bgCg2.alpha = 1f;
             }
 
+            // 2. Character & Robot
             if (m_CharacterArtwork != null)
             {
-                m_CharacterArtwork.anchoredPosition = new Vector2(m_CharacterRestPos.x + m_CharacterEntryDistanceX, m_CharacterRestPos.y);
+                m_CharacterArtwork.anchoredPosition = m_CharRestPos;
                 m_CharacterArtwork.localScale = Vector3.one;
             }
-
-            if (m_Logo != null)
+            if (m_RobotArtwork != null)
             {
-                float dropDist = m_LogoMotion != null ? m_LogoMotion.EntryDistance : 700f;
-                m_Logo.anchoredPosition = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + dropDist);
-                m_Logo.localScale = new Vector3(0.92f, 0.92f, 1f);
-                m_Logo.localEulerAngles = new Vector3(0f, 0f, -4f);
+                m_RobotArtwork.anchoredPosition = m_RobotRestPos + new Vector2(0f, -6f);
+                m_RobotArtwork.localScale = new Vector3(0.96f, 0.96f, 1f);
+                CanvasGroup rCg = m_RobotArtwork.GetComponent<CanvasGroup>();
+                if (rCg != null) rCg.alpha = 0.65f;
             }
 
+            // 3. Logo (above ceiling, tilted -4 deg, slightly vertically compressed)
+            if (m_Logo != null)
+            {
+                m_Logo.anchoredPosition = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 750f);
+                m_Logo.localScale = new Vector3(m_LogoRestScale.x * 1.02f, m_LogoRestScale.y * 0.92f, 1f);
+                m_Logo.localEulerAngles = new Vector3(0f, 0f, -4f);
+            }
             if (m_LogoMask != null)
             {
-                // Top lettering masked out completely (320px from top)
                 m_LogoMask.padding = new Vector4(0f, 0f, 0f, 320f);
             }
 
-            if (m_ButtonRects != null && m_ButtonRestPositions != null)
+            // 4. Buttons (off-screen on distinct vectors)
+            Vector2[] startOffsets = new Vector2[]
             {
-                for (int i = 0; i < m_ButtonRects.Length; i++)
+                new Vector2(380f, 450f),   // CONTINUE: Upper-right diagonal
+                new Vector2(750f, 0f),     // NEW GAME: Far right horizontal
+                new Vector2(320f, -520f),  // COLLECT: Lower-right
+                new Vector2(140f, 280f),   // OPTIONS: Upper-right short
+                new Vector2(0f, -650f),    // CREDITS: Below screen
+                new Vector2(0f, 900f)      // EXIT: Ceiling plunge
+            };
+
+            float[] startAngles = new float[] { -5f, 0f, 4f, -2f, 0f, -2f };
+
+            for (int i = 0; i < m_ButtonRects.Length; i++)
+            {
+                if (m_ButtonRects[i] != null)
                 {
-                    RectTransform btnRect = m_ButtonRects[i];
-                    if (btnRect == null) continue;
-
-                    UIElementMotionConfig cfg = (m_ButtonMotions != null && i < m_ButtonMotions.Length)
-                        ? m_ButtonMotions[i]
-                        : new UIElementMotionConfig();
-
-                    btnRect.anchoredPosition = m_ButtonRestPositions[i] + cfg.CalculateStartOffset();
-                    btnRect.localScale = new Vector3(1.02f, 1.02f, 1f);
-                    btnRect.localEulerAngles = new Vector3(0f, 0f, cfg.RotationStart);
+                    m_ButtonRects[i].anchoredPosition = m_ButtonRestPositions[i] + startOffsets[i];
+                    m_ButtonRects[i].localScale = Vector3.one;
+                    m_ButtonRects[i].localEulerAngles = new Vector3(0f, 0f, startAngles[i]);
                 }
-            }
-        }
 
-        public void ResetToRestState()
-        {
-            StopActiveAnimation();
-            if (!m_HasCapturedRest) return;
-
-            if (m_ScreenPanelRoot != null)
-            {
-                m_ScreenPanelRoot.localScale = m_PanelRootRestScale;
-            }
-
-            if (m_Background != null)
-            {
-                m_Background.anchoredPosition = m_Bg1RestPos;
-                m_Background.localScale = m_BgRestScale;
-                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
-                if (bgCg != null) bgCg.alpha = 1f;
-            }
-
-            if (m_BackgroundLayer2 != null)
-            {
-                m_BackgroundLayer2.anchoredPosition = m_Bg2RestPos;
-                m_BackgroundLayer2.localScale = m_Bg2RestScale;
-                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
-                if (bgCg2 != null) bgCg2.alpha = 1f;
-            }
-
-            if (m_CharacterArtwork != null)
-            {
-                m_CharacterArtwork.anchoredPosition = m_CharacterRestPos;
-                m_CharacterArtwork.localScale = Vector3.one;
-            }
-
-            if (m_Logo != null)
-            {
-                m_Logo.anchoredPosition = m_LogoRestPos;
-                m_Logo.localScale = m_LogoRestScale;
-                m_Logo.localEulerAngles = m_LogoRestAngles;
-            }
-
-            if (m_LogoMask != null)
-            {
-                m_LogoMask.padding = Vector4.zero;
-            }
-
-            if (m_ButtonRects != null && m_ButtonRestPositions != null)
-            {
-                for (int i = 0; i < m_ButtonRects.Length; i++)
+                if (m_ButtonAccents != null && i < m_ButtonAccents.Length && m_ButtonAccents[i] != null)
                 {
-                    if (m_ButtonRects[i] != null && i < m_ButtonRestPositions.Length)
-                    {
-                        m_ButtonRects[i].anchoredPosition = m_ButtonRestPositions[i];
-                        m_ButtonRects[i].localScale = Vector3.one;
-                        m_ButtonRects[i].localEulerAngles = Vector3.zero;
-                    }
+                    m_ButtonAccents[i].anchoredPosition = m_AccentRestPositions[i];
                 }
             }
         }
 
         public void PlayEntrance(Action onComplete)
         {
-            PrepareEntranceState();
-            m_ActiveRoutine = StartCoroutine(EntranceRoutine(onComplete));
+            StopActiveAnimation();
+            CaptureRestState();
+            m_ActiveRoutine = StartCoroutine(MasterEntranceSequence(onComplete));
         }
 
         public void PlayExit(Action onComplete)
         {
             StopActiveAnimation();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(ExitRoutine(onComplete));
+            m_ActiveRoutine = StartCoroutine(MasterExitSequence(onComplete));
         }
 
         public void StopActiveAnimation()
@@ -423,16 +359,10 @@ namespace MainGame.UI.Unified
                 m_ActiveRoutine = null;
             }
 
-            if (m_LogoIdleRoutine != null)
+            if (m_AmbientRoutine != null)
             {
-                StopCoroutine(m_LogoIdleRoutine);
-                m_LogoIdleRoutine = null;
-            }
-
-            if (m_ParallaxRoutine != null)
-            {
-                StopCoroutine(m_ParallaxRoutine);
-                m_ParallaxRoutine = null;
+                StopCoroutine(m_AmbientRoutine);
+                m_AmbientRoutine = null;
             }
 
             for (int i = 0; i < m_ChildCoroutines.Count; i++)
@@ -445,113 +375,192 @@ namespace MainGame.UI.Unified
             m_ChildCoroutines.Clear();
         }
 
-        private IEnumerator EntranceRoutine(Action onComplete)
+        private void TrackCoroutine(Coroutine c)
         {
-            // 1. Background establishment (slow establishing camera punch/zoom)
+            if (c != null) m_ChildCoroutines.Add(c);
+        }
+
+        // ═════════════════════════════════════════════════════════════════════════════
+        // MASTER ENTRANCE CHOREOGRAPHY (0.00s -> ~1.15s)
+        // ═════════════════════════════════════════════════════════════════════════════
+
+        private IEnumerator MasterEntranceSequence(Action onComplete)
+        {
+            // 0.00s: Background establishes
             if (m_Background != null)
             {
-                TrackChildCoroutine(AnimateScale(m_Background, m_BgRestScale * m_BgStartScale, m_BgRestScale, m_BgZoomDuration, EasingType.EaseOutQuad));
+                TrackCoroutine(StartCoroutine(AnimateScale(m_Background, m_BgRestScale * m_BgStartScale, m_BgRestScale, m_BgZoomDuration, EasingType.EaseOutQuad)));
             }
 
-            // 2. Character artwork slide-in
-            if (m_CharacterArtwork != null)
-            {
-                Vector2 startChar = new Vector2(m_CharacterRestPos.x + m_CharacterEntryDistanceX, m_CharacterRestPos.y);
-                TrackChildCoroutine(AnimateMotion(m_CharacterArtwork, startChar, m_CharacterRestPos, 0f, 0f, m_CharacterDuration, 0.05f, EasingType.EaseOutBack, 1.15f));
-            }
-
-            // 3. Hero RETRY Logo: Mask reveal + vertical plunge + squash & stretch
-            bool logoDone = (m_Logo == null);
+            // 0.05s: RETRY Logo Hero Drop begins
+            yield return new WaitForSecondsRealtime(0.05f);
+            bool logoDone = false;
             if (m_Logo != null)
             {
-                TrackChildCoroutine(LogoHeroPlungeRoutine(() => logoDone = true));
+                TrackCoroutine(StartCoroutine(LogoHeroPlungeRoutine(() => logoDone = true)));
             }
-
-            // 4. Choreographed Physical Button Entrances with Start Order != Landing Order
-            int totalActive = 0;
-            for (int i = 0; i < m_ButtonRects.Length; i++)
+            else
             {
-                RectTransform btnRect = m_ButtonRects[i];
-                if (btnRect != null && btnRect.gameObject.activeInHierarchy) totalActive++;
+                logoDone = true;
             }
 
-            int buttonsFinished = 0;
-            for (int i = 0; i < m_ButtonRects.Length; i++)
+            // 0.10s: Character & Robot life begins
+            yield return new WaitForSecondsRealtime(0.05f);
+            if (m_CharacterArtwork != null)
             {
-                RectTransform btnRect = m_ButtonRects[i];
-                if (btnRect == null || !btnRect.gameObject.activeInHierarchy) continue;
-
-                UIElementMotionConfig cfg = (m_ButtonMotions != null && i < m_ButtonMotions.Length)
-                    ? m_ButtonMotions[i]
-                    : new UIElementMotionConfig();
-
-                Vector2 restPos = m_ButtonRestPositions[i];
-                Vector2 startPos = restPos + cfg.CalculateStartOffset();
-                RectTransform accent = (m_ButtonAccents != null && i < m_ButtonAccents.Length) ? m_ButtonAccents[i] : null;
-
-                TrackChildCoroutine(ButtonBallisticEntranceRoutine(
-                    btnRect, accent,
-                    startPos, restPos,
-                    cfg,
-                    cfg.StartDelay,
-                    () => buttonsFinished++
-                ));
+                TrackCoroutine(StartCoroutine(CharacterLifeEntranceRoutine()));
+            }
+            if (m_RobotArtwork != null)
+            {
+                TrackCoroutine(StartCoroutine(RobotSystemBootRoutine()));
             }
 
-            // Wait for both Logo Hero sequence AND all buttons to land and settle
-            while (!logoDone || buttonsFinished < totalActive)
+            // 0.15s: CONTINUE (Fast Diagonal Arrival)
+            yield return new WaitForSecondsRealtime(0.05f);
+            bool btn0Done = false;
+            if (GetButtonValid(0))
+            {
+                TrackCoroutine(StartCoroutine(ContinueButtonRoutine(() => btn0Done = true)));
+            }
+            else btn0Done = true;
+
+            // 0.22s: NEW GAME (Heavy Horizontal Slide)
+            yield return new WaitForSecondsRealtime(0.07f);
+            bool btn1Done = false;
+            if (GetButtonValid(1))
+            {
+                TrackCoroutine(StartCoroutine(NewGameButtonRoutine(() => btn1Done = true)));
+            }
+            else btn1Done = true;
+
+            // 0.30s: COLLECT (Rising Arc)
+            yield return new WaitForSecondsRealtime(0.08f);
+            bool btn2Done = false;
+            if (GetButtonValid(2))
+            {
+                TrackCoroutine(StartCoroutine(CollectButtonRoutine(() => btn2Done = true)));
+            }
+            else btn2Done = true;
+
+            // 0.38s: OPTIONS (Short Mechanical Drop)
+            yield return new WaitForSecondsRealtime(0.08f);
+            bool btn3Done = false;
+            if (GetButtonValid(3))
+            {
+                TrackCoroutine(StartCoroutine(OptionsButtonRoutine(() => btn3Done = true)));
+            }
+            else btn3Done = true;
+
+            // 0.46s: CREDITS (Vertical Rise)
+            yield return new WaitForSecondsRealtime(0.08f);
+            bool btn4Done = false;
+            if (GetButtonValid(4))
+            {
+                TrackCoroutine(StartCoroutine(CreditsButtonRoutine(() => btn4Done = true)));
+            }
+            else btn4Done = true;
+
+            // 0.54s: EXIT (Heaviest Signboard Ceiling Slam)
+            yield return new WaitForSecondsRealtime(0.08f);
+            bool btn5Done = false;
+            if (GetButtonValid(5))
+            {
+                TrackCoroutine(StartCoroutine(ExitButtonRoutine(() => btn5Done = true)));
+            }
+            else btn5Done = true;
+
+            // Wait for all elements to finish landing and settle
+            while (!logoDone || !btn0Done || !btn1Done || !btn2Done || !btn3Done || !btn4Done || !btn5Done)
             {
                 yield return null;
             }
 
-            // Start living background parallax & subtle logo breathing bob ONLY after landing is complete
-            m_ParallaxRoutine = StartCoroutine(BackgroundParallaxRoutine());
-            m_LogoIdleRoutine = StartCoroutine(LogoIdleRoutine());
+            // Settle all buttons into their exact rest state (NO wobbling/looping)
+            ForceAllElementsToRest();
+
+            // Start subtle, non-intrusive ambient life for character and background
+            m_AmbientRoutine = StartCoroutine(AmbientLivingLoop());
 
             m_ActiveRoutine = null;
             onComplete?.Invoke();
         }
 
-        private IEnumerator LogoHeroPlungeRoutine(Action onDone)
+        private bool GetButtonValid(int index)
         {
-            float dropDist = m_LogoMotion != null ? m_LogoMotion.EntryDistance : 700f;
-            Vector2 startLogoPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + dropDist);
-            Vector2 overshootPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y - 22f);
-            Vector2 reboundPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 6f);
+            return m_ButtonRects != null && index < m_ButtonRects.Length &&
+                   m_ButtonRects[index] != null && m_ButtonRects[index].gameObject.activeInHierarchy;
+        }
 
-            m_Logo.anchoredPosition = startLogoPos;
-            m_Logo.localScale = new Vector3(0.92f, 0.92f, 1f);
-            m_Logo.localEulerAngles = new Vector3(0f, 0f, -4f);
-
-            // Phase 1: Lettering wipe reveal (0.24s) via RectMask2D
+        private void ForceAllElementsToRest()
+        {
+            if (m_Logo != null)
+            {
+                m_Logo.anchoredPosition = m_LogoRestPos;
+                m_Logo.localScale = m_LogoRestScale;
+                m_Logo.localEulerAngles = m_LogoRestAngles;
+            }
             if (m_LogoMask != null)
             {
-                m_LogoMask.padding = new Vector4(0f, 0f, 0f, 320f);
+                m_LogoMask.padding = Vector4.zero;
             }
 
-            float duration = m_LogoMotion != null ? m_LogoMotion.Duration : 0.38f;
-            AnimationCurve curve = UIMotionProfile.FastDrop;
+            for (int i = 0; i < m_ButtonRects.Length; i++)
+            {
+                if (m_ButtonRects[i] != null)
+                {
+                    m_ButtonRects[i].anchoredPosition = m_ButtonRestPositions[i];
+                    m_ButtonRects[i].localScale = Vector3.one;
+                    m_ButtonRects[i].localEulerAngles = Vector3.zero;
+                }
+
+                if (m_ButtonAccents != null && i < m_ButtonAccents.Length && m_ButtonAccents[i] != null)
+                {
+                    m_ButtonAccents[i].anchoredPosition = m_AccentRestPositions[i];
+                }
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════════════════════
+        // ELEMENT KINEMATIC ROUTINES
+        // ═════════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// RETRY Logo Hero Drop: Plunge from +750px down, top-to-bottom mask wipe reveal,
+        /// hard landing impact (-20px overshoot), squash, micro-shake, sparks, and pendulum settle.
+        /// </summary>
+        private IEnumerator LogoHeroPlungeRoutine(Action onDone)
+        {
+            Vector2 startLogoPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 750f);
+            Vector2 overshootPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y - 20f);
+            Vector2 reboundPos = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 8f);
+
+            m_Logo.anchoredPosition = startLogoPos;
+            m_Logo.localScale = new Vector3(m_LogoRestScale.x * 0.94f, m_LogoRestScale.y * 1.06f, 1f);
+            m_Logo.localEulerAngles = new Vector3(0f, 0f, -4f);
+
+            float dropDur = 0.36f;
+            float wipeDur = 0.22f;
             float elapsed = 0f;
 
-            // Phase 2: High velocity ballistic drop and brake
-            while (elapsed < duration)
+            // Phase 1: Ballistic Drop + Mask Wipe
+            while (elapsed < dropDur)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float progress = curve.Evaluate(t);
+                float t = Mathf.Clamp01(elapsed / dropDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseInQuad, t);
 
                 if (m_Logo != null)
                 {
-                    m_Logo.anchoredPosition = Vector2.LerpUnclamped(startLogoPos, overshootPos, progress);
-                    m_Logo.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-4f, 2f, progress));
+                    m_Logo.anchoredPosition = Vector2.LerpUnclamped(startLogoPos, overshootPos, ease);
+                    m_Logo.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-4f, 2f, ease));
+                    float stretch = Mathf.Lerp(1.06f, 0.96f, ease);
+                    m_Logo.localScale = new Vector3(m_LogoRestScale.x / stretch, m_LogoRestScale.y * stretch, 1f);
                 }
 
-                // Progressive mask wipe reveal of lettering
-                if (m_LogoMask != null && elapsed < m_MaskWipeDuration)
+                if (m_LogoMask != null && elapsed < wipeDur)
                 {
-                    float maskT = Mathf.Clamp01(elapsed / m_MaskWipeDuration);
-                    float easeMask = UIEasing.Evaluate(EasingType.EaseOutQuad, maskT);
-                    m_LogoMask.padding = new Vector4(0f, 0f, 0f, Mathf.Lerp(320f, 0f, easeMask));
+                    float wt = Mathf.Clamp01(elapsed / wipeDur);
+                    m_LogoMask.padding = new Vector4(0f, 0f, 0f, Mathf.Lerp(320f, 0f, wt));
                 }
                 else if (m_LogoMask != null)
                 {
@@ -566,16 +575,15 @@ namespace MainGame.UI.Unified
                 m_Logo.anchoredPosition = overshootPos;
                 m_Logo.localEulerAngles = new Vector3(0f, 0f, 2f);
             }
-            if (m_LogoMask != null)
-            {
-                m_LogoMask.padding = Vector4.zero;
-            }
+            if (m_LogoMask != null) m_LogoMask.padding = Vector4.zero;
 
-            // Heavy Hero micro-shake impact!
+            // IMPACT FRAME EVENTS
             UIMicroShake.Shake(0.85f, 0.08f);
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.95f, 0.02f);
+            SpawnLogoSparks();
 
-            // Phase 3: Impact Squash & Stretch (Scale X compresses, Scale Y stretches on downward hit)
-            Vector3 squishScale = new Vector3(m_LogoRestScale.x * 0.94f, m_LogoRestScale.y * 1.06f, 1f);
+            // Phase 2: Impact Squash (0.05s)
+            Vector3 squishScale = new Vector3(m_LogoRestScale.x * 1.08f, m_LogoRestScale.y * 0.92f, 1f);
             elapsed = 0f;
             float squishDur = 0.05f;
             while (elapsed < squishDur)
@@ -586,10 +594,9 @@ namespace MainGame.UI.Unified
                 yield return null;
             }
 
-            // Phase 4: Rebound up to +6px
-            Vector3 stretchScale = new Vector3(m_LogoRestScale.x * 1.02f, m_LogoRestScale.y * 0.97f, 1f);
+            // Phase 3: Rebound (+8px Y, -1 deg angle)
             elapsed = 0f;
-            float reboundDur = 0.05f;
+            float reboundDur = 0.06f;
             while (elapsed < reboundDur)
             {
                 elapsed += Time.unscaledDeltaTime;
@@ -597,15 +604,15 @@ namespace MainGame.UI.Unified
                 if (m_Logo != null)
                 {
                     m_Logo.anchoredPosition = Vector2.Lerp(overshootPos, reboundPos, t);
-                    m_Logo.localScale = Vector3.Lerp(squishScale, stretchScale, t);
-                    m_Logo.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(2f, 0f, t));
+                    m_Logo.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(2f, -1f, t));
+                    m_Logo.localScale = Vector3.Lerp(squishScale, m_LogoRestScale, t);
                 }
                 yield return null;
             }
 
-            // Phase 5: Final settle to rest position and scale
+            // Phase 4: Final Settle to exact rest (0.06s)
             elapsed = 0f;
-            float settleDur = 0.05f;
+            float settleDur = 0.06f;
             while (elapsed < settleDur)
             {
                 elapsed += Time.unscaledDeltaTime;
@@ -613,7 +620,7 @@ namespace MainGame.UI.Unified
                 if (m_Logo != null)
                 {
                     m_Logo.anchoredPosition = Vector2.Lerp(reboundPos, m_LogoRestPos, t);
-                    m_Logo.localScale = Vector3.Lerp(stretchScale, m_LogoRestScale, t);
+                    m_Logo.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-1f, 0f, t));
                 }
                 yield return null;
             }
@@ -623,324 +630,662 @@ namespace MainGame.UI.Unified
                 m_Logo.anchoredPosition = m_LogoRestPos;
                 m_Logo.localScale = m_LogoRestScale;
                 m_Logo.localEulerAngles = m_LogoRestAngles;
+                StartCoroutine(LogoStabilizationGlitchRoutine(m_Logo));
             }
 
             onDone?.Invoke();
         }
 
-        private IEnumerator ButtonBallisticEntranceRoutine(
-            RectTransform button,
-            RectTransform accent,
-            Vector2 startPos, Vector2 targetPos,
-            UIElementMotionConfig cfg,
-            float delay,
-            Action onDone)
+        private void SpawnLogoSparks()
         {
-            if (delay > 0f)
+            RoboticPixelFXPool pool = FindAnyObjectByType<RoboticPixelFXPool>();
+            if (pool != null && m_Logo != null)
             {
-                float dTimer = 0f;
-                while (dTimer < delay)
-                {
-                    dTimer += Time.unscaledDeltaTime;
-                    yield return null;
-                }
+                pool.SpawnSparkBurst(Vector2.zero, m_Logo, new Color(1.0f, 0.85f, 0.35f, 1f), 4, 18f);
             }
+        }
 
-            if (button == null)
-            {
-                onDone?.Invoke();
-                yield break;
-            }
+        private IEnumerator LogoStabilizationGlitchRoutine(RectTransform logo)
+        {
+            if (logo == null) yield break;
+            Vector2 basePos = logo.anchoredPosition;
+            logo.anchoredPosition = basePos + new Vector2(-3f, 0f);
+            yield return null;
+            logo.anchoredPosition = basePos + new Vector2(2f, 0f);
+            yield return null;
+            logo.anchoredPosition = basePos;
+        }
 
-            // Calculate overshoot and rebound targets
-            Vector2 travelDir = (targetPos - startPos).normalized;
-            Vector2 overshootPos = targetPos + (travelDir * cfg.OvershootDistance);
-            Vector2 reboundPos = targetPos - (travelDir * (cfg.OvershootDistance * cfg.ReboundAmount));
+        /// <summary>
+        /// 1. CONTINUE: Fast diagonal arrival from upper-right, -5 -> +2 -> 0 deg rotation,
+        /// overshoot, hard landing, pendulum wobble, and secondary child counter-motion.
+        /// </summary>
+        private IEnumerator ContinueButtonRoutine(Action onDone)
+        {
+            RectTransform btn = m_ButtonRects[0];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 0 ? m_ButtonAccents[0] : null;
+            Vector2 targetPos = m_ButtonRestPositions[0];
+            Vector2 startPos = targetPos + new Vector2(380f, 450f);
+            Vector2 overshootPos = targetPos + new Vector2(-10f, -14f);
 
-            AnimationCurve curve = cfg.MotionCurve != null ? cfg.MotionCurve : UIMotionProfile.FastDrop;
-            float travelDuration = cfg.Duration;
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = new Vector3(0f, 0f, -5f);
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.35f, 0.05f);
+
+            float travelDur = 0.30f;
             float elapsed = 0f;
 
-            // Phase 1: High Velocity Flight -> Hard Deceleration -> Overshoot
-            while (elapsed < travelDuration)
+            while (elapsed < travelDur)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / travelDuration);
-                float progress = curve.Evaluate(t);
+                float t = Mathf.Clamp01(elapsed / travelDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseInQuad, t);
 
-                if (button != null)
+                if (btn != null)
                 {
-                    button.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, progress);
-                    // Rotation straightens: cfg.RotationStart -> +2 deg
-                    button.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(cfg.RotationStart, 2f, progress));
+                    btn.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, ease);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-5f, 2f, ease));
                 }
                 yield return null;
             }
 
-            if (button != null)
+            // LANDING IMPACT
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.70f, 0.04f);
+            SpawnButtonSparks(btn, 3, new Color(0.35f, 0.80f, 1.0f));
+
+            if (accent != null)
             {
-                button.anchoredPosition = overshootPos;
-                button.localEulerAngles = new Vector3(0f, 0f, 2f);
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(-2f, -2f), 0.16f));
             }
 
-            // Audio & Micro-Shake Hook
-            if (cfg.MicroShakeMagnitude > 0.01f)
+            Vector3 squishScale = new Vector3(1.05f, 0.95f, 1f);
+            elapsed = 0f;
+            float squishDur = 0.04f;
+            while (elapsed < squishDur)
             {
-                UIMicroShake.Shake(cfg.MicroShakeMagnitude, 0.05f);
-            }
-            if (cfg.AudioClip != null && AudioManager.Instance != null)
-            {
-                AudioManager.Instance.PlayUi(cfg.AudioClip);
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / squishDur);
+                if (btn != null) btn.localScale = Vector3.Lerp(Vector3.one, squishScale, t);
+                yield return null;
             }
 
-            // Phase 2: Impact Compression (Signboard squashes on landing)
-            if (cfg.ImpactEnabled)
+            elapsed = 0f;
+            float wobbleDur = 0.16f;
+            while (elapsed < wobbleDur)
             {
-                elapsed = 0f;
-                float compressDur = cfg.ImpactDuration;
-                Vector3 squishScale = new Vector3(cfg.ImpactScale.x, cfg.ImpactScale.y, 1f);
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / wobbleDur);
+                float rot = Mathf.Sin(t * Mathf.PI * 2.5f) * (3f * (1f - t));
 
-                while (elapsed < compressDur)
+                if (btn != null)
                 {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / compressDur);
-                    if (button != null)
-                    {
-                        button.localScale = Vector3.Lerp(Vector3.one, squishScale, t);
-                    }
-                    yield return null;
+                    btn.anchoredPosition = Vector2.Lerp(overshootPos, targetPos, t);
+                    btn.localScale = Vector3.Lerp(squishScale, Vector3.one, t);
+                    btn.localEulerAngles = new Vector3(0f, 0f, rot);
                 }
-
-                // Phase 3: Rebound
-                elapsed = 0f;
-                float reboundDur = cfg.SettleDuration * 0.5f;
-                Vector3 reboundScale = new Vector3(0.98f, 1.02f, 1f);
-
-                while (elapsed < reboundDur)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / reboundDur);
-                    if (button != null)
-                    {
-                        button.anchoredPosition = Vector2.Lerp(overshootPos, reboundPos, t);
-                        button.localScale = Vector3.Lerp(squishScale, reboundScale, t);
-                        button.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(2f, 0f, t));
-                    }
-                    yield return null;
-                }
-
-                // Phase 4: Final Settle
-                elapsed = 0f;
-                float settleDur = cfg.SettleDuration * 0.5f;
-
-                while (elapsed < settleDur)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / settleDur);
-                    if (button != null)
-                    {
-                        button.anchoredPosition = Vector2.Lerp(reboundPos, targetPos, t);
-                        button.localScale = Vector3.Lerp(reboundScale, Vector3.one, t);
-                    }
-                    yield return null;
-                }
+                yield return null;
             }
 
-            if (button != null)
+            if (btn != null)
             {
-                button.anchoredPosition = targetPos;
-                button.localScale = Vector3.one;
-                button.localEulerAngles = Vector3.zero;
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
             }
-
-            // Phase 5: Secondary Accent / Text Reveal (0.04s after signboard lands)
-            TrackChildCoroutine(ButtonSecondaryAccentRevealRoutine(button, accent));
-
             onDone?.Invoke();
         }
 
-        private IEnumerator ButtonSecondaryAccentRevealRoutine(RectTransform button, RectTransform accent)
+        /// <summary>
+        /// 2. NEW GAME: Heavy horizontal slide from far right. Rigid 0 deg tilt (no rotation!),
+        /// passes slightly beyond target (-18px overshoot), hard reverse brake snap, and settles.
+        /// </summary>
+        private IEnumerator NewGameButtonRoutine(Action onDone)
         {
-            // Delay 0.04s after physical signboard impact
-            float delay = 0.04f;
+            RectTransform btn = m_ButtonRects[1];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 1 ? m_ButtonAccents[1] : null;
+            Vector2 targetPos = m_ButtonRestPositions[1];
+            Vector2 startPos = targetPos + new Vector2(750f, 0f);
+            Vector2 overshootPos = targetPos + new Vector2(-18f, 0f);
+
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = Vector3.zero;
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.40f, 0.03f);
+
+            float travelDur = 0.32f;
+            float elapsed = 0f;
+
+            while (elapsed < travelDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / travelDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseInCubic, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, ease);
+                    btn.localEulerAngles = Vector3.zero;
+                }
+                yield return null;
+            }
+
+            // HARD REVERSE BRAKE SNAP
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.02f);
+            SpawnButtonSparks(btn, 3, new Color(0.35f, 0.80f, 1.0f));
+
+            if (accent != null)
+            {
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(2.5f, 0f), 0.14f));
+            }
+
+            Vector3 squishScale = new Vector3(0.93f, 1.05f, 1f);
+            elapsed = 0f;
+            float brakeDur = 0.05f;
+            while (elapsed < brakeDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / brakeDur);
+                if (btn != null) btn.localScale = Vector3.Lerp(Vector3.one, squishScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            float snapDur = 0.10f;
+            while (elapsed < snapDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / snapDur);
+                float easeSnap = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.4f);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.LerpUnclamped(overshootPos, targetPos, easeSnap);
+                    btn.localScale = Vector3.Lerp(squishScale, Vector3.one, t);
+                    btn.localEulerAngles = Vector3.zero;
+                }
+                yield return null;
+            }
+
+            if (btn != null)
+            {
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
+            }
+            onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// 3. COLLECT: Rising curved arc from lower-right with rotation, overshoot, and landing snap.
+        /// </summary>
+        private IEnumerator CollectButtonRoutine(Action onDone)
+        {
+            RectTransform btn = m_ButtonRects[2];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 2 ? m_ButtonAccents[2] : null;
+            Vector2 targetPos = m_ButtonRestPositions[2];
+            Vector2 startPos = targetPos + new Vector2(320f, -520f);
+            Vector2 overshootPos = targetPos + new Vector2(-8f, 12f);
+
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = new Vector3(0f, 0f, 4f);
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.35f, 0.05f);
+
+            float travelDur = 0.32f;
+            float elapsed = 0f;
+
+            while (elapsed < travelDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / travelDur);
+                float easeX = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
+                float easeY = UIEasing.Evaluate(EasingType.EaseInQuad, t);
+                float arcBulge = Mathf.Sin(t * Mathf.PI) * 28f;
+
+                if (btn != null)
+                {
+                    float curX = Mathf.Lerp(startPos.x, overshootPos.x, easeX) + arcBulge;
+                    float curY = Mathf.Lerp(startPos.y, overshootPos.y, easeY);
+                    btn.anchoredPosition = new Vector2(curX, curY);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(4f, -1.5f, t));
+                }
+                yield return null;
+            }
+
+            // LANDING SNAP
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.65f, 0.03f);
+            SpawnButtonSparks(btn, 3, new Color(0.35f, 0.85f, 1.0f));
+
+            if (accent != null)
+            {
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(0f, -2f), 0.14f));
+            }
+
+            elapsed = 0f;
+            float settleDur = 0.12f;
+            while (elapsed < settleDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / settleDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.Lerp(overshootPos, targetPos, ease);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-1.5f, 0f, ease));
+                }
+                yield return null;
+            }
+
+            if (btn != null)
+            {
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
+            }
+            onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// 4. OPTIONS: Short snappy mechanical drop from upper-right with quick squash.
+        /// </summary>
+        private IEnumerator OptionsButtonRoutine(Action onDone)
+        {
+            RectTransform btn = m_ButtonRects[3];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 3 ? m_ButtonAccents[3] : null;
+            Vector2 targetPos = m_ButtonRestPositions[3];
+            Vector2 startPos = targetPos + new Vector2(140f, 280f);
+            Vector2 overshootPos = targetPos + new Vector2(-4f, -10f);
+
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = new Vector3(0f, 0f, -2f);
+
+            float dropDur = 0.20f;
+            float elapsed = 0f;
+
+            while (elapsed < dropDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / dropDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseInQuad, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, ease);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-2f, 1f, ease));
+                }
+                yield return null;
+            }
+
+            // MECHANICAL DROP SNAP
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.60f, 0.05f);
+            SpawnButtonSparks(btn, 2, new Color(0.35f, 0.80f, 1.0f));
+
+            if (accent != null)
+            {
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(0f, 1.5f), 0.10f));
+            }
+
+            Vector3 squishScale = new Vector3(1.05f, 0.95f, 1f);
+            elapsed = 0f;
+            float squishDur = 0.03f;
+            while (elapsed < squishDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / squishDur);
+                if (btn != null) btn.localScale = Vector3.Lerp(Vector3.one, squishScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            float settleDur = 0.08f;
+            while (elapsed < settleDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / settleDur);
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.Lerp(overshootPos, targetPos, t);
+                    btn.localScale = Vector3.Lerp(squishScale, Vector3.one, t);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(1f, 0f, t));
+                }
+                yield return null;
+            }
+
+            if (btn != null)
+            {
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
+            }
+            onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// 5. CREDITS: Smooth vertical rise from below with soft elastic settle.
+        /// </summary>
+        private IEnumerator CreditsButtonRoutine(Action onDone)
+        {
+            RectTransform btn = m_ButtonRects[4];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 4 ? m_ButtonAccents[4] : null;
+            Vector2 targetPos = m_ButtonRestPositions[4];
+            Vector2 startPos = targetPos + new Vector2(0f, -650f);
+            Vector2 overshootPos = targetPos + new Vector2(0f, 14f);
+
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = Vector3.zero;
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.40f, 0.02f);
+
+            float riseDur = 0.34f;
+            float elapsed = 0f;
+
+            while (elapsed < riseDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / riseDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutCubic, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, ease);
+                    btn.localEulerAngles = Vector3.zero;
+                }
+                yield return null;
+            }
+
+            // SOFT SETTLING TICK
+            UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.50f, 0.03f);
+
+            if (accent != null)
+            {
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(0f, -1.5f), 0.14f));
+            }
+
+            elapsed = 0f;
+            float settleDur = 0.12f;
+            while (elapsed < settleDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / settleDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.Lerp(overshootPos, targetPos, ease);
+                }
+                yield return null;
+            }
+
+            if (btn != null)
+            {
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
+            }
+            onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// 6. EXIT: Heaviest Signboard! Ceiling drop plunge with gravity acceleration,
+        /// hard impact (-28px overshoot), horizontal squash, popup slam SFX, micro-shake, and warning sparks.
+        /// </summary>
+        private IEnumerator ExitButtonRoutine(Action onDone)
+        {
+            RectTransform btn = m_ButtonRects[5];
+            RectTransform accent = m_ButtonAccents != null && m_ButtonAccents.Length > 5 ? m_ButtonAccents[5] : null;
+            Vector2 targetPos = m_ButtonRestPositions[5];
+            Vector2 startPos = targetPos + new Vector2(0f, 900f);
+            Vector2 overshootPos = targetPos + new Vector2(0f, -28f);
+            Vector2 reboundPos = targetPos + new Vector2(0f, 6f);
+
+            btn.anchoredPosition = startPos;
+            btn.localEulerAngles = new Vector3(0f, 0f, -2f);
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.45f, 0.02f);
+
+            float plungeDur = 0.28f;
+            float elapsed = 0f;
+
+            while (elapsed < plungeDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / plungeDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseInQuad, t);
+
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.LerpUnclamped(startPos, overshootPos, ease);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(-2f, 1f, ease));
+                    btn.localScale = new Vector3(0.92f, 1.08f, 1f);
+                }
+                yield return null;
+            }
+
+            // HEAVY CEILING SLAM IMPACT
+            UIFeedbackAudio.PlaySfx(UISfxType.PopupSlam, 0.95f, 0.02f);
+            UIMicroShake.Shake(0.40f, 0.05f);
+            SpawnButtonSparks(btn, 5, new Color(1.0f, 0.45f, 0.20f, 1f));
+
+            if (accent != null)
+            {
+                StartCoroutine(AnimateSecondaryReaction(accent, new Vector2(0f, 3f), 0.16f));
+            }
+
+            Vector3 squishScale = new Vector3(1.12f, 0.88f, 1f);
+            elapsed = 0f;
+            float squishDur = 0.05f;
+            while (elapsed < squishDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / squishDur);
+                if (btn != null) btn.localScale = Vector3.Lerp(new Vector3(0.92f, 1.08f, 1f), squishScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            float reboundDur = 0.06f;
+            while (elapsed < reboundDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / reboundDur);
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.Lerp(overshootPos, reboundPos, t);
+                    btn.localScale = Vector3.Lerp(squishScale, Vector3.one, t);
+                    btn.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(1f, 0f, t));
+                }
+                yield return null;
+            }
+
+            elapsed = 0f;
+            float settleDur = 0.06f;
+            while (elapsed < settleDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / settleDur);
+                if (btn != null)
+                {
+                    btn.anchoredPosition = Vector2.Lerp(reboundPos, targetPos, t);
+                }
+                yield return null;
+            }
+
+            if (btn != null)
+            {
+                btn.anchoredPosition = targetPos;
+                btn.localScale = Vector3.one;
+                btn.localEulerAngles = Vector3.zero;
+            }
+            onDone?.Invoke();
+        }
+
+        private void SpawnButtonSparks(RectTransform target, int count, Color color)
+        {
+            RoboticPixelFXPool pool = FindAnyObjectByType<RoboticPixelFXPool>();
+            if (pool != null && target != null)
+            {
+                pool.SpawnSparkBurst(Vector2.zero, target, color, count, 14f);
+            }
+        }
+
+        private IEnumerator AnimateSecondaryReaction(RectTransform child, Vector2 counterShift, float duration)
+        {
+            if (child == null) yield break;
+            Vector2 basePos = child.anchoredPosition;
+            child.anchoredPosition = basePos + counterShift;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
+                if (child != null)
+                {
+                    child.anchoredPosition = Vector2.Lerp(basePos + counterShift, basePos, ease);
+                }
+                yield return null;
+            }
+
+            if (child != null) child.anchoredPosition = basePos;
+        }
+
+        // ═════════════════════════════════════════════════════════════════════════════
+        // CHARACTER & ROBOT LIFE
+        // ═════════════════════════════════════════════════════════════════════════════
+
+        private IEnumerator RobotSystemBootRoutine()
+        {
+            if (m_RobotArtwork == null) yield break;
+
+            Vector2 startPos = m_RobotRestPos + new Vector2(0f, -6f);
+            m_RobotArtwork.anchoredPosition = startPos;
+            m_RobotArtwork.localScale = new Vector3(0.96f, 0.96f, 1f);
+
+            CanvasGroup cg = m_RobotArtwork.GetComponent<CanvasGroup>();
+            if (cg != null) cg.alpha = 0.65f;
+
+            float liftDur = 0.28f;
+            float elapsed = 0f;
+            while (elapsed < liftDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / liftDur);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.2f);
+
+                if (m_RobotArtwork != null)
+                {
+                    m_RobotArtwork.anchoredPosition = Vector2.Lerp(startPos, m_RobotRestPos, ease);
+                    m_RobotArtwork.localScale = Vector3.Lerp(new Vector3(0.96f, 0.96f, 1f), Vector3.one, t);
+                    if (cg != null) cg.alpha = Mathf.Lerp(0.65f, 1.0f, t);
+                }
+                yield return null;
+            }
+
+            if (m_RobotArtwork != null)
+            {
+                m_RobotArtwork.anchoredPosition = m_RobotRestPos;
+                m_RobotArtwork.localScale = Vector3.one;
+                if (cg != null) cg.alpha = 1.0f;
+            }
+
+            UIFeedbackAudio.PlaySfx(UISfxType.RobotBoot, 0.70f, 0.02f);
+            RoboticPixelFXPool pool = FindAnyObjectByType<RoboticPixelFXPool>();
+            if (pool != null && m_RobotArtwork != null)
+            {
+                pool.SpawnSparkBurst(new Vector2(0f, 40f), m_RobotArtwork, new Color(0.35f, 0.95f, 0.70f, 1f), 3, 12f);
+            }
+        }
+
+        private IEnumerator CharacterLifeEntranceRoutine()
+        {
+            if (m_CharacterArtwork == null) yield break;
+            Vector2 basePos = m_CharRestPos;
+
+            float dur = 0.40f;
+            float elapsed = 0f;
+            while (elapsed < dur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / dur);
+                float offset = Mathf.Sin(t * Mathf.PI) * 1.0f;
+                if (m_CharacterArtwork != null)
+                {
+                    m_CharacterArtwork.anchoredPosition = basePos + new Vector2(0f, offset);
+                }
+                yield return null;
+            }
+
+            if (m_CharacterArtwork != null) m_CharacterArtwork.anchoredPosition = basePos;
+        }
+
+        private IEnumerator AmbientLivingLoop()
+        {
             float timer = 0f;
-            while (timer < delay)
+            while (true)
             {
                 timer += Time.unscaledDeltaTime;
-                yield return null;
-            }
 
-            if (button == null) yield break;
-
-            // Punch pulse on button image / visual
-            float pulseDuration = 0.08f;
-            float elapsed = 0f;
-            Vector3 peakScale = new Vector3(1.05f, 1.05f, 1f);
-
-            while (elapsed < pulseDuration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / pulseDuration);
-                float sinPop = Mathf.Sin(t * Mathf.PI);
-                if (button != null)
+                if (m_CharacterArtwork != null)
                 {
-                    button.localScale = Vector3.Lerp(Vector3.one, peakScale, sinPop);
+                    float charBob = Mathf.Sin(timer * 1.2f) * 0.8f;
+                    m_CharacterArtwork.anchoredPosition = m_CharRestPos + new Vector2(0f, charBob);
                 }
-                yield return null;
-            }
 
-            if (button != null) button.localScale = Vector3.one;
-
-            // If this button has an active selection accent (e.g. pointer diamond)
-            if (accent != null && accent.gameObject.activeInHierarchy)
-            {
-                elapsed = 0f;
-                float accentDur = 0.10f;
-                while (elapsed < accentDur)
+                if (m_RobotArtwork != null)
                 {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / accentDur);
-                    float pop = Mathf.Sin(t * Mathf.PI);
-                    if (accent != null)
-                    {
-                        accent.localScale = Vector3.Lerp(Vector3.one, new Vector3(1.20f, 1.20f, 1f), pop);
-                    }
-                    yield return null;
+                    float botBob = Mathf.Sin(timer * 1.5f + 0.8f) * 0.5f;
+                    m_RobotArtwork.anchoredPosition = m_RobotRestPos + new Vector2(0f, botBob);
                 }
-                if (accent != null) accent.localScale = Vector3.one;
+
+                if (m_Background != null)
+                {
+                    float bgParallax = Mathf.Sin(timer * 0.4f) * 1.5f;
+                    m_Background.anchoredPosition = m_Bg1RestPos + new Vector2(bgParallax, 0f);
+                }
+
+                yield return null;
             }
         }
 
-        private IEnumerator ExitRoutine(Action onComplete)
+        // ═════════════════════════════════════════════════════════════════════════════
+        // MASTER EXIT CHOREOGRAPHY (~0.35s)
+        // ═════════════════════════════════════════════════════════════════════════════
+
+        private IEnumerator MasterExitSequence(Action onComplete)
         {
-            if (m_LogoIdleRoutine != null)
-            {
-                StopCoroutine(m_LogoIdleRoutine);
-                m_LogoIdleRoutine = null;
-            }
+            float duration = 0.32f;
+            UIFeedbackAudio.PlaySfx(UISfxType.Retract, 0.85f, 0.02f);
 
-            if (m_ParallaxRoutine != null)
-            {
-                StopCoroutine(m_ParallaxRoutine);
-                m_ParallaxRoutine = null;
-            }
-
-            // Beat 2: Screen briefly compresses (anticipation punch before dispersal)
-            if (m_ScreenPanelRoot != null)
-            {
-                float compDuration = 0.08f;
-                float compElapsed = 0f;
-                Vector3 compTarget = new Vector3(m_PanelRootRestScale.x * 0.96f, m_PanelRootRestScale.y * 0.94f, 1f);
-                while (compElapsed < compDuration)
-                {
-                    compElapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(compElapsed / compDuration);
-                    m_ScreenPanelRoot.localScale = Vector3.Lerp(m_PanelRootRestScale, compTarget, UIEasing.Evaluate(EasingType.EaseInQuad, t));
-                    yield return null;
-                }
-            }
-
-            float duration = 0.24f; // Fast, punchy exit
-
-            // Background remains fully visible
-            if (m_Background != null)
-            {
-                CanvasGroup bgCg = m_Background.GetComponent<CanvasGroup>();
-                if (bgCg != null) bgCg.alpha = 1f;
-                m_Background.localScale = m_BgRestScale;
-            }
-
-            if (m_BackgroundLayer2 != null)
-            {
-                CanvasGroup bgCg2 = m_BackgroundLayer2.GetComponent<CanvasGroup>();
-                if (bgCg2 != null) bgCg2.alpha = 1f;
-                m_BackgroundLayer2.localScale = m_Bg2RestScale;
-            }
-
-            if (m_ScreenPanelRoot != null)
-            {
-                TrackChildCoroutine(AnimateScale(m_ScreenPanelRoot, m_ScreenPanelRoot.localScale, m_PanelRootRestScale, duration, EasingType.EaseOutQuad));
-            }
-
-            // Directionally distinct button exits
-            if (m_ButtonRects != null)
-            {
-                for (int i = 0; i < m_ButtonRects.Length; i++)
-                {
-                    RectTransform btnRect = m_ButtonRects[i];
-                    if (btnRect == null || !btnRect.gameObject.activeInHierarchy) continue;
-
-                    Vector2 exitTarget;
-                    float rotZ;
-
-                    switch (i)
-                    {
-                        case 0: // Continue: Flies RIGHT
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x + 900f, m_ButtonRestPositions[i].y);
-                            rotZ = 6f;
-                            break;
-                        case 1: // New Game: Flies UP
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x, m_ButtonRestPositions[i].y + 800f);
-                            rotZ = 4f;
-                            break;
-                        case 2: // Collect: Flies RIGHT
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x + 950f, m_ButtonRestPositions[i].y + 30f);
-                            rotZ = -4f;
-                            break;
-                        case 3: // Options: Drops DOWN
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x, m_ButtonRestPositions[i].y - 800f);
-                            rotZ = -5f;
-                            break;
-                        case 4: // Credits: Flies DOWN-RIGHT
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x + 750f, m_ButtonRestPositions[i].y - 500f);
-                            rotZ = -6f;
-                            break;
-                        case 5: // Exit: Drops DOWN
-                        default:
-                            exitTarget = new Vector2(m_ButtonRestPositions[i].x + 200f, m_ButtonRestPositions[i].y - 850f);
-                            rotZ = 6f;
-                            break;
-                    }
-
-                    float stagger = i * 0.02f;
-                    TrackChildCoroutine(AnimateMotion(
-                        btnRect,
-                        btnRect.anchoredPosition, exitTarget,
-                        0f, rotZ,
-                        duration, stagger,
-                        EasingType.EaseInBack, 1.2f
-                    ));
-                }
-            }
-
-            // Hero Logo flings UP (+750px)
             if (m_Logo != null)
             {
-                Vector2 exitLogo = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 750f);
-                TrackChildCoroutine(AnimateMotion(
-                    m_Logo,
-                    m_Logo.anchoredPosition, exitLogo,
-                    0f, -4f,
-                    duration, 0.02f,
-                    EasingType.EaseInBack, 1.15f
-                ));
+                Vector2 exitLogo = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 600f);
+                StartCoroutine(AnimateMotion(m_Logo, m_Logo.anchoredPosition, exitLogo, duration * 0.8f, EasingType.EaseInQuad));
             }
 
-            // Character artwork slides LEFT (-750px)
-            if (m_CharacterArtwork != null)
+            Vector2[] exitOffsets = new Vector2[]
             {
-                Vector2 exitChar = new Vector2(m_CharacterRestPos.x - 750f, m_CharacterRestPos.y);
-                TrackChildCoroutine(AnimateMotion(
-                    m_CharacterArtwork,
-                    m_CharacterArtwork.anchoredPosition, exitChar,
-                    0f, 0f,
-                    duration, 0f,
-                    EasingType.EaseInCubic, 1f
-                ));
+                new Vector2(400f, 400f),
+                new Vector2(700f, 0f),
+                new Vector2(350f, -400f),
+                new Vector2(200f, 300f),
+                new Vector2(0f, -500f),
+                new Vector2(0f, 700f)
+            };
+
+            for (int i = 0; i < m_ButtonRects.Length; i++)
+            {
+                if (m_ButtonRects[i] != null && m_ButtonRects[i].gameObject.activeInHierarchy)
+                {
+                    Vector2 exitTarget = m_ButtonRestPositions[i] + exitOffsets[i];
+                    StartCoroutine(AnimateMotion(m_ButtonRects[i], m_ButtonRects[i].anchoredPosition, exitTarget, duration, EasingType.EaseInQuad));
+                }
             }
 
             float timer = 0f;
-            while (timer < duration + 0.06f)
+            while (timer < duration)
             {
                 timer += Time.unscaledDeltaTime;
                 yield return null;
@@ -950,145 +1295,44 @@ namespace MainGame.UI.Unified
             onComplete?.Invoke();
         }
 
-        private IEnumerator AnimateScaleAndAlpha(
-            RectTransform target,
-            Vector3 startScale, Vector3 targetScale,
-            float startAlpha, float targetAlpha,
-            float duration, float delay,
-            EasingType easing, float overshoot)
+        // ═════════════════════════════════════════════════════════════════════════════
+        // UTILITY EASING COROUTINES
+        // ═════════════════════════════════════════════════════════════════════════════
+
+        private IEnumerator AnimateMotion(RectTransform target, Vector2 from, Vector2 to, float duration, EasingType easeType)
         {
-            if (delay > 0f)
-            {
-                float delayTimer = 0f;
-                while (delayTimer < delay)
-                {
-                    delayTimer += Time.unscaledDeltaTime;
-                    yield return null;
-                }
-            }
-
-            CanvasGroup cg = target != null ? target.GetComponent<CanvasGroup>() : null;
-            if (cg == null && target != null)
-            {
-                cg = target.gameObject.AddComponent<CanvasGroup>();
-            }
-
-            float elapsed = 0f;
-            while (elapsed < duration && target != null)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float ease = UIEasing.Evaluate(easing, t, overshoot);
-
-                target.localScale = Vector3.LerpUnclamped(startScale, targetScale, ease);
-                if (cg != null)
-                {
-                    cg.alpha = Mathf.Lerp(startAlpha, targetAlpha, t);
-                }
-                yield return null;
-            }
-
-            if (target != null)
-            {
-                target.localScale = targetScale;
-                if (cg != null) cg.alpha = targetAlpha;
-            }
-        }
-
-        private IEnumerator LogoIdleRoutine()
-        {
-            while (m_Logo != null)
-            {
-                float bobY = Mathf.Sin(Time.unscaledTime * 1.6f) * 2.5f;
-                float tilt = Mathf.Sin(Time.unscaledTime * 0.8f) * 0.4f;
-                m_Logo.anchoredPosition = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + bobY);
-                m_Logo.localEulerAngles = new Vector3(0f, 0f, m_LogoRestAngles.z + tilt);
-                yield return null;
-            }
-        }
-
-        private IEnumerator BackgroundParallaxRoutine()
-        {
-            while (m_Background != null)
-            {
-                float driftX = Mathf.Sin(Time.unscaledTime * 0.4f) * 4f;
-                float driftY = Mathf.Cos(Time.unscaledTime * 0.3f) * 3f;
-                m_Background.anchoredPosition = new Vector2(m_Bg1RestPos.x + driftX, m_Bg1RestPos.y + driftY);
-                yield return null;
-            }
-        }
-
-        private void TrackChildCoroutine(IEnumerator routine)
-        {
-            Coroutine c = StartCoroutine(routine);
-            m_ChildCoroutines.Add(c);
-        }
-
-        private IEnumerator AnimateMotion(
-            RectTransform target,
-            Vector2 startPos, Vector2 targetPos,
-            float startRotZ, float targetRotZ,
-            float duration, float delay,
-            EasingType easing, float overshoot,
-            Action onDone = null)
-        {
-            if (delay > 0f)
-            {
-                float delayTimer = 0f;
-                while (delayTimer < delay)
-                {
-                    delayTimer += Time.unscaledDeltaTime;
-                    yield return null;
-                }
-            }
-
+            if (target == null) yield break;
             float elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
-                float ease = UIEasing.Evaluate(easing, t, overshoot);
-
+                float ease = UIEasing.Evaluate(easeType, t);
                 if (target != null)
                 {
-                    target.anchoredPosition = Vector2.LerpUnclamped(startPos, targetPos, ease);
-                    if (Mathf.Abs(startRotZ - targetRotZ) > 0.01f)
-                    {
-                        target.localEulerAngles = new Vector3(0f, 0f, Mathf.LerpUnclamped(startRotZ, targetRotZ, ease));
-                    }
+                    target.anchoredPosition = Vector2.LerpUnclamped(from, to, ease);
                 }
                 yield return null;
             }
-
-            if (target != null)
-            {
-                target.anchoredPosition = targetPos;
-                target.localEulerAngles = new Vector3(0f, 0f, targetRotZ);
-            }
-
-            onDone?.Invoke();
+            if (target != null) target.anchoredPosition = to;
         }
 
-        private IEnumerator AnimateScale(RectTransform target, Vector3 startScale, Vector3 targetScale, float duration, EasingType easing)
+        private IEnumerator AnimateScale(RectTransform target, Vector3 from, Vector3 to, float duration, EasingType easeType)
         {
+            if (target == null) yield break;
             float elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
-                float ease = UIEasing.Evaluate(easing, t);
-
+                float ease = UIEasing.Evaluate(easeType, t);
                 if (target != null)
                 {
-                    target.localScale = Vector3.LerpUnclamped(startScale, targetScale, ease);
+                    target.localScale = Vector3.LerpUnclamped(from, to, ease);
                 }
                 yield return null;
             }
-
-            if (target != null)
-            {
-                target.localScale = targetScale;
-            }
+            if (target != null) target.localScale = to;
         }
     }
 }

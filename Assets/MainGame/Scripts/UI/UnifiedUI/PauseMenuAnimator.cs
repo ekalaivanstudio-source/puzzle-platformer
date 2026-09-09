@@ -3,6 +3,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using MainGame.UI.Animation;
+using MainGame.UI.RoboticEffects;
+using MainGame.UI.Feedback;
 
 namespace MainGame.UI.Unified
 {
@@ -201,6 +203,26 @@ namespace MainGame.UI.Unified
 
                 m_PausePanel.anchoredPosition = overshootPos;
                 UIMicroShake.Shake(0.65f, 0.06f);
+                UIFeedbackAudio.PlaySfx(UISfxType.PopupSlam, 1.0f, 0.02f);
+
+                RoboticUIPanelEffect panelFX = m_PausePanel.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX == null)
+                {
+                    Image panelImg = m_PausePanel.GetComponent<Image>();
+                    if (panelImg != null)
+                    {
+                        panelFX = RoboticUIManager.GetOrAddPanelEffect(panelImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                    }
+                }
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerUp(0.18f);
+                }
+
+                if (RoboticUIManager.Instance != null)
+                {
+                    RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_PausePanel, new Color(0.35f, 0.85f, 1.0f), 6, 16f);
+                }
 
                 // Phase B: Settle rebound (approx 22% of slam duration)
                 float settleDur = m_SlamDuration * 0.22f;
@@ -296,6 +318,12 @@ namespace MainGame.UI.Unified
             // Panel flings up into ceiling (+700px)
             if (m_PausePanel != null)
             {
+                UIFeedbackAudio.PlaySfx(UISfxType.Retract, 0.85f, 0.02f);
+                RoboticUIPanelEffect panelFX = m_PausePanel.GetComponent<RoboticUIPanelEffect>();
+                if (panelFX != null)
+                {
+                    panelFX.PlayPowerDown(duration);
+                }
                 Vector2 exitPos = new Vector2(m_PanelRestPos.x, m_PanelRestPos.y + 700f);
                 StartCoroutine(AnimateMotion(m_PausePanel, m_PausePanel.anchoredPosition, exitPos, duration, EasingType.EaseInQuad));
             }
