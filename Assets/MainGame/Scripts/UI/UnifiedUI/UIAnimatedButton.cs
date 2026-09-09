@@ -13,7 +13,7 @@ namespace MainGame.UI.Unified
     /// Works seamlessly with Keyboard, Gamepad, and Mouse.
     /// </summary>
     [DisallowMultipleComponent]
-    public class UIAnimatedButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler, ISubmitHandler
+    public class UIAnimatedButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Selection Animation Settings")]
         [Tooltip("Position shift when selected (0 -> -5px).")]
@@ -139,11 +139,6 @@ namespace MainGame.UI.Unified
             // Keeps focus on the last hovered button for controller/keyboard parity
         }
 
-        public void OnSubmit(BaseEventData eventData)
-        {
-            // Play physical confirm punch when submitted via controller or keyboard
-            PlayConfirmPunch(null);
-        }
 
         public Coroutine PlayConfirmPunch(Action onComplete)
         {
