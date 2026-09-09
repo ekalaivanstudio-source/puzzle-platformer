@@ -273,7 +273,13 @@ namespace MainGame.UI.Editor
                 SetObjProp(screenSo, "m_Animator", animator);
                 if (back != null) SetObjProp(screenSo, "m_BackButton", back.GetComponent<Button>());
                 LevelSelection.LevelSelectionManager manager = panel.GetComponent<LevelSelection.LevelSelectionManager>() ?? panel.GetComponentInChildren<LevelSelection.LevelSelectionManager>(true);
-                if (manager != null) SetObjProp(screenSo, "m_LevelSelectionManager", manager);
+                if (manager != null)
+                {
+                    SetObjProp(screenSo, "m_LevelSelectionManager", manager);
+                    SerializedObject mgrSo = new SerializedObject(manager);
+                    SetObjProp(mgrSo, "animator", animator);
+                    mgrSo.ApplyModifiedProperties();
+                }
                 screenSo.ApplyModifiedProperties();
             }
         }

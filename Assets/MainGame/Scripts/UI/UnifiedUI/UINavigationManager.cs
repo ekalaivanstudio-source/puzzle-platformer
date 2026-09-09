@@ -128,6 +128,18 @@ namespace MainGame.UI.Unified
             }
         }
 
+        /// <summary>
+        /// Clears any cached selection memory for the specified screen, forcing it to fall back
+        /// to screen.DefaultSelectedObject upon next navigation.
+        /// </summary>
+        public void ClearSelectionMemory(UIScreen screen)
+        {
+            if (screen != null)
+            {
+                m_SelectionMemory.Remove(screen);
+            }
+        }
+
         private void Update()
         {
             if (EventSystem.current == null) return;

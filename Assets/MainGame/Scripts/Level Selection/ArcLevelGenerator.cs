@@ -63,6 +63,8 @@ namespace LevelSelection
         public bool HasGeneratedArc => spawnedNodes.Count > 0;
 
         public int ArcCount => (arcs != null && arcs.Count > 0) ? arcs.Count : 1;
+        public RectTransform NodesContainer => nodesContainer;
+        public GameObject LevelNodePrefab => levelNodePrefab;
 
         #endregion
 
@@ -258,6 +260,7 @@ namespace LevelSelection
 
             foreach (Transform child in container)
             {
+                if (child.GetComponent<LevelSelectionPointer>() != null) continue;
                 child.gameObject.SetActive(false);
                 Destroy(child.gameObject);
             }

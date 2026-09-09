@@ -48,6 +48,9 @@ namespace MainGame.UI.Unified
         [Header("Nodes & Path Container")]
         [SerializeField] private RectTransform m_GridContainer;
 
+        [Header("Pointer Reference")]
+        [SerializeField] private LevelSelectionPointer m_Pointer;
+
         #endregion
 
         #region Private Fields
@@ -179,6 +182,12 @@ namespace MainGame.UI.Unified
             if (m_NextButton != null) m_NextRestScale = m_NextButton.localScale;
             if (m_PrevButton != null) m_PrevRestScale = m_PrevButton.localScale;
 
+            if (m_Pointer == null)
+            {
+                LevelSelectionManager mgr = GetComponent<LevelSelectionManager>() ?? GetComponentInParent<LevelSelectionManager>() ?? FindAnyObjectByType<LevelSelectionManager>();
+                if (mgr != null) m_Pointer = mgr.Pointer;
+            }
+
             m_HasCapturedRest = true;
         }
 
@@ -233,6 +242,16 @@ namespace MainGame.UI.Unified
         public void PrepareEntranceState(List<LevelNodeUI> nodes = null, List<UIPathSegment> segments = null)
         {
             CaptureRestState();
+
+            if (m_Pointer == null)
+            {
+                LevelSelectionManager mgr = GetComponent<LevelSelectionManager>() ?? GetComponentInParent<LevelSelectionManager>() ?? FindAnyObjectByType<LevelSelectionManager>();
+                if (mgr != null) m_Pointer = mgr.Pointer;
+            }
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
 
             if (m_PanelBackground != null)
             {
@@ -307,13 +326,139 @@ namespace MainGame.UI.Unified
         #region Public Entrance & Exit API
 
         /// <summary>
+        /// <summary>
         /// Plays the complete coordinated Map Network Activation cinematic with dynamically generated nodes and segments.
         /// </summary>
-        public void PlayMapEntrance(List<LevelNodeUI> nodes, List<UIPathSegment> segments, int highestUnlockedLevel, Action onComplete)
+        public void PlayMapEntrance(
+            List<LevelNodeUI> nodes,
+            List<UIPathSegment> segments,
+            int highestUnlockedLevel,
+            Action onComplete,
+            Sprite arcSprite = null,
+            int focusTargetNodeIndex = -1)
         {
             StopActiveAnimation();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(MapEntranceSequenceRoutine(nodes, segments, highestUnlockedLevel, onComplete));
+
+            if (arcSprite != null && m_ArcSign != null)
+            {
+                Image arcImg = m_ArcSign.GetComponent<Image>() ?? m_ArcSign.GetComponentInChildren<Image>(true);
+                if (arcImg != null) arcImg.sprite = arcSprite;
+            }
+
+            m_ActiveRoutine = StartCoroutine(MapEntranceSequenceRoutine(nodes, segments, highestUnlockedLevel, onComplete, focusTargetNodeIndex));
+        }
+
+        /// <summary>
+        /// Plays a clean, synchronized map network activation transition when switching between arcs.
+        /// Does not re-unfold the outer panel; updates the header sign and builds the new arc route.
+        /// </summary>
+        public void PlayArcTransition(
+            int arcIndex,
+            Sprite arcSprite,
+            List<LevelNodeUI> nodes,
+            List<UIPathSegment> segments,
+            int highestUnlockedLevel,
+            Action onComplete,
+            int focusTargetNodeIndex = -1)
+        {
+            StopActiveAnimation();
+            CaptureRestState();
+
+            // Ensure outer panel and buttons stay at resting transforms
+            if (m_PanelBackground != null)
+            {
+                m_PanelBackground.anchoredPosition = m_PanelRestPos;
+                m_PanelBackground.localScale = m_PanelRestScale;
+                CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
+                if (cg != null) cg.alpha = 1f;
+            }
+
+            if (m_TitleLogo != null)
+            {
+                m_TitleLogo.anchoredPosition = m_LogoRestPos;
+                m_TitleLogo.localScale = Vector3.one;
+            }
+
+            if (m_BackButton != null)
+            {
+                m_BackButton.anchoredPosition = m_BackRestPos;
+                m_BackButton.localScale = Vector3.one;
+            }
+
+            if (m_NextButton != null) m_NextButton.localScale = m_NextRestScale;
+            if (m_PrevButton != null) m_PrevButton.localScale = m_PrevRestScale;
+
+            // Update Arc Sign header immediately with the new arc's sprite
+            if (m_ArcSign != null)
+            {
+                m_ArcSign.anchoredPosition = m_ArcRestPos;
+                m_ArcSign.localEulerAngles = m_ArcRestAngles;
+                if (arcSprite != null)
+                {
+                    Image arcImg = m_ArcSign.GetComponent<Image>() ?? m_ArcSign.GetComponentInChildren<Image>(true);
+                    if (arcImg != null) arcImg.sprite = arcSprite;
+                }
+                m_ArcBreezeRoutine = StartCoroutine(SignAmbientSwayRoutine(m_ArcSign, m_ArcRestAngles.z, 0f));
+            }
+
+            if (m_LevelsSign != null)
+            {
+                m_LevelsSign.anchoredPosition = m_LevelsRestPos;
+                m_LevelsSign.localEulerAngles = m_LevelsRestAngles;
+                m_LevelsBreezeRoutine = StartCoroutine(SignAmbientSwayRoutine(m_LevelsSign, m_LevelsRestAngles.z, 0.6f));
+            }
+
+            m_ActiveRoutine = StartCoroutine(ArcSwitchSequenceRoutine(nodes, segments, highestUnlockedLevel, onComplete, focusTargetNodeIndex));
+        }
+
+        private IEnumerator ArcSwitchSequenceRoutine(
+            List<LevelNodeUI> nodes,
+            List<UIPathSegment> segments,
+            int highestUnlockedLevel,
+            Action onComplete,
+            int focusTargetNodeIndex = -1)
+        {
+            if (m_Pointer == null)
+            {
+                LevelSelectionManager mgr = GetComponent<LevelSelectionManager>() ?? GetComponentInParent<LevelSelectionManager>() ?? FindAnyObjectByType<LevelSelectionManager>();
+                if (mgr != null) m_Pointer = mgr.Pointer;
+            }
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+
+            // 1. Prepare node and segment initial states
+            if (segments != null)
+            {
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    if (segments[i] != null) segments[i].SetProgressiveScale(0f);
+                }
+            }
+
+            if (nodes != null)
+            {
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    if (nodes[i] != null) nodes[i].SetInitialBootState();
+                }
+            }
+
+            // 2. Scanline sweep across the map grid
+            StartCoroutine(ScanlineSweepRoutine(0.24f));
+
+            // 3. Short beat for sweep to start
+            float timer = 0f;
+            while (timer < 0.08f)
+            {
+                timer += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            // 4. Map Network Activation
+            yield return StartCoroutine(MapNetworkActivationRoutine(nodes, segments, highestUnlockedLevel, onComplete, focusTargetNodeIndex));
         }
 
         /// <summary>
@@ -381,6 +526,13 @@ namespace MainGame.UI.Unified
                 m_LevelsBreezeRoutine = null;
             }
 
+            StopAllCoroutines();
+
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+
             if (m_ScanlineImage != null)
             {
                 m_ScanlineImage.gameObject.SetActive(false);
@@ -395,7 +547,8 @@ namespace MainGame.UI.Unified
             List<LevelNodeUI> nodes,
             List<UIPathSegment> segments,
             int highestUnlockedLevel,
-            Action onComplete)
+            Action onComplete,
+            int focusTargetNodeIndex = -1)
         {
             // 1. Prepare entrance states
             PrepareEntranceState(nodes, segments);
@@ -439,7 +592,7 @@ namespace MainGame.UI.Unified
             }
 
             // 6. Map Network Activation (Path reveal + Node boot-up + Route energy + Marker drop)
-            yield return StartCoroutine(MapNetworkActivationRoutine(nodes, segments, highestUnlockedLevel, onComplete));
+            yield return StartCoroutine(MapNetworkActivationRoutine(nodes, segments, highestUnlockedLevel, onComplete, focusTargetNodeIndex));
         }
 
         private IEnumerator PanelUnfoldRoutine(float duration)
@@ -715,7 +868,8 @@ namespace MainGame.UI.Unified
             List<LevelNodeUI> nodes,
             List<UIPathSegment> segments,
             int highestUnlockedLevel,
-            Action onComplete)
+            Action onComplete,
+            int focusTargetNodeIndex = -1)
         {
             // Step 1: Sequential Route Drawing & Node Boot-Up
             if (nodes != null && nodes.Count > 0)
@@ -765,9 +919,10 @@ namespace MainGame.UI.Unified
                 yield return null;
             }
 
-            // Step 3: Route Energy Circuit Pulse from Start to Current Level
+            // Step 3: Route Energy Circuit Pulse from Start to Current Level (only on initial entrance when focusing current level)
             LevelNodeUI currentLevelNode = null;
             int currentNodeIndex = -1;
+            bool currentLevelInThisArc = false;
 
             if (nodes != null)
             {
@@ -777,17 +932,13 @@ namespace MainGame.UI.Unified
                     {
                         currentLevelNode = nodes[i];
                         currentNodeIndex = i;
+                        currentLevelInThisArc = true;
                         break;
                     }
                 }
-                if (currentLevelNode == null && nodes.Count > 0)
-                {
-                    currentLevelNode = nodes[0];
-                    currentNodeIndex = 0;
-                }
             }
 
-            if (segments != null && currentNodeIndex > 0)
+            if (segments != null && focusTargetNodeIndex < 0 && currentLevelInThisArc && currentNodeIndex > 0)
             {
                 int unlockedSegCount = Mathf.Min(currentNodeIndex, segments.Count);
                 float energySpeed = Mathf.Clamp(0.24f / Mathf.Max(1, unlockedSegCount), 0.03f, 0.06f);
@@ -808,10 +959,45 @@ namespace MainGame.UI.Unified
                 }
             }
 
-            // Step 4: Drop Current Level Marker Arrow from above
-            if (currentLevelNode != null)
+            // Step 4: Drop Pointer from above onto authoritative destination node
+            LevelNodeUI dropTargetNode = null;
+            if (nodes != null && nodes.Count > 0)
             {
-                yield return StartCoroutine(currentLevelNode.PlayMarkerDropRoutine());
+                if (focusTargetNodeIndex >= 0)
+                {
+                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, nodes.Count - 1);
+                    dropTargetNode = nodes[targetIdx];
+                }
+                else if (currentLevelInThisArc && currentLevelNode != null)
+                {
+                    dropTargetNode = currentLevelNode;
+                }
+                else
+                {
+                    dropTargetNode = nodes[0];
+                }
+            }
+            if (dropTargetNode != null)
+            {
+                if (m_Pointer == null)
+                {
+                    LevelSelectionManager mgr = GetComponent<LevelSelectionManager>() ?? GetComponentInParent<LevelSelectionManager>() ?? FindAnyObjectByType<LevelSelectionManager>();
+                    if (mgr != null) m_Pointer = mgr.Pointer;
+                }
+
+                if (m_Pointer != null)
+                {
+                    bool dropDone = false;
+                    m_Pointer.PlayEntranceDrop(dropTargetNode, () => dropDone = true);
+                    while (!dropDone)
+                    {
+                        yield return null;
+                    }
+                }
+                else
+                {
+                    yield return StartCoroutine(dropTargetNode.PlayMarkerDropRoutine());
+                }
             }
 
             // Step 5: Finished! Navigation is now ready to be unlocked
@@ -829,6 +1015,11 @@ namespace MainGame.UI.Unified
             Action onComplete)
         {
             float duration = 0.24f;
+
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
 
             if (m_ArcBreezeRoutine != null) { StopCoroutine(m_ArcBreezeRoutine); m_ArcBreezeRoutine = null; }
             if (m_LevelsBreezeRoutine != null) { StopCoroutine(m_LevelsBreezeRoutine); m_LevelsBreezeRoutine = null; }

@@ -41,7 +41,14 @@ namespace LevelSelection
 
         public RectTransform RectTransform => (RectTransform)transform;
         public bool IsUnlocked => m_IsUnlocked;
-        public bool HasMarker => selectionArrow != null && selectionArrow.activeSelf;
+        public bool HasMarker
+        {
+            get
+            {
+                LevelSelectionManager mgr = ResolveManager();
+                return mgr != null && mgr.Pointer != null && mgr.Pointer.CurrentTargetNode == this && mgr.Pointer.IsVisible;
+            }
+        }
 
         #endregion
 
@@ -83,6 +90,7 @@ namespace LevelSelection
             {
                 m_ArrowRestScale = selectionArrow.transform.localScale;
                 m_ArrowRestLocalPos = selectionArrow.transform.localPosition;
+                selectionArrow.SetActive(false);
             }
 
             CaptureBaseTransform();
@@ -126,13 +134,16 @@ namespace LevelSelection
 
         public void OnSelect(BaseEventData eventData)
         {
-            SetArrowActive(true);
             SetLift(true);
+            LevelSelectionManager manager = ResolveManager();
+            if (manager != null)
+            {
+                manager.OnNodeSelected(this);
+            }
         }
 
         public void OnDeselect(BaseEventData eventData)
         {
-            SetArrowActive(false);
             SetLift(false);
         }
 
@@ -145,8 +156,8 @@ namespace LevelSelection
             }
             else
             {
-                SetArrowActive(true);
                 SetLift(true);
+                ResolveManager()?.OnNodeSelected(this);
             }
         }
 
@@ -164,6 +175,13 @@ namespace LevelSelection
 
             LevelSelectionManager manager = ResolveManager();
             if (manager == null) return;
+
+            // Strict lock: if the manager is currently playing an entrance or arc transition, ignore edge paging
+            if (manager.IsTransitioning)
+            {
+                eventData.Use();
+                return;
+            }
 
             // Moving past either end of the arc pages to the neighbouring arc instead of dead-ending.
             if (eventData.moveDir == MoveDirection.Right)
@@ -305,11 +323,14 @@ namespace LevelSelection
         /// </summary>
         public void SetInitialBootState()
         {
+            StopAllCoroutines();
+            m_BootCoroutine = null;
+            m_LiftCoroutine = null;
+            m_PulseCoroutine = null;
+
             CaptureBaseTransform();
             StopPulse();
             if (selectionArrow != null) selectionArrow.SetActive(false);
-            if (m_BootCoroutine != null) { StopCoroutine(m_BootCoroutine); m_BootCoroutine = null; }
-            if (m_LiftCoroutine != null) { StopCoroutine(m_LiftCoroutine); m_LiftCoroutine = null; }
 
             transform.localScale = Vector3.zero;
             transform.localPosition = m_NodeBasePos;
@@ -377,65 +398,23 @@ namespace LevelSelection
         }
 
         /// <summary>
-        /// Drops the current level indicator arrow from above onto this node with physics bounce.
+        /// Drops the single authoritative level pointer from above onto this node with physics bounce.
         /// </summary>
         public IEnumerator PlayMarkerDropRoutine(Action onDone = null)
         {
             StopPulse();
-            if (selectionArrow == null)
+            if (selectionArrow != null) selectionArrow.SetActive(false);
+
+            LevelSelectionManager mgr = ResolveManager();
+            if (mgr != null && mgr.Pointer != null)
+            {
+                mgr.Pointer.PlayEntranceDrop(this, onDone);
+            }
+            else
             {
                 onDone?.Invoke();
-                yield break;
             }
-
-            selectionArrow.SetActive(true);
-            Transform arrowT = selectionArrow.transform;
-
-            Vector3 startPos = m_ArrowRestLocalPos + new Vector3(0f, 45f, 0f);
-            Vector3 startScale = m_ArrowRestScale * 1.35f;
-            Quaternion startRot = Quaternion.Euler(0f, 0f, -8f);
-
-            arrowT.localPosition = startPos;
-            arrowT.localScale = startScale;
-            arrowT.localRotation = startRot;
-
-            float duration = 0.28f;
-            float elapsed = 0f;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-
-                // Spring bounce on position
-                float yOffset;
-                if (t < 0.5f)
-                {
-                    yOffset = Mathf.Lerp(45f, -4f, EaseInQuad(t / 0.5f));
-                }
-                else if (t < 0.75f)
-                {
-                    yOffset = Mathf.Lerp(-4f, 2f, EaseOutQuad((t - 0.5f) / 0.25f));
-                }
-                else
-                {
-                    yOffset = Mathf.Lerp(2f, 0f, EaseInOutQuad((t - 0.75f) / 0.25f));
-                }
-
-                arrowT.localPosition = new Vector3(m_ArrowRestLocalPos.x, m_ArrowRestLocalPos.y + yOffset, m_ArrowRestLocalPos.z);
-                arrowT.localScale = Vector3.Lerp(startScale, m_ArrowRestScale, EaseOutQuad(t));
-                arrowT.localRotation = Quaternion.Slerp(startRot, Quaternion.identity, EaseOutQuad(t));
-
-                yield return null;
-            }
-
-            arrowT.localPosition = m_ArrowRestLocalPos;
-            arrowT.localScale = m_ArrowRestScale;
-            arrowT.localRotation = Quaternion.identity;
-
-            // Start normal bob/pulse
-            m_PulseCoroutine = StartCoroutine(ArrowPulseRoutine());
-            onDone?.Invoke();
+            yield break;
         }
 
         #endregion
@@ -454,7 +433,10 @@ namespace LevelSelection
                 m_Button.interactable = true;
             }
 
-            SetArrowActive(isSelected);
+            if (selectionArrow != null)
+            {
+                selectionArrow.SetActive(false);
+            }
 
             if (lockedStateObject != null)
             {

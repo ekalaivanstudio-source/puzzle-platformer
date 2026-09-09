@@ -16,13 +16,13 @@ namespace LevelSelection
         #region Constants
 
         /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the player's current level.</summary>
-        private const int FocusCurrentLevel = -1;
+        public const int FocusCurrentLevel = -1;
 
         /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the first node of the arc.</summary>
-        private const int FocusFirstNode = 0;
+        public const int FocusFirstNode = 0;
 
         /// <summary>Passed to <see cref="RefreshArcDisplay"/> to focus the last node of the arc.</summary>
-        private const int FocusLastNode = int.MaxValue;
+        public const int FocusLastNode = int.MaxValue;
 
         #endregion
 
@@ -30,6 +30,9 @@ namespace LevelSelection
 
         [Header("Arc Generator")]
         [SerializeField] private ArcLevelGenerator arcGenerator;
+
+        [Header("Animator Reference")]
+        [SerializeField] private LevelSelectionScreenAnimator animator;
 
         [Header("Animation Settings")]
         [SerializeField] private float fillDuration = 0.5f;
@@ -42,6 +45,10 @@ namespace LevelSelection
         [Header("Global Input Settings")]
         [Tooltip("Reference to the input actions asset to listen to PageLeft / PageRight events.")]
         [SerializeField] private InputActionAsset m_UIInputActionAsset;
+
+        [Header("Pointer Reference")]
+        [SerializeField] private LevelSelectionPointer m_Pointer;
+        [SerializeField] private Sprite pointerSprite;
 
         #endregion
 
@@ -59,6 +66,9 @@ namespace LevelSelection
         public List<LevelNodeUI> LevelNodes => levelNodes;
         public List<UIPathSegment> PathSegments => pathSegments;
         public bool HasGeneratedArc => m_HasGeneratedArc && levelNodes != null && levelNodes.Count > 0;
+        public bool IsTransitioning => m_IsTransitioning;
+        public int CurrentArcIndex => currentArcIndex;
+        public LevelSelectionPointer Pointer => m_Pointer;
 
         #endregion
 
@@ -70,6 +80,8 @@ namespace LevelSelection
         private InputAction m_PageLeftAction;
         private InputAction m_PageRightAction;
         private bool m_HasGeneratedArc;
+        private bool m_IsTransitioning;
+        private int m_CurrentGenerationId = 0;
 
         #endregion
 
@@ -77,6 +89,17 @@ namespace LevelSelection
 
         private void Awake()
         {
+            if (animator == null)
+            {
+                animator = GetComponent<LevelSelectionScreenAnimator>();
+            }
+            if (animator == null)
+            {
+                animator = GetComponentInChildren<LevelSelectionScreenAnimator>(true);
+            }
+
+            ResolveOrCreatePointer();
+
             // Resolve the paging actions once; enabling/disabling them follows this component's lifetime
             // so Q/E and the shoulder buttons only page arcs while the level selection screen is open.
             if (m_UIInputActionAsset != null)
@@ -109,6 +132,11 @@ namespace LevelSelection
 
         private void OnDisable()
         {
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+
             if (nextArcButton != null) nextArcButton.onClick.RemoveListener(OnNextArcClicked);
             if (prevArcButton != null) prevArcButton.onClick.RemoveListener(OnPrevArcClicked);
 
@@ -159,15 +187,52 @@ namespace LevelSelection
         }
 
         /// <summary>
+        /// Resets the manager to point to the current unlocked level and its corresponding arc.
+        /// Called when the level selection screen is opened.
+        /// </summary>
+        public void ResetToCurrentUnlockedLevel()
+        {
+            CancelActiveTransition();
+
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+            int unlockedArc = (arcGenerator != null) ? arcGenerator.GetArcIndexForLevel(highestUnlockedLevel) : 0;
+
+            if (currentArcIndex != unlockedArc)
+            {
+                currentArcIndex = unlockedArc;
+                m_HasGeneratedArc = false;
+            }
+
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+        }
+
+        /// <summary>
         /// Requests arc data. If already generated and valid, notifies listeners immediately without recreating GameObjects.
         /// Otherwise, generates the arc and fires OnArcReady.
         /// </summary>
-        public void RequestArcData(bool forceRegenerate = false)
+        public void RequestArcData(int targetArcIndex = -1, bool forceRegenerate = false)
         {
             if (arcGenerator == null) return;
 
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
-            currentArcIndex = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
+            int unlockedArc = arcGenerator.GetArcIndexForLevel(highestUnlockedLevel);
+
+            if (targetArcIndex >= 0)
+            {
+                currentArcIndex = Mathf.Clamp(targetArcIndex, 0, arcGenerator.ArcCount - 1);
+            }
+            else
+            {
+                // When targetArcIndex is -1 (default entrance), always ensure we are on the unlocked level's arc
+                if (currentArcIndex != unlockedArc)
+                {
+                    currentArcIndex = unlockedArc;
+                    forceRegenerate = true;
+                }
+            }
 
             if (HasGeneratedArc && !forceRegenerate)
             {
@@ -185,11 +250,47 @@ namespace LevelSelection
         }
 
         /// <summary>
+        /// Overload for backwards compatibility.
+        /// </summary>
+        public void RequestArcData(bool forceRegenerate)
+        {
+            RequestArcData(-1, forceRegenerate);
+        }
+
+        /// <summary>
+        /// Returns the header sprite of the active arc.
+        /// </summary>
+        public Sprite GetCurrentArcSprite()
+        {
+            return arcGenerator != null ? arcGenerator.GetArcSprite(currentArcIndex) : null;
+        }
+
+        /// <summary>
+        /// Cancels any active transition and stops the animator.
+        /// </summary>
+        public void CancelActiveTransition()
+        {
+            if (m_IsTransitioning)
+            {
+                m_IsTransitioning = false;
+                m_CurrentGenerationId++;
+                if (m_Pointer != null)
+                {
+                    m_Pointer.ResetPointerState();
+                }
+                if (animator != null)
+                {
+                    animator.StopActiveAnimation();
+                }
+            }
+        }
+
+        /// <summary>
         /// Generates the arc nodes and sets selection focus directly on the player's highest unlocked level.
         /// </summary>
         public void InitializeAndFocusCurrentLevel()
         {
-            RequestArcData(forceRegenerate: false);
+            RequestArcData(-1, forceRegenerate: false);
         }
 
         /// <summary>
@@ -234,12 +335,12 @@ namespace LevelSelection
 
         public bool CanGoToNextArc()
         {
-            return arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1;
+            return !m_IsTransitioning && arcGenerator != null && currentArcIndex < arcGenerator.ArcCount - 1;
         }
 
         public bool CanGoToPrevArc()
         {
-            return arcGenerator != null && currentArcIndex > 0;
+            return !m_IsTransitioning && arcGenerator != null && currentArcIndex > 0;
         }
 
         public void GoToNextArc()
@@ -250,6 +351,116 @@ namespace LevelSelection
         public void GoToPrevArc()
         {
             OnPrevArcClicked();
+        }
+
+        /// <summary>
+        /// Smoothly transitions to a different arc page, locking inputs, cancelling ongoing animations,
+        /// generating new nodes/paths, and playing the coordinated arc transition.
+        /// </summary>
+        public void SwitchToArc(int newArcIndex, int focusTargetNodeIndex)
+        {
+            if (arcGenerator == null) return;
+            if (m_IsTransitioning) return;
+            if (newArcIndex < 0 || newArcIndex >= arcGenerator.ArcCount) return;
+            if (newArcIndex == currentArcIndex && m_HasGeneratedArc) return;
+
+            m_IsTransitioning = true;
+            int generationId = ++m_CurrentGenerationId;
+
+            // 1. Immediately disable paging buttons and input navigation to prevent re-entrancy
+            if (prevArcButton != null) prevArcButton.interactable = false;
+            if (nextArcButton != null) nextArcButton.interactable = false;
+
+            if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                UnityEngine.EventSystems.EventSystem.current.sendNavigationEvents = false;
+                UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+            }
+
+            // 2. Cancel any running animation on the old arc
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+            if (animator != null)
+            {
+                animator.StopActiveAnimation();
+            }
+
+            // 3. Update current arc index and title sprite immediately
+            currentArcIndex = newArcIndex;
+            Sprite arcSprite = arcGenerator.GetArcSprite(currentArcIndex);
+            if (arcTitleImage != null)
+            {
+                arcTitleImage.sprite = arcSprite;
+            }
+
+            // 4. Generate the new arc nodes and paths
+            int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+            arcGenerator.GenerateArc(currentArcIndex, highestUnlockedLevel, highestUnlockedLevel);
+            m_HasGeneratedArc = true;
+
+            levelNodes = arcGenerator.SpawnedNodes;
+            pathSegments = arcGenerator.GeneratedSegments;
+
+            // 5. Fire OnArcReady for any external listeners
+            OnArcReady?.Invoke(levelNodes, pathSegments, highestUnlockedLevel);
+
+            // 6. Play coordinated Arc Transition
+            if (animator != null)
+            {
+                animator.PlayArcTransition(
+                    currentArcIndex,
+                    arcSprite,
+                    levelNodes,
+                    pathSegments,
+                    highestUnlockedLevel,
+                    () => OnArcTransitionComplete(generationId, focusTargetNodeIndex),
+                    focusTargetNodeIndex);
+            }
+            else
+            {
+                OnArcTransitionComplete(generationId, focusTargetNodeIndex);
+            }
+        }
+
+        private void OnArcTransitionComplete(int generationId, int focusTargetNodeIndex)
+        {
+            // If another generation started while this was animating, ignore this completion
+            if (generationId != m_CurrentGenerationId) return;
+
+            m_IsTransitioning = false;
+
+            // Update navigation button states
+            if (prevArcButton != null) prevArcButton.interactable = CanGoToPrevArc();
+            if (nextArcButton != null) nextArcButton.interactable = CanGoToNextArc();
+
+            // Re-enable navigation events
+            if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                UnityEngine.EventSystems.EventSystem.current.sendNavigationEvents = true;
+            }
+
+            // Restore selection focus
+            if (UINavigationManager.Instance != null && levelNodes.Count > 0)
+            {
+                GameObject selectTarget;
+                if (focusTargetNodeIndex == FocusCurrentLevel)
+                {
+                    selectTarget = GetCurrentUnlockedLevelNodeObject();
+                }
+                else
+                {
+                    int targetIdx = Mathf.Clamp(focusTargetNodeIndex, 0, levelNodes.Count - 1);
+                    LevelNodeUI target = levelNodes[targetIdx];
+                    selectTarget = target != null ? target.gameObject : null;
+                }
+
+                if (selectTarget != null)
+                {
+                    UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+                }
+            }
         }
 
         #endregion
@@ -276,6 +487,12 @@ namespace LevelSelection
         {
             if (arcGenerator == null) return;
 
+            if (m_Pointer != null)
+            {
+                m_Pointer.ResetPointerState();
+            }
+
+            int generationId = ++m_CurrentGenerationId;
             int highestUnlockedLevel = ModernLevelSelection.SaveManager.GetHighestUnlocked();
 
             // 1. Generate the specific arc nodes and paths
@@ -329,18 +546,14 @@ namespace LevelSelection
 
         private void OnNextArcClicked()
         {
-            if (!CanGoToNextArc()) return;
-
-            currentArcIndex++;
-            RefreshArcDisplay(FocusFirstNode, autoFocus: true);
+            if (m_IsTransitioning || !CanGoToNextArc()) return;
+            SwitchToArc(currentArcIndex + 1, FocusFirstNode);
         }
 
         private void OnPrevArcClicked()
         {
-            if (!CanGoToPrevArc()) return;
-
-            currentArcIndex--;
-            RefreshArcDisplay(FocusLastNode, autoFocus: true);
+            if (m_IsTransitioning || !CanGoToPrevArc()) return;
+            SwitchToArc(currentArcIndex - 1, FocusLastNode);
         }
 
         private IEnumerator UnlockSequence(int completedLevelIndex)
@@ -374,6 +587,87 @@ namespace LevelSelection
             if (nextNode != null)
             {
                 nextNode.SetupNode(isUnlocked: true, isCompleted: false, isSelected: true);
+            }
+        }
+
+        /// <summary>
+        /// Called by a LevelNodeUI when selected via controller navigation or pointer hover.
+        /// Directs the single authoritative pointer to fly to the newly selected node.
+        /// </summary>
+        public void OnNodeSelected(LevelNodeUI node)
+        {
+            if (m_IsTransitioning) return;
+
+            if (m_Pointer != null)
+            {
+                m_Pointer.MoveToNode(node, 0.10f);
+            }
+        }
+
+        /// <summary>
+        /// Ensures exactly one LevelSelectionPointer instance exists and is properly configured.
+        /// </summary>
+        public void ResolveOrCreatePointer()
+        {
+            if (m_Pointer == null)
+            {
+                m_Pointer = GetComponentInChildren<LevelSelectionPointer>(true);
+            }
+
+            if (m_Pointer == null && transform.parent != null)
+            {
+                m_Pointer = transform.parent.GetComponentInChildren<LevelSelectionPointer>(true);
+            }
+
+            if (m_Pointer == null)
+            {
+                Transform parentTarget = null;
+                if (arcGenerator != null && arcGenerator.NodesContainer != null)
+                {
+                    parentTarget = arcGenerator.NodesContainer.parent != null ? arcGenerator.NodesContainer.parent : arcGenerator.NodesContainer;
+                }
+                else
+                {
+                    parentTarget = transform;
+                }
+
+                if (parentTarget != null)
+                {
+                    Transform existing = parentTarget.Find("LevelSelectionPointer");
+                    if (existing != null)
+                    {
+                        m_Pointer = existing.GetComponent<LevelSelectionPointer>();
+                    }
+                    else
+                    {
+                        GameObject pointerObj = new GameObject("LevelSelectionPointer", typeof(RectTransform), typeof(CanvasGroup), typeof(Image), typeof(LevelSelectionPointer));
+                        pointerObj.transform.SetParent(parentTarget, false);
+                        m_Pointer = pointerObj.GetComponent<LevelSelectionPointer>();
+                    }
+                }
+            }
+
+            if (m_Pointer != null)
+            {
+                m_Pointer.EnsureComponents();
+                if (pointerSprite == null && arcGenerator != null && arcGenerator.LevelNodePrefab != null)
+                {
+                    var nodeImages = arcGenerator.LevelNodePrefab.GetComponentsInChildren<Image>(true);
+                    for (int i = 0; i < nodeImages.Length; i++)
+                    {
+                        if (nodeImages[i].gameObject.name == "Arrow" && nodeImages[i].sprite != null)
+                        {
+                            pointerSprite = nodeImages[i].sprite;
+                            break;
+                        }
+                    }
+                }
+
+                if (pointerSprite != null)
+                {
+                    m_Pointer.SetSprite(pointerSprite);
+                }
+                m_Pointer.ResetPointerState();
             }
         }
 

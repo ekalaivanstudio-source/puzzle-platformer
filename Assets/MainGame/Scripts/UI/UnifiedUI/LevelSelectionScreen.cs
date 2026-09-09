@@ -66,28 +66,38 @@ namespace MainGame.UI.Unified
         {
             base.Open();
 
+            // Clear any remembered selection so we always focus the current unlocked level on panel open
+            if (UINavigationManager.Instance != null)
+            {
+                UINavigationManager.Instance.ClearSelectionMemory(this);
+            }
+
             if (m_LevelSelectionManager != null && m_Animator != null)
             {
-                // 1. Synchronously set initial hidden state at frame 0 to prevent 1-frame glitches
+                // 1. Reset manager to current unlocked level and its corresponding arc
+                m_LevelSelectionManager.ResetToCurrentUnlockedLevel();
+
+                // 2. Synchronously set initial hidden state at frame 0 to prevent 1-frame glitches
                 m_Animator.PrepareEntranceState();
 
-                // 2. Synchronize entrance with runtime level generation completion
+                // 3. Synchronize entrance with runtime level generation completion
                 Action<List<LevelSelection.LevelNodeUI>, List<LevelSelection.UIPathSegment>, int> onReadyHandler = null;
                 onReadyHandler = (nodes, segments, highestUnlockedLevel) =>
                 {
                     m_LevelSelectionManager.OnArcReady -= onReadyHandler;
 
-                    // 3. Play the coordinated Map Network Activation cinematic
+                    // 4. Play the coordinated Map Network Activation cinematic with active arc sprite
+                    Sprite arcSprite = m_LevelSelectionManager.GetCurrentArcSprite();
                     m_Animator.PlayMapEntrance(nodes, segments, highestUnlockedLevel, () =>
                     {
-                        // 4. Restore EventSystem focus and unlock controller navigation only after marker settles
+                        // 5. Restore EventSystem focus and unlock controller navigation only after marker settles
                         m_LevelSelectionManager.FocusCurrentLevelNode();
                         onComplete?.Invoke();
-                    });
+                    }, arcSprite, focusTargetNodeIndex: LevelSelection.LevelSelectionManager.FocusCurrentLevel);
                 };
 
                 m_LevelSelectionManager.OnArcReady += onReadyHandler;
-                m_LevelSelectionManager.RequestArcData(forceRegenerate: false);
+                m_LevelSelectionManager.RequestArcData(-1, forceRegenerate: false);
             }
             else if (m_Animator != null)
             {
@@ -105,6 +115,16 @@ namespace MainGame.UI.Unified
 
         public override void PlayExitTransition(Action onComplete)
         {
+            if (UINavigationManager.Instance != null)
+            {
+                UINavigationManager.Instance.ClearSelectionMemory(this);
+            }
+
+            if (m_LevelSelectionManager != null)
+            {
+                m_LevelSelectionManager.CancelActiveTransition();
+            }
+
             if (m_Animator != null)
             {
                 var nodes = m_LevelSelectionManager != null ? m_LevelSelectionManager.LevelNodes : null;
