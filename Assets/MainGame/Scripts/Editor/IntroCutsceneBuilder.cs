@@ -217,7 +217,7 @@ public static class IntroCutsceneBuilder
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Center;
         text.raycastTarget = false;
-        text.enableWordWrapping = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
 
         var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(k_PromptFontPath);
         if (font != null) text.font = font;

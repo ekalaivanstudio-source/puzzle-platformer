@@ -72,6 +72,21 @@ public class TutorialSequenceGuide : MonoBehaviour
         GameManager.OnExecutionStarted += OnExecutionStarted;
         GameManager.OnTurnReset += OnTurnReset;
 
+        StartCoroutine(StartIntroWhenBuilt());
+    }
+
+    // The FIRST hint waits for the level to finish assembling itself; every later one goes up
+    // the moment it is asked for. A hint shown at Start would otherwise be the only thing on
+    // an empty screen while the ground is still being laid in — and it would beat the input
+    // row it is teaching the player to fill, which pops in as part of that same build.
+    //
+    // A level with no director never waits, and one whose build has already finished waits a
+    // single frame.
+    private IEnumerator StartIntroWhenBuilt()
+    {
+        while (LevelBuildDirector.Instance != null && !LevelBuildDirector.Instance.IsBuilt)
+            yield return null;
+
         StartIntro();
     }
 

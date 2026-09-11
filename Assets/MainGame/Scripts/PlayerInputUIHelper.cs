@@ -36,6 +36,10 @@ public class PlayerInputUIHelper : MonoBehaviour
     [SerializeField] private GameObject buttonIndication;
     private RectTransform m_ButtonIndicationRT;
 
+    // The slot the indicator is currently sitting on, so it can keep following it — see
+    // LateUpdate.
+    private RectTransform m_IndicatorSlot;
+
     [Header("Correct Sequence")]
     [Tooltip("The exact sequence the player must enter. Leave empty to allow any input.")]
     [SerializeField] private ActionTypeEnum[] m_CorrectSequence;
@@ -56,6 +60,24 @@ public class PlayerInputUIHelper : MonoBehaviour
     [SerializeField] private int m_BlinkCount = 2;
     [SerializeField] private float m_ShakeMagnitude = 0.08f;
     [SerializeField] private float m_ShakeDuration = 0.25f;
+
+    [Tooltip("Played when a queued command is rejected for not matching the level's " +
+             "solution. A two-pulse warning buzz — the same shape a phone uses to say no.")]
+    [SerializeField] private FeelPreset m_RejectFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Warning,
+    };
+
+    [Tooltip("Played on the input holder each time a command lands in it — the row taking " +
+             "the hit, so an accepted input is felt as well as seen. The squash and the " +
+             "haptic are the channels that mean anything on a canvas; the world ones " +
+             "(particles, impulse, punch distance) have no world to act in.")]
+    [SerializeField] private FeelPreset m_QueueFeel = new FeelPreset
+    {
+        Haptic = HapticPattern.Selection,
+        SquashAmount = 0.09f,
+        PunchDuration = 0.18f,
+    };
 
     // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -172,6 +194,7 @@ public class PlayerInputUIHelper : MonoBehaviour
                     m_BlinkCoroutine = StartCoroutine(BlinkSlot(inputsUI[slotIndex].transform.GetChild(0).GetComponent<Image>()));
                 }
                 CameraController.Instance?.Shake(m_ShakeMagnitude, m_ShakeDuration);
+                m_RejectFeel.Play(Vector3.zero);
 
                 m_IsRejecting = true;
                 SequenceManager.Instance.RemoveLastAction();
@@ -185,6 +208,12 @@ public class PlayerInputUIHelper : MonoBehaviour
             if (inputsUI[i] == null) continue;
             SetAlpha(inputsUI[i], i < count ? m_ActiveAlpha : m_InactiveAlpha);
         }
+
+        // The row takes the hit each time a command lands in it — feedback for the input the
+        // player just gave, where they are already looking. Only on an ADDITION: an undo, a
+        // turn-end clear and the rejection's own removal all come back through here too.
+        if (count > m_PreviousSequenceCount && inputContainer != null)
+            m_QueueFeel.Play(Vector3.zero, inputContainer);
 
         // When a wildcard (Any) slot is filled, show the sprite of the actual input chosen, but not for Interact
         if (count > m_PreviousSequenceCount)
@@ -326,8 +355,38 @@ public class PlayerInputUIHelper : MonoBehaviour
             if (inputContainer is RectTransform containerRT)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(containerRT);
 
-            m_ButtonIndicationRT.position = target.rectTransform.TransformPoint(target.rectTransform.rect.center);
+            m_IndicatorSlot = target.rectTransform;
+            m_ButtonIndicationRT.position = SlotCentre(m_IndicatorSlot);
         }
+    }
+
+    // Placed once per sequence change, and then it FOLLOWS its slot, because the row moves
+    // under it: the holder is punched every time a command lands in it, and the level build
+    // pops the whole HUD in from nothing. Placed once and left alone, the indicator would
+    // come away from the row the first time either of those ran.
+    private void LateUpdate()
+    {
+        if (m_ButtonIndicationRT == null || m_IndicatorSlot == null) return;
+        if (!m_ButtonIndicationRT.gameObject.activeSelf) return;
+
+        m_ButtonIndicationRT.position = SlotCentre(m_IndicatorSlot);
+    }
+
+    // The middle of the box the layout gave a slot, read in the CONTAINER's space rather than
+    // through the slot's own TransformPoint.
+    //
+    // That distinction matters because a slot's scale is not its own for the whole level: the
+    // level build pops the HUD in from nothing, and this placement runs from Start, while the
+    // slots are still at zero scale. Scaled through the slot, its centre collapses onto its
+    // pivot — and these slots pivot on their BOTTOM edge, so the indicator landed half a slot
+    // low and stayed there, since it is only placed again when the sequence changes.
+    private static Vector3 SlotCentre(RectTransform slot)
+    {
+        Vector2 centre = slot.rect.center;
+
+        return slot.parent is RectTransform container
+            ? container.TransformPoint(slot.localPosition + (Vector3)centre)
+            : slot.TransformPoint(centre);
     }
 
     private void StopBlinkImmediate()

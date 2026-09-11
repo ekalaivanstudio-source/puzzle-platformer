@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -31,5 +32,28 @@ public static class SceneObjects
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Every <typeparamref name="T"/> in the active scene, disabled ones included, in root
+    /// order. Same scoping — and the same reason for it — as
+    /// <see cref="FindInActiveScene{T}"/>: an inactive-inclusive Unity search would also hand
+    /// back components living on prefab ASSETS.
+    /// </summary>
+    public static List<T> FindAllInActiveScene<T>() where T : Component
+    {
+        var found = new List<T>();
+
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid() || !scene.isLoaded) return found;
+
+        var buffer = new List<T>();
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            root.GetComponentsInChildren(true, buffer);
+            found.AddRange(buffer);
+        }
+
+        return found;
     }
 }

@@ -333,7 +333,8 @@ namespace Setting.Menu
                 && Mathf.Approximately(first.SFXVolume, second.SFXVolume)
                 && Mathf.Approximately(first.VoiceVolume, second.VoiceVolume)
                 && Mathf.Approximately(first.Brightness, second.Brightness)
-                && first.Fullscreen == second.Fullscreen;
+                && first.Fullscreen == second.Fullscreen
+                && first.HapticsEnabled == second.HapticsEnabled;
         }
 
         #endregion

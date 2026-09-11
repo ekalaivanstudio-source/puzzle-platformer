@@ -21,6 +21,11 @@ using UnityEngine;
 /// starts open, the battery and socket named in Key Puzzle Objects are switched off, and
 /// walking in wins. That is the whole conversion — nothing else in the level changes.
 ///
+/// The doorway EFFECT is held back until the doorway is actually standing in the level —
+/// see <see cref="SetStanding"/>. On a level that opens without a key the door is open from
+/// its first frame, and the effect would otherwise be left glowing in mid-air while
+/// <see cref="LevelBuildDirector"/> still has the doorway that owns it scaled to nothing.
+///
 /// Put this on the object tagged "Door" (the one carrying the door's trigger collider)
 /// and point it at an empty child placed on the ground in the middle of the doorway.
 /// </summary>
@@ -70,6 +75,15 @@ public class LevelExitDoor : MonoBehaviour
 
     private Coroutine m_Animation;
 
+    // Whether the doorway is standing in the level yet, and whether the door WANTS its effect
+    // showing. The effect is only ever on when both are true, which is the whole of how a
+    // door that is open before it has risen keeps its glow to itself.
+    //
+    // Standing defaults to true so a level with no build behaves exactly as it always has:
+    // the director is what says otherwise, and it says it before this component's Start.
+    private bool m_IsStanding = true;
+    private bool m_EffectWanted;
+
     /// <summary>
     /// True on a level with no battery and no socket, where the doorway is open from the
     /// start. Read by <see cref="PlayerController"/>, which otherwise only counts a door
@@ -96,6 +110,10 @@ public class LevelExitDoor : MonoBehaviour
     // shut this door or disable the doorway trigger behind the automatic open below.
     private void Awake()
     {
+        // However the scene authored it, the doorway effect starts OFF. It belongs to an open
+        // doorway standing in a built level, and at Awake there is neither.
+        ApplyEffect();
+
         if (!m_OpensWithoutKey || m_KeyPuzzleObjects == null) return;
 
         foreach (GameObject puzzleObject in m_KeyPuzzleObjects)
@@ -111,6 +129,24 @@ public class LevelExitDoor : MonoBehaviour
     {
         if (m_OpensWithoutKey)
             SetOpen();
+    }
+
+    /// <summary>
+    /// Told by <see cref="LevelBuildDirector"/>: false while the doorway is hidden or still
+    /// growing out of the floor, true once it has finished rising and is standing in the
+    /// level. A level with no build never calls this, and the doorway is simply there.
+    ///
+    /// It gates the doorway EFFECT and nothing else. Which frame the door holds and whether
+    /// its trigger is live are not this system's business: a door that opens without a key is
+    /// genuinely open while it rises, and the player is waiting in the entry doorway either
+    /// way. It is only the glow that has to wait for something to glow in.
+    /// </summary>
+    public void SetStanding(bool standing)
+    {
+        if (m_IsStanding == standing) return;
+
+        m_IsStanding = standing;
+        ApplyEffect();
     }
 
     /// <summary>World position the player walks to before the level completes.</summary>
@@ -232,8 +268,16 @@ public class LevelExitDoor : MonoBehaviour
 
     private void ShowEffect(bool visible)
     {
+        m_EffectWanted = visible;
+        ApplyEffect();
+    }
+
+    // What the door asked for is remembered separately from what is applied, so a door that
+    // opened early lights up the moment the doorway it lives on is standing.
+    private void ApplyEffect()
+    {
         if (m_DoorOpenEffect != null)
-            m_DoorOpenEffect.SetActive(visible);
+            m_DoorOpenEffect.SetActive(m_EffectWanted && m_IsStanding);
     }
 
     // Draws the walk destination so the point can be placed without entering play mode.

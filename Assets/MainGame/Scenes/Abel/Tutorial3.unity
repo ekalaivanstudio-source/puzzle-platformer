@@ -119,6 +119,150 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &35823469
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 35823471}
+  - component: {fileID: 35823470}
+  m_Layer: 0
+  m_Name: '[Level Build]'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &35823470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 35823469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbc556c49d9e0f04aa99106eb6b56e14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LevelBuildDirector
+  m_GroundTilemaps: []
+  m_SceneryRoots: []
+  m_Excluded: []
+  m_BackdropSortingLayers:
+  - Bg1
+  - Bg2
+  m_Pipes: {fileID: 0}
+  m_ExitDoor: {fileID: 0}
+  m_EntryDoor: {fileID: 0}
+  m_SweepAngle: 20
+  m_GroundTiming:
+    Spread: 0.45
+    ItemDuration: 0.26
+    Overlap: 0.15
+  m_SceneryTiming:
+    Spread: 0.3
+    ItemDuration: 0.24
+    Overlap: 0.12
+  m_PipeTiming:
+    Spread: 0.3
+    ItemDuration: 0.2
+    Overlap: 0.08
+  m_DoorRiseDuration: 0.38
+  m_DoorSinkDuration: 0.3
+  m_DoorWidthSquash: 0.18
+  m_TileSpin: 0
+  m_ScenerySpin: 0
+  m_HoldBeforeEntry: 0.05
+  m_GroundSettleFeel:
+    Delay: 0
+    Chance: 1
+    Cooldown: 0
+    CameraShake:
+      Magnitude: 0
+      Duration: 0
+    Haptic: 0
+    FreezeDuration: 0
+    FreezeTimeScale: 0.05
+    SquashAmount: 0
+    PunchDistance: 0
+    PunchDuration: 0.22
+    PunchFrequency: 1.6
+    ImpulseStrength: 0
+    ImpulseRadius: 2.5
+    FlashColor: {r: 1, g: 1, b: 1, a: 0}
+    FlashHold: 0.04
+    FlashFade: 0.18
+    FlashCount: 1
+    Particle: {fileID: 0}
+    ParticleScale: 1
+  m_DoorLandFeel:
+    Delay: 0
+    Chance: 1
+    Cooldown: 0
+    CameraShake:
+      Magnitude: 0
+      Duration: 0
+    Haptic: 0
+    FreezeDuration: 0
+    FreezeTimeScale: 0.05
+    SquashAmount: 0
+    PunchDistance: 0
+    PunchDuration: 0.22
+    PunchFrequency: 1.6
+    ImpulseStrength: 0
+    ImpulseRadius: 2.5
+    FlashColor: {r: 1, g: 1, b: 1, a: 0}
+    FlashHold: 0.04
+    FlashFade: 0.18
+    FlashCount: 1
+    Particle: {fileID: 0}
+    ParticleScale: 1
+  m_PipesReadyFeel:
+    Delay: 0
+    Chance: 1
+    Cooldown: 0
+    CameraShake:
+      Magnitude: 0
+      Duration: 0
+    Haptic: 0
+    FreezeDuration: 0
+    FreezeTimeScale: 0.05
+    SquashAmount: 0
+    PunchDistance: 0
+    PunchDuration: 0.22
+    PunchFrequency: 1.6
+    ImpulseStrength: 0
+    ImpulseRadius: 2.5
+    FlashColor: {r: 1, g: 1, b: 1, a: 0}
+    FlashHold: 0.04
+    FlashFade: 0.18
+    FlashCount: 1
+    Particle: {fileID: 0}
+    ParticleScale: 1
+  m_StepClip: {fileID: 0}
+  m_StepInterval: 0.05
+  m_StepVolume: 0.5
+  m_DoorRiseClip: {fileID: 0}
+  m_AutoBuildAfter: 3
+  m_LogPhases: 0
+--- !u!4 &35823471
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 35823469}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &38464629
 GameObject:
   m_ObjectHideFlags: 0
@@ -24015,3 +24159,4 @@ SceneRoots:
   - {fileID: 1629385617}
   - {fileID: 1306510957}
   - {fileID: 1358616489}
+  - {fileID: 35823471}
