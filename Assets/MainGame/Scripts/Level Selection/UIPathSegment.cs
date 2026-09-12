@@ -1,12 +1,13 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using MainGame.UI.CinematicEffects;
 
 namespace LevelSelection
 {
     /// <summary>
     /// Represents a single segment of the level path between two nodes.
-    /// Supports color changing (yellow/white) and horizontal filling transitions.
+    /// Supports color changing (yellow/white), traveling energy current, and horizontal filling transitions.
     /// </summary>
     [RequireComponent(typeof(Image))]
     [DisallowMultipleComponent]
@@ -30,6 +31,19 @@ namespace LevelSelection
         #region Private Fields
 
         private Image lineImage;
+        private UIPathRouteEffect routeEffect;
+
+        public UIPathRouteEffect RouteEffect
+        {
+            get
+            {
+                if (routeEffect == null)
+                {
+                    routeEffect = GetComponent<UIPathRouteEffect>() ?? gameObject.AddComponent<UIPathRouteEffect>();
+                }
+                return routeEffect;
+            }
+        }
 
         #endregion
 
@@ -68,6 +82,19 @@ namespace LevelSelection
                     lineImage.color = isFilled ? activeColor : inactiveColor;
                 }
             }
+
+            if (RouteEffect != null)
+            {
+                RouteEffect.SetRouteActive(isFilled);
+                if (isFilled)
+                {
+                    RouteEffect.StartContinuousFlow(1.4f);
+                }
+                else
+                {
+                    RouteEffect.StopFlow();
+                }
+            }
         }
 
         /// <summary>
@@ -77,6 +104,11 @@ namespace LevelSelection
         {
             if (lineImage == null) lineImage = GetComponent<Image>();
             if (lineImage == null) yield break;
+
+            if (RouteEffect != null)
+            {
+                RouteEffect.PlayTravelPulse(duration);
+            }
 
             float elapsed = 0f;
             Color startColor = lineImage.color;
@@ -128,6 +160,10 @@ namespace LevelSelection
         public void ResetSegment(bool isUnlocked)
         {
             transform.localScale = Vector3.one;
+            if (RouteEffect != null)
+            {
+                RouteEffect.ResetToDefault();
+            }
             SetFilled(isUnlocked);
         }
 
@@ -138,6 +174,11 @@ namespace LevelSelection
         {
             if (lineImage == null) lineImage = GetComponent<Image>();
             if (lineImage == null) yield break;
+
+            if (RouteEffect != null)
+            {
+                RouteEffect.PlayTravelPulse(duration);
+            }
 
             Color baseColor = lineImage.color;
             Color flashColor = Color.white;

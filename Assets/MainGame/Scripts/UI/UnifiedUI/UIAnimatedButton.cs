@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using MainGame.UI.Animation;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -70,6 +71,23 @@ namespace MainGame.UI.Unified
 
         public bool IsFocused => m_IsFocused;
         public RectTransform ButtonVisual => m_ButtonVisual;
+
+        private CinematicUIEffect m_CinematicUI;
+        public CinematicUIEffect CinematicUI
+        {
+            get
+            {
+                if (m_CinematicUI == null && m_ButtonVisual != null)
+                {
+                    Graphic g = m_ButtonVisual.GetComponent<Graphic>() ?? m_ButtonVisual.GetComponentInChildren<Graphic>();
+                    if (g != null)
+                    {
+                        m_CinematicUI = g.GetComponent<CinematicUIEffect>() ?? g.gameObject.AddComponent<CinematicUIEffect>();
+                    }
+                }
+                return m_CinematicUI;
+            }
+        }
 
         private void Awake()
         {
@@ -243,18 +261,36 @@ namespace MainGame.UI.Unified
             {
                 if (m_LeftPointer != null) m_LeftPointer.gameObject.SetActive(true);
 
-                if (m_ButtonVisual != null)
+                if (CinematicUIFXManager.Instance != null)
                 {
-                    Image btnImg = m_ButtonVisual.GetComponent<Image>();
-                    if (btnImg != null)
+                    CinematicUIFXManager.Instance.PlayFocusFX(m_ButtonVisual, m_LeftPointer, m_IsDestructiveOrBack);
+                }
+                else
+                {
+                    Color pulseCol = m_IsDestructiveOrBack ? new Color(1f, 0.45f, 0.2f) : new Color(0.35f, 0.85f, 1f);
+                    if (CinematicUI != null)
                     {
-                        StartCoroutine(ButtonHolographicFlashRoutine(btnImg, 0.12f));
+                        CinematicUI.TriggerBorderPulse(0.24f, pulseCol, 1.8f);
+                        CinematicUI.PlayActivationSweep(0.22f, new Color(1f, 1f, 1f, 0.6f), 45f);
+                    }
+
+                    if (CinematicUIParticleSystem.Instance != null && m_LeftPointer != null)
+                    {
+                        CinematicUIParticleSystem.Instance.SpawnSparkBurst(m_LeftPointer.anchoredPosition, m_ButtonVisual, new Color(1f, 0.88f, 0.35f), 3, 10f);
                     }
                 }
             }
             else
             {
                 if (m_LeftPointer != null) m_LeftPointer.gameObject.SetActive(false);
+                if (CinematicUIFXManager.Instance != null)
+                {
+                    CinematicUIFXManager.Instance.FocusFX.ResetFocus(m_ButtonVisual);
+                }
+                else if (CinematicUI != null)
+                {
+                    CinematicUI.ResetToIdle();
+                }
             }
 
             Vector2 startPointerPos = m_LeftPointer != null ? m_LeftPointer.anchoredPosition : Vector2.zero;
@@ -339,15 +375,28 @@ namespace MainGame.UI.Unified
             // Immediate micro-shake impulse for physical punch impact
             UIMicroShake.Shake(1.2f, 0.09f);
 
-            if (RoboticPixelFXPool.Instance != null && m_ButtonVisual != null)
+            Color sparkCol = m_IsDestructiveOrBack ? new Color(1.0f, 0.45f, 0.2f) : new Color(1.0f, 0.87f, 0.35f);
+
+            if (CinematicUI != null)
             {
-                Color sparkCol = m_IsDestructiveOrBack ? new Color(1.0f, 0.45f, 0.2f) : new Color(1.0f, 0.87f, 0.35f);
-                RoboticPixelFXPool.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonVisual, sparkCol, 6, 16f);
+                CinematicUI.TriggerImpactFlash(0.08f, 2.2f, sparkCol);
+                CinematicUI.TriggerBorderPulse(0.18f, sparkCol, 3.5f);
             }
-            else if (RoboticUIManager.Instance != null && m_ButtonVisual != null)
+
+            if (CinematicUIFXManager.Instance != null && m_ButtonVisual != null)
             {
-                Color sparkCol = m_IsDestructiveOrBack ? new Color(1.0f, 0.45f, 0.2f) : new Color(0.35f, 0.85f, 1.0f);
-                RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonVisual, sparkCol, 5, 14f);
+                CinematicUIFXManager.Instance.TriggerParticleBurst(m_ButtonVisual, Vector2.zero, UIParticleType.ElectricalSpark, 8, sparkCol);
+                CinematicUIFXManager.Instance.TriggerParticleBurst(m_ButtonVisual, Vector2.zero, UIParticleType.DigitalShard, 4, sparkCol);
+            }
+            else if (CinematicUIParticleSystem.Instance != null && m_ButtonVisual != null)
+            {
+                CinematicUIParticleSystem.Instance.SpawnDirectionalBurst(
+                    Vector2.zero, m_ButtonVisual, sparkCol,
+                    m_IsDestructiveOrBack ? Vector2.left : Vector2.right, 8, 45f, 32f);
+            }
+            else if (RoboticPixelFXPool.Instance != null && m_ButtonVisual != null)
+            {
+                RoboticPixelFXPool.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonVisual, sparkCol, 6, 16f);
             }
 
             float duration = m_ConfirmDuration;

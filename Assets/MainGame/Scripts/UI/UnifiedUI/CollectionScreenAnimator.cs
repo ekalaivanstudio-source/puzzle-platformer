@@ -8,6 +8,7 @@ using MainGame.UI.Animation;
 using Collectables;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -1238,6 +1239,24 @@ namespace MainGame.UI.Unified
                 panelFX.PlayPowerUp(duration);
             }
 
+            CinematicUIEffect cFx = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+            if (cFx == null)
+            {
+                Image bgImg = m_PanelBackground.GetComponent<Image>();
+                if (bgImg != null)
+                {
+                    cFx = bgImg.gameObject.AddComponent<CinematicUIEffect>();
+                }
+            }
+            if (cFx != null)
+            {
+                cFx.BorderColor = new Color(0.18f, 0.88f, 0.82f, 0.9f);
+                cFx.BorderSpeed = 2.0f;
+                cFx.BorderWidth = 0.04f;
+                cFx.PlayPixelReconstruction(duration * 0.95f, new Color(0.18f, 0.88f, 0.82f, 0.95f), 18f);
+                cFx.TriggerBorderPulse(duration, new Color(0.18f, 0.88f, 0.82f, 1.0f), 1.5f, UIBorderDirection.TopToBottom);
+            }
+
             float elapsed = 0f;
             while (elapsed < duration)
             {
@@ -1255,6 +1274,16 @@ namespace MainGame.UI.Unified
             if (cg != null) cg.alpha = 1f;
 
             UIMicroShake.Shake(0.35f, 0.04f);
+            if (cFx != null)
+            {
+                cFx.TriggerImpactFlash(0.08f, 1.8f);
+            }
+            CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+            if (cPool != null)
+            {
+                cPool.SpawnSparkBurst(m_PanelBackground.position, new Color(0.18f, 0.88f, 0.82f, 1f), 8, 22f);
+                cPool.SpawnEnergyBubble(m_PanelBackground.position, new Color(0.18f, 0.88f, 0.82f, 0.8f), 20f);
+            }
         }
 
         private IEnumerator TechnicalGridScanlineRevealRoutine(float duration)
@@ -1403,6 +1432,14 @@ namespace MainGame.UI.Unified
             {
                 selectable.SetVisualState(false, 1f);
             }
+
+            CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+            if (cPool != null)
+            {
+                Color sparkCol = (selectable != null && selectable.IsUnlocked) ? new Color(0.18f, 0.88f, 0.82f, 0.95f) : new Color(0.5f, 0.5f, 0.6f, 0.7f);
+                cPool.SpawnSparkBurst(card.position, sparkCol, 4, 16f);
+                cPool.SpawnEnergyBubble(card.position, sparkCol * 0.8f, 14f);
+            }
         }
 
         private IEnumerator ActivateFocusedRobotSequence(CollectionCardSelectable card)
@@ -1435,37 +1472,85 @@ namespace MainGame.UI.Unified
                 StartCoroutine(AnimateScale(m_SelectionFrame, Vector3.zero, Vector3.one, 0.16f, EasingType.EaseOutBack, 1.2f));
             }
 
-            // 3. Holographic inspection beam sweeps over robot portrait
-            if (m_InspectionBeam != null && card.IsUnlocked)
+            // 3. Holographic inspection beam sweeps over robot portrait + Cinematic UI Effect
+            CinematicUIEffect portFx = targetPortrait.GetComponent<CinematicUIEffect>() ?? targetPortrait.GetComponentInChildren<CinematicUIEffect>();
+            if (portFx == null)
             {
-                UIFeedbackAudio.PlaySfx(UISfxType.RobotScan, 0.75f, 0.02f);
-                m_InspectionBeam.gameObject.SetActive(true);
-                m_InspectionBeam.SetParent(targetPortrait, false);
-                LayoutElement ble = m_InspectionBeam.GetComponent<LayoutElement>();
-                if (ble == null) ble = m_InspectionBeam.gameObject.AddComponent<LayoutElement>();
-                ble.ignoreLayout = true;
-
-                m_InspectionBeam.sizeDelta = new Vector2(260f, 8f);
-                float startY = 130f;
-                float endY = -130f;
-                m_InspectionBeam.anchoredPosition = new Vector2(0f, startY);
-
-                float beamDur = 0.22f;
-                float elapsed = 0f;
-                while (elapsed < beamDur)
+                Image portImg = targetPortrait.GetComponent<Image>() ?? targetPortrait.GetComponentInChildren<Image>();
+                if (portImg != null)
                 {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / beamDur);
-                    m_InspectionBeam.anchoredPosition = new Vector2(0f, Mathf.Lerp(startY, endY, t));
-                    yield return null;
+                    portFx = portImg.gameObject.AddComponent<CinematicUIEffect>();
                 }
+            }
 
-                m_InspectionBeam.gameObject.SetActive(false);
+            int robotIdx = (int)card.Robot;
+            Color accentColor = (robotIdx >= 0 && robotIdx < RobotAuthoring.Length) ? RobotAuthoring[robotIdx].accent : new Color(0.35f, 0.78f, 1f);
 
-                if (card.IsUnlocked && RoboticUIManager.Instance != null)
+            if (portFx != null)
+            {
+                if (card.IsUnlocked)
                 {
-                    Color dataColor = new Color(0.35f, 0.85f, 1.0f);
-                    RoboticUIManager.Instance.SpawnDataFloat(Vector2.zero, targetPortrait, dataColor, 5, 30f);
+                    portFx.BorderColor = accentColor;
+                    portFx.BorderSpeed = 2.2f;
+                    portFx.BorderWidth = 0.04f;
+                    portFx.PlayScanSweep(0.24f, accentColor, 90f, 0.18f);
+                    portFx.TriggerBorderPulse(0.30f, accentColor);
+                    portFx.StartIdleBreathing(0.06f, 2.5f);
+                }
+                else
+                {
+                    portFx.TriggerGlitch(0.12f, 8f);
+                    portFx.TriggerBorderPulse(0.3f, new Color(0.85f, 0.25f, 0.25f, 0.6f));
+                }
+            }
+
+            if (card.IsUnlocked)
+            {
+                if (CinematicUIFXManager.Instance != null)
+                {
+                    CinematicUIFXManager.Instance.PlayCharacterScan(targetPortrait, () =>
+                    {
+                        if (portFx != null) portFx.TriggerBorderPulse(0.28f, accentColor, 2.2f);
+                    });
+                }
+                else if (m_InspectionBeam != null)
+                {
+                    UIFeedbackAudio.PlaySfx(UISfxType.RobotScan, 0.75f, 0.02f);
+                    m_InspectionBeam.gameObject.SetActive(true);
+                    m_InspectionBeam.SetParent(targetPortrait, false);
+                    LayoutElement ble = m_InspectionBeam.GetComponent<LayoutElement>();
+                    if (ble == null) ble = m_InspectionBeam.gameObject.AddComponent<LayoutElement>();
+                    ble.ignoreLayout = true;
+
+                    m_InspectionBeam.sizeDelta = new Vector2(260f, 8f);
+                    float startY = 130f;
+                    float endY = -130f;
+                    m_InspectionBeam.anchoredPosition = new Vector2(0f, startY);
+
+                    float beamDur = 0.22f;
+                    float elapsed = 0f;
+                    while (elapsed < beamDur)
+                    {
+                        elapsed += Time.unscaledDeltaTime;
+                        float t = Mathf.Clamp01(elapsed / beamDur);
+                        m_InspectionBeam.anchoredPosition = new Vector2(0f, Mathf.Lerp(startY, endY, t));
+                        yield return null;
+                    }
+
+                    m_InspectionBeam.gameObject.SetActive(false);
+
+                    if (card.IsUnlocked)
+                    {
+                        if (RoboticUIManager.Instance != null)
+                        {
+                            RoboticUIManager.Instance.SpawnDataFloat(Vector2.zero, targetPortrait, accentColor, 5, 30f);
+                        }
+                        CinematicUIParticleSystem partSys = CinematicUIParticleSystem.Instance;
+                        if (partSys != null)
+                        {
+                            partSys.SpawnDataFloat(targetPortrait.position, accentColor, 6, 35f);
+                        }
+                    }
                 }
             }
 
@@ -1646,6 +1731,20 @@ namespace MainGame.UI.Unified
                 if (oldRt != null)
                 {
                     StartCoroutine(AnimateMotion(oldRt, oldRt.anchoredPosition, oldCard.RestPosition, 0f, 0f, 0.14f, 0f, EasingType.EaseOutQuad, 1f));
+
+                    // Dissipate old robot energy with pixel particles
+                    Transform oldPort = oldRt.Find("Portrait");
+                    Vector3 oldPos = oldPort != null ? oldPort.position : oldRt.position;
+                    CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                    if (cPool != null)
+                    {
+                        cPool.SpawnPixelDissolveShards(oldPos, new Color(0.35f, 0.78f, 1f, 0.7f), 8, 28f);
+                    }
+                    CinematicUIEffect oldFx = (oldPort != null) ? oldPort.GetComponent<CinematicUIEffect>() : null;
+                    if (oldFx != null)
+                    {
+                        oldFx.StopIdleBreathing();
+                    }
                 }
             }
 
@@ -1684,10 +1783,54 @@ namespace MainGame.UI.Unified
                 m_FrameMoveRoutine = StartCoroutine(AnimateScale(m_SelectionFrame, new Vector3(1.15f, 1.15f, 1f), Vector3.one, 0.14f, EasingType.EaseOutBack, 1.25f));
             }
 
-            // 4. Holographic Inspection Beam Sweep (Unlocked) or Lock Pulse (Locked)
+            // 4. Holographic Inspection Beam Sweep (Unlocked) or Lock Pulse (Locked) + Cinematic UI Effect
+            CinematicUIEffect newFx = targetPortrait.GetComponent<CinematicUIEffect>() ?? targetPortrait.GetComponentInChildren<CinematicUIEffect>();
+            if (newFx == null)
+            {
+                Image portImg = targetPortrait.GetComponent<Image>() ?? targetPortrait.GetComponentInChildren<Image>();
+                if (portImg != null)
+                {
+                    newFx = portImg.gameObject.AddComponent<CinematicUIEffect>();
+                }
+            }
+
+            int robotIdx = (int)newCard.Robot;
+            Color accentColor = (robotIdx >= 0 && robotIdx < RobotAuthoring.Length) ? RobotAuthoring[robotIdx].accent : new Color(0.35f, 0.78f, 1f);
+
+            if (newFx != null)
+            {
+                if (newCard.IsUnlocked)
+                {
+                    newFx.BorderColor = accentColor;
+                    newFx.BorderSpeed = 2.2f;
+                    newFx.BorderWidth = 0.04f;
+                    newFx.TriggerPowerSweep(0.22f, 0.18f, 90f, accentColor);
+                    newFx.TriggerBorderPulse(0.28f, accentColor);
+                    newFx.StartIdleBreathing(0.06f, 2.5f);
+                }
+                else
+                {
+                    newFx.TriggerGlitch(0.12f, 8f);
+                    newFx.TriggerBorderPulse(0.3f, new Color(0.85f, 0.25f, 0.25f, 0.6f));
+                }
+            }
+
+            CinematicUIParticleSystem partSys = CinematicUIParticleSystem.Instance;
+            if (partSys != null && newCard.IsUnlocked)
+            {
+                partSys.SpawnDataFloat(targetPortrait.position, accentColor, 6, 35f);
+            }
+
             if (newCard.IsUnlocked)
             {
-                if (m_InspectionBeam != null)
+                if (CinematicUIFXManager.Instance != null)
+                {
+                    CinematicUIFXManager.Instance.PlayCharacterScan(targetPortrait, () =>
+                    {
+                        if (newFx != null) newFx.TriggerBorderPulse(0.25f, accentColor, 2.0f);
+                    });
+                }
+                else if (m_InspectionBeam != null)
                 {
                     if (m_BeamRoutine != null) StopCoroutine(m_BeamRoutine);
                     m_BeamRoutine = StartCoroutine(InspectionBeamSweepRoutine(targetPortrait));
@@ -1817,6 +1960,19 @@ namespace MainGame.UI.Unified
             Vector3 baseScale = card.RestScale;
             Vector3 punchScale = baseScale * 0.94f;
 
+            Transform port = cardRt != null ? cardRt.Find("Portrait") : null;
+            CinematicUIEffect fx = (port != null) ? (port.GetComponent<CinematicUIEffect>() ?? port.GetComponentInChildren<CinematicUIEffect>()) : null;
+            if (fx != null)
+            {
+                fx.TriggerImpactFlash(0.08f, 2.0f);
+                fx.TriggerBorderPulse(0.25f, new Color(1f, 0.9f, 0.4f, 1f));
+            }
+            CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+            if (cPool != null && port != null)
+            {
+                cPool.SpawnSparkBurst(port.position, new Color(1f, 0.85f, 0.35f, 1f), 10, 28f);
+            }
+
             float p1 = 0.05f;
             float elapsed = 0f;
 
@@ -1939,6 +2095,12 @@ namespace MainGame.UI.Unified
                 if (panelFX != null)
                 {
                     panelFX.PlayPowerDown(duration);
+                }
+                CinematicUIEffect panelCinematic = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+                if (panelCinematic != null)
+                {
+                    panelCinematic.PlayPixelDissolve(duration, new Color(0.18f, 0.88f, 0.82f, 0.8f), 24f);
+                    panelCinematic.TriggerBorderPulse(duration * 0.75f, new Color(0.18f, 0.88f, 0.82f, 0.8f), 1.5f, UIBorderDirection.BottomToTop);
                 }
                 CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
                 StartCoroutine(AnimateScale(m_PanelBackground, m_PanelBackground.localScale, m_PanelRestScale * 0.90f, duration, EasingType.EaseInCubic, 1f));

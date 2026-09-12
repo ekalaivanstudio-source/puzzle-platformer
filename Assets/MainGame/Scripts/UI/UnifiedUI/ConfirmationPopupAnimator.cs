@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using MainGame.UI.Animation;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -286,7 +287,7 @@ namespace MainGame.UI.Unified
                     Image dlgImg = m_DialogWindow.GetComponent<Image>();
                     if (dlgImg != null)
                     {
-                        panelFX = RoboticUIManager.GetOrAddPanelEffect(dlgImg, new Color(1.0f, 0.45f, 0.15f, 1.0f), cornerBrackets: true, scanShimmer: false);
+                        panelFX = RoboticUIManager.GetOrAddPanelEffect(dlgImg, new Color(0.95f, 0.22f, 0.22f, 1.0f), cornerBrackets: true, scanShimmer: false);
                     }
                 }
                 if (panelFX != null)
@@ -294,9 +295,30 @@ namespace MainGame.UI.Unified
                     panelFX.PlayPowerUp(0.22f);
                 }
 
+                CinematicUIEffect dlgFx = m_DialogWindow.GetComponent<CinematicUIEffect>() ?? m_DialogWindow.GetComponentInChildren<CinematicUIEffect>();
+                if (dlgFx == null)
+                {
+                    Image dlgImg = m_DialogWindow.GetComponent<Image>();
+                    if (dlgImg != null) dlgFx = dlgImg.gameObject.AddComponent<CinematicUIEffect>();
+                }
+                if (dlgFx != null)
+                {
+                    dlgFx.BorderColor = new Color(0.95f, 0.22f, 0.22f, 0.95f);
+                    dlgFx.BorderSpeed = 2.8f;
+                    dlgFx.BorderWidth = 0.05f;
+                    dlgFx.TriggerImpactFlash(0.12f, 2.2f);
+                    dlgFx.TriggerShockwave(0.35f, new Vector2(0.5f, 0.5f), 0.08f, 0.08f);
+                    dlgFx.TriggerBorderPulse(0.40f, new Color(0.95f, 0.22f, 0.22f, 1.0f), 1.8f, UIBorderDirection.TopToBottom);
+                }
+
                 if (RoboticUIManager.Instance != null)
                 {
-                    RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_DialogWindow, new Color(1.0f, 0.55f, 0.2f), 8, 22f);
+                    RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_DialogWindow, new Color(0.95f, 0.22f, 0.22f), 8, 22f);
+                }
+                CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                if (cPool != null)
+                {
+                    cPool.SpawnSparkBurst(m_DialogWindow.position, new Color(0.95f, 0.22f, 0.22f), 12, 28f);
                 }
             }
             UIMicroShake.Shake(1.35f, 0.09f);
@@ -466,6 +488,12 @@ namespace MainGame.UI.Unified
             // Dialog flings down into floor (-650px)
             if (m_DialogWindow != null)
             {
+                CinematicUIEffect dlgFx = m_DialogWindow.GetComponent<CinematicUIEffect>() ?? m_DialogWindow.GetComponentInChildren<CinematicUIEffect>();
+                if (dlgFx != null)
+                {
+                    dlgFx.TriggerBorderPulse(duration * 0.75f, new Color(0.95f, 0.22f, 0.22f, 0.8f), 1.8f, UIBorderDirection.TopToBottom);
+                }
+
                 Vector2 exitPos = new Vector2(m_DialogRestPos.x, m_DialogRestPos.y - 650f);
                 Vector3 exitScale = m_DialogRestScale * 0.85f;
 

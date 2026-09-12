@@ -7,6 +7,7 @@ using MainGame.UI.Animation;
 using Setting.Menu;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -300,7 +301,20 @@ namespace MainGame.UI.Unified
 
             if (RoboticUIManager.Instance != null && target != null)
             {
-                RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, target, new Color(0.40f, 0.90f, 1.0f), 3, 10f);
+                RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, target, new Color(0.25f, 0.75f, 0.95f), 3, 10f);
+            }
+            CinematicUIParticleSystem pSys = CinematicUIParticleSystem.Instance;
+            if (pSys != null && target != null)
+            {
+                pSys.SpawnSparkBurst(target.position, new Color(0.25f, 0.75f, 0.95f), 2, 10f);
+            }
+            if (target != null)
+            {
+                CinematicUIEffect fx = target.GetComponent<CinematicUIEffect>() ?? target.GetComponentInChildren<CinematicUIEffect>();
+                if (fx != null)
+                {
+                    fx.TriggerBorderPulse(0.14f, new Color(0.25f, 0.75f, 0.95f), 1.8f, UIBorderDirection.LeftToRight);
+                }
             }
             UIFeedbackAudio.PlaySfx(UISfxType.SliderTick, 0.85f, 0.04f);
 
@@ -349,11 +363,32 @@ namespace MainGame.UI.Unified
                     panelFX.PlayPowerUp(m_PanelDuration);
                 }
 
+                CinematicUIEffect cFx = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+                if (cFx == null)
+                {
+                    Image bgImg = m_PanelBackground.GetComponent<Image>();
+                    if (bgImg != null)
+                    {
+                        cFx = bgImg.gameObject.AddComponent<CinematicUIEffect>();
+                    }
+                }
+                if (cFx != null)
+                {
+                    cFx.BorderColor = new Color(0.25f, 0.75f, 0.95f, 0.85f);
+                    cFx.BorderSpeed = 1.8f;
+                    cFx.BorderWidth = 0.035f;
+                    cFx.PlayScanSweep(m_PanelDuration, new Color(0.25f, 0.75f, 0.95f, 0.6f), 0f, 0.12f);
+                    cFx.TriggerBorderPulse(m_PanelDuration, new Color(0.25f, 0.75f, 0.95f, 0.9f), 1.4f, UIBorderDirection.LeftToRight);
+                }
+
                 UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.80f, 0.02f);
                 StartCoroutine(AnimateMotion(m_PanelBackground, startPanel, m_PanelRestPos, 0f, 0f, m_PanelDuration, 0f, EasingType.EaseOutCubic, 1f, () =>
                 {
                     UIMicroShake.Shake(0.70f, 0.07f);
                     UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.65f, 0.03f);
+                    if (cFx != null) cFx.TriggerImpactFlash(0.08f, 1.8f);
+                    CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                    if (cPool != null) cPool.SpawnSparkBurst(m_PanelBackground.position, new Color(0.25f, 0.75f, 0.95f), 5, 16f);
                 }));
             }
 
@@ -585,6 +620,11 @@ namespace MainGame.UI.Unified
                 if (panelFX != null)
                 {
                     panelFX.PlayPowerDown(duration);
+                }
+                CinematicUIEffect panelCinematic = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+                if (panelCinematic != null)
+                {
+                    panelCinematic.TriggerBorderPulse(duration * 0.75f, new Color(0.25f, 0.75f, 0.95f, 0.8f), 1.5f, UIBorderDirection.RightToLeft);
                 }
                 Vector2 targetPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 StartCoroutine(AnimateMotion(m_PanelBackground, m_PanelBackground.anchoredPosition, targetPanel, 0f, 0f, duration, 0.04f, EasingType.EaseInBack, 1.1f));

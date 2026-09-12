@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using MainGame.UI.Animation;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -191,11 +192,30 @@ namespace MainGame.UI.Unified
                     panelFX.PlayPowerUp(m_PanelDuration);
                 }
 
+                CinematicUIEffect cFx = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+                if (cFx == null)
+                {
+                    Image bgImg = m_PanelBackground.GetComponent<Image>();
+                    if (bgImg != null) cFx = bgImg.gameObject.AddComponent<CinematicUIEffect>();
+                }
+                if (cFx != null)
+                {
+                    cFx.BorderColor = new Color(0.20f, 0.95f, 0.45f, 0.85f);
+                    cFx.BorderSpeed = 1.6f;
+                    cFx.BorderWidth = 0.035f;
+                    cFx.PlayDataStream(m_PanelDuration, 1.2f, new Color(0.20f, 0.95f, 0.45f, 0.7f));
+                    cFx.TriggerBorderPulse(m_PanelDuration, new Color(0.20f, 0.95f, 0.45f, 0.9f), 1.3f, UIBorderDirection.TopToBottom);
+                }
+
                 UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.75f, 0.02f);
                 StartCoroutine(AnimateMotion(m_PanelBackground, startPanel, m_PanelRestPos, 0f, 0f, m_PanelDuration, 0f, EasingType.EaseOutCubic, 1f, () =>
                 {
                     UIMicroShake.Shake(0.35f, 0.05f);
                     UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.50f, 0.03f);
+                    if (cFx != null)
+                    {
+                        cFx.TriggerDigitalGlitch(0.15f, 12f, 0.03f);
+                    }
                 }));
             }
 
@@ -224,6 +244,12 @@ namespace MainGame.UI.Unified
             {
                 Vector2 startContent = new Vector2(m_ContentRestPos.x, m_ContentRestPos.y - 120f);
                 m_ContentContainer.anchoredPosition = startContent;
+
+                CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                if (cPool != null)
+                {
+                    cPool.SpawnDataFloat(m_ContentContainer.position, new Color(0.20f, 0.95f, 0.45f), 10, 32f);
+                }
 
                 yield return StartCoroutine(AnimateMotion(
                     m_ContentContainer,
@@ -340,6 +366,12 @@ namespace MainGame.UI.Unified
                 if (panelFX != null)
                 {
                     panelFX.PlayPowerDown(duration);
+                }
+                CinematicUIEffect panelCinematic = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.GetComponentInChildren<CinematicUIEffect>();
+                if (panelCinematic != null)
+                {
+                    panelCinematic.TriggerDigitalGlitch(duration, 16f, 0.05f);
+                    panelCinematic.TriggerBorderPulse(duration * 0.75f, new Color(0.20f, 0.95f, 0.45f, 0.8f), 1.5f, UIBorderDirection.BottomToTop);
                 }
                 Vector2 targetPanel = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
                 StartCoroutine(AnimateMotion(m_PanelBackground, m_PanelBackground.anchoredPosition, targetPanel, 0f, 0f, duration, 0.03f, EasingType.EaseInBack, 1.1f));

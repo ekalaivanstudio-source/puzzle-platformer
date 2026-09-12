@@ -7,6 +7,7 @@ using MainGame.UI.Animation;
 using LevelSelection;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.Feedback;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -583,6 +584,11 @@ namespace MainGame.UI.Unified
                 m_Pointer.ResetPointerState();
             }
 
+            if (CinematicUIFXManager.Instance != null)
+            {
+                CinematicUIFXManager.Instance.ResetFX();
+            }
+
             ResetBubblePool();
         }
 
@@ -646,30 +652,25 @@ namespace MainGame.UI.Unified
             CanvasGroup cg = m_PanelBackground.GetComponent<CanvasGroup>();
             if (cg == null) cg = m_PanelBackground.gameObject.AddComponent<CanvasGroup>();
 
-            Vector3 startScale = new Vector3(0.70f, 0.70f, 1f);
-            Vector3 overshootScale = new Vector3(1.025f, 1.025f, 1f);
-
+            // Machine begins compressed at the horizontal center seam
+            Vector3 startScale = new Vector3(0.18f, 0.55f, 1f);
             m_PanelBackground.anchoredPosition = m_PanelRestPos;
             m_PanelBackground.localScale = startScale;
             cg.alpha = 1f;
 
-            UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.85f, 0.02f);
+            // Phase 1: Directional energy power sweep & border activation
+            UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.60f, 0.03f);
 
-            RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
-            if (panelFX == null)
+            CinematicUIEffect panelCinematic = m_PanelBackground.GetComponent<CinematicUIEffect>() ?? m_PanelBackground.gameObject.AddComponent<CinematicUIEffect>();
+            if (panelCinematic != null)
             {
-                Image bgImg = m_PanelBackground.GetComponent<Image>();
-                if (bgImg != null)
-                {
-                    panelFX = RoboticUIManager.GetOrAddPanelEffect(bgImg, new Color(0.35f, 0.78f, 1.0f, 1.0f), cornerBrackets: true, scanShimmer: false);
-                }
-            }
-            if (panelFX != null)
-            {
-                panelFX.PlayPowerUp(duration);
+                panelCinematic.PlayNoiseReveal(duration * 0.95f, new Color(1.0f, 0.82f, 0.22f, 0.9f), 35f);
+                panelCinematic.TriggerBorderPulse(duration, new Color(1.0f, 0.75f, 0.15f), 1.6f, UIBorderDirection.LeftToRight);
             }
 
             float elapsed = 0f;
+            bool frameExpandSoundPlayed = false;
+
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
@@ -678,18 +679,41 @@ namespace MainGame.UI.Unified
                 cg.alpha = 1f;
                 m_PanelBackground.anchoredPosition = m_PanelRestPos;
 
-                // Rapid forward expansion toward player with punchy settle
-                if (t < 0.72f)
+                float currentX;
+                float currentY;
+
+                if (t < 0.55f)
                 {
-                    float sT = t / 0.72f;
-                    m_PanelBackground.localScale = Vector3.Lerp(startScale, overshootScale, UIEasing.Evaluate(EasingType.EaseOutQuad, sT));
+                    // Phase 1: Side plates extend horizontally from center seam
+                    float phase1T = t / 0.55f;
+                    float easeX = UIEasing.Evaluate(EasingType.EaseOutQuad, phase1T);
+                    currentX = Mathf.Lerp(0.18f, 1.035f, easeX);
+                    currentY = Mathf.Lerp(0.55f, 0.72f, easeX);
+                }
+                else if (t < 0.85f)
+                {
+                    // Phase 2: Frame plates expand vertically upward and downward
+                    if (!frameExpandSoundPlayed)
+                    {
+                        UIFeedbackAudio.PlaySfx(UISfxType.Deploy, 0.70f, 0.02f);
+                        frameExpandSoundPlayed = true;
+                    }
+
+                    float phase2T = (t - 0.55f) / 0.30f;
+                    float easeY = UIEasing.Evaluate(EasingType.EaseOutQuad, phase2T);
+                    currentX = Mathf.Lerp(1.035f, 1.025f, phase2T);
+                    currentY = Mathf.Lerp(0.72f, 1.035f, easeY);
                 }
                 else
                 {
-                    float sT = (t - 0.72f) / 0.28f;
-                    m_PanelBackground.localScale = Vector3.Lerp(overshootScale, m_PanelRestScale, UIEasing.Evaluate(EasingType.EaseInOutQuad, sT));
+                    // Phase 3: Center lock clamp settles rigidly
+                    float phase3T = (t - 0.85f) / 0.15f;
+                    float easeLock = UIEasing.Evaluate(EasingType.EaseInOutQuad, phase3T);
+                    currentX = Mathf.Lerp(1.025f, m_PanelRestScale.x, easeLock);
+                    currentY = Mathf.Lerp(1.035f, m_PanelRestScale.y, easeLock);
                 }
 
+                m_PanelBackground.localScale = new Vector3(currentX, currentY, 1f);
                 yield return null;
             }
 
@@ -697,8 +721,18 @@ namespace MainGame.UI.Unified
             m_PanelBackground.localScale = m_PanelRestScale;
             cg.alpha = 1f;
 
+            // Phase 4: HARD IMPACT
             UIMicroShake.Shake(1.6f, 0.08f);
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.85f, 0.03f);
+            if (panelCinematic != null)
+            {
+                panelCinematic.TriggerImpactFlash(0.08f, 1.8f);
+                panelCinematic.TriggerBorderPulse(0.24f, new Color(1.0f, 0.75f, 0.15f));
+            }
+            if (CinematicUIParticleSystem.Instance != null)
+            {
+                CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_PanelBackground, new Color(1.0f, 0.82f, 0.22f), 8, 28f);
+            }
         }
 
         #region Pixel-Art Bubble Map Activation System
@@ -1428,6 +1462,19 @@ namespace MainGame.UI.Unified
                 // First node boots up immediately
                 UIFeedbackAudio.PlaySteppedSfx(UISfxType.NodeActivate, 0, nodes.Count);
                 StartCoroutine(nodes[0].PlayBootUpRoutine(nodes[0].IsUnlocked, 0f));
+                RoboticPixelFXPool pool0 = RoboticPixelFXPool.Instance;
+                if (pool0 != null && nodes[0] != null)
+                {
+                    Color sparkCol = nodes[0].IsUnlocked ? new Color(1.0f, 0.82f, 0.22f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+                    pool0.SpawnSparkBurst(Vector2.zero, nodes[0].transform, sparkCol, 4, 14f);
+                }
+                CinematicUIParticleSystem cPool0 = CinematicUIParticleSystem.Instance;
+                if (cPool0 != null && nodes[0] != null)
+                {
+                    Color sparkCol = nodes[0].IsUnlocked ? new Color(1.0f, 0.82f, 0.22f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+                    cPool0.SpawnSparkBurst(nodes[0].transform.position, sparkCol, 5, 20f);
+                    cPool0.SpawnEnergyBubble(nodes[0].transform.position, sparkCol * 0.8f, 18f);
+                }
             }
 
             if (segments != null && segments.Count > 0)
@@ -1458,6 +1505,19 @@ namespace MainGame.UI.Unified
                         {
                             UIFeedbackAudio.PlaySteppedSfx(UISfxType.NodeActivate, i + 1, nodes.Count);
                             StartCoroutine(targetNode.PlayBootUpRoutine(targetNode.IsUnlocked, 0f));
+                            RoboticPixelFXPool pool = RoboticPixelFXPool.Instance;
+                            if (pool != null)
+                            {
+                                Color sparkCol = targetNode.IsUnlocked ? new Color(1.0f, 0.82f, 0.22f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+                                pool.SpawnSparkBurst(Vector2.zero, targetNode.transform, sparkCol, 4, 14f);
+                            }
+                            CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                            if (cPool != null)
+                            {
+                                Color sparkCol = targetNode.IsUnlocked ? new Color(1.0f, 0.82f, 0.22f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+                                cPool.SpawnSparkBurst(targetNode.transform.position, sparkCol, 5, 20f);
+                                cPool.SpawnEnergyBubble(targetNode.transform.position, sparkCol * 0.8f, 18f);
+                            }
                         }
                     }
                 }
@@ -1536,6 +1596,30 @@ namespace MainGame.UI.Unified
                 }
             }
 
+            // Current level node energy ring, subtle pulse & rotating highlight
+            if (currentLevelNode != null)
+            {
+                CinematicUIEffect currentFx = currentLevelNode.GetComponentInChildren<CinematicUIEffect>();
+                if (currentFx == null)
+                {
+                    Graphic g = currentLevelNode.GetComponentInChildren<Image>();
+                    if (g != null)
+                    {
+                        currentFx = g.gameObject.AddComponent<CinematicUIEffect>();
+                        currentFx.BorderColor = new Color(0.35f, 0.85f, 1f, 0.95f);
+                        currentFx.BorderSpeed = 2.0f;
+                        currentFx.BorderWidth = 0.05f;
+                        currentFx.BorderSoftness = 0.02f;
+                    }
+                }
+                if (currentFx != null)
+                {
+                    currentFx.StartContinuousEnergyFlow();
+                    currentFx.StartIdleBreathing(0.08f, 2.5f);
+                    currentFx.TriggerBorderPulse(0.35f, new Color(0.4f, 0.9f, 1f, 1f));
+                }
+            }
+
             // Step 4: Drop Pointer from above onto authoritative destination node
             LevelNodeUI dropTargetNode = null;
             if (nodes != null && nodes.Count > 0)
@@ -1576,6 +1660,33 @@ namespace MainGame.UI.Unified
                 else
                 {
                     yield return StartCoroutine(dropTargetNode.PlayMarkerDropRoutine());
+                }
+
+                // Active node clamp lock spark burst + impact flash
+                CinematicUIEffect dropFx = dropTargetNode.GetComponentInChildren<CinematicUIEffect>();
+                if (dropFx == null)
+                {
+                    Graphic g = dropTargetNode.GetComponentInChildren<Image>();
+                    if (g != null)
+                    {
+                        dropFx = g.gameObject.AddComponent<CinematicUIEffect>();
+                    }
+                }
+                if (dropFx != null)
+                {
+                    dropFx.TriggerImpactFlash(0.12f, 2.0f);
+                    dropFx.TriggerBorderPulse(0.3f, new Color(1f, 0.85f, 0.35f, 1f));
+                }
+
+                RoboticPixelFXPool ptrPool = RoboticPixelFXPool.Instance;
+                if (ptrPool != null)
+                {
+                    ptrPool.SpawnSparkBurst(Vector2.zero, dropTargetNode.transform, new Color(1.0f, 0.85f, 0.35f, 1f), 6, 18f);
+                }
+                CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+                if (cPool != null)
+                {
+                    cPool.SpawnSparkBurst(dropTargetNode.transform.position, new Color(1f, 0.85f, 0.35f, 1f), 8, 24f);
                 }
             }
 
@@ -1672,6 +1783,11 @@ namespace MainGame.UI.Unified
             // 6. Panel background folds away (Scale X: 1.0 -> 0.90, Pos +80px, alpha -> 0)
             if (m_PanelBackground != null)
             {
+                CinematicUIEffect cinFX = m_PanelBackground.GetComponent<CinematicUIEffect>();
+                if (cinFX != null)
+                {
+                    cinFX.PlayNoiseDissolve(duration, new Color(1.0f, 0.82f, 0.22f, 0.7f), 30f);
+                }
                 RoboticUIPanelEffect panelFX = m_PanelBackground.GetComponent<RoboticUIPanelEffect>();
                 if (panelFX != null)
                 {
@@ -1715,6 +1831,18 @@ namespace MainGame.UI.Unified
 
         private IEnumerator CollapseNodesRoutine(List<LevelNodeUI> nodes, float duration)
         {
+            CinematicUIParticleSystem cPool = CinematicUIParticleSystem.Instance;
+            if (cPool != null)
+            {
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    if (nodes[i] != null && nodes[i].IsUnlocked)
+                    {
+                        cPool.SpawnSparkBurst(nodes[i].transform.position, new Color(0.25f, 0.55f, 0.85f, 0.6f), 3, 12f);
+                    }
+                }
+            }
+
             float elapsed = 0f;
             while (elapsed < duration)
             {
@@ -1739,10 +1867,26 @@ namespace MainGame.UI.Unified
         private IEnumerator AnimateFoldExit(RectTransform panel, float duration)
         {
             CanvasGroup cg = panel.GetComponent<CanvasGroup>();
-            Vector2 startPos = panel.anchoredPosition;
-            Vector2 targetPos = new Vector2(m_PanelRestPos.x + m_PanelSlideDistance, m_PanelRestPos.y);
             Vector3 startScale = panel.localScale;
-            Vector3 targetScale = new Vector3(0.90f, 0.85f, 1f);
+            Vector3 targetScale = new Vector3(0.18f, 0.50f, 1f);
+            Vector2 startPos = panel.anchoredPosition;
+
+            UIFeedbackAudio.PlaySfx(UISfxType.Retract, 0.70f, 0.02f);
+
+            // Reverse electrical drain pulse across perimeter
+            CinematicUIEffect panelFx = panel.GetComponent<CinematicUIEffect>() ?? panel.GetComponentInChildren<CinematicUIEffect>();
+            if (panelFx != null)
+            {
+                panelFx.TriggerBorderPulse(duration * 0.75f, new Color(0.25f, 0.55f, 0.85f, 0.8f), clockwise: false);
+            }
+            else
+            {
+                MainGame.UI.RoboticEffects.UIEnergyFlow panelEnergy = panel.GetComponent<MainGame.UI.RoboticEffects.UIEnergyFlow>();
+                if (panelEnergy != null)
+                {
+                    panelEnergy.TriggerTravelingPulse(duration * 0.75f, new Color(0.25f, 0.55f, 0.85f, 0.8f), clockwise: false);
+                }
+            }
 
             float elapsed = 0f;
             while (elapsed < duration)
@@ -1751,14 +1895,20 @@ namespace MainGame.UI.Unified
                 float t = Mathf.Clamp01(elapsed / duration);
                 float ease = UIEasing.Evaluate(EasingType.EaseInQuad, t);
 
-                panel.anchoredPosition = Vector2.Lerp(startPos, targetPos, ease);
-                panel.localScale = Vector3.Lerp(startScale, targetScale, ease);
-                if (cg != null) cg.alpha = Mathf.Lerp(1f, 0f, ease);
+                // Frame collapses vertically first, then horizontal side plates fold into center seam
+                float curY = Mathf.Lerp(startScale.y, targetScale.y, Mathf.Clamp01(t * 1.5f));
+                float curX = Mathf.Lerp(startScale.x, targetScale.x, Mathf.Clamp01((t - 0.2f) / 0.8f));
+
+                panel.localScale = new Vector3(curX, curY, 1f);
+                panel.anchoredPosition = new Vector2(startPos.x, Mathf.Lerp(startPos.y, startPos.y + m_PanelSlideDistance, ease));
+                if (cg != null && t > 0.65f)
+                {
+                    cg.alpha = Mathf.Lerp(1f, 0f, (t - 0.65f) / 0.35f);
+                }
 
                 yield return null;
             }
 
-            panel.anchoredPosition = targetPos;
             panel.localScale = targetScale;
             if (cg != null) cg.alpha = 0f;
         }

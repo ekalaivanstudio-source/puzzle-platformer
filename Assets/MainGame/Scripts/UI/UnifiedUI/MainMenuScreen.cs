@@ -107,11 +107,15 @@ namespace MainGame.UI.Unified
             }
         }
 
+        private int m_LastClickedButtonIndex = -1;
+
         public override void PlayExitTransition(Action onComplete)
         {
             if (m_HomeScreenAnimator != null)
             {
-                m_HomeScreenAnimator.PlayExit(() =>
+                int selIdx = m_LastClickedButtonIndex;
+                m_LastClickedButtonIndex = -1;
+                m_HomeScreenAnimator.PlayExitWithSelectedButton(selIdx, () =>
                 {
                     SetCanvasGroupInteractive(false);
                     onComplete?.Invoke();
@@ -201,6 +205,7 @@ namespace MainGame.UI.Unified
 
         private void HandleContinueClicked()
         {
+            m_LastClickedButtonIndex = 0;
             TriggerWithPunch(m_ContinueButton, () =>
             {
                 PushScreen(m_LevelSelectionScreen);
@@ -209,6 +214,7 @@ namespace MainGame.UI.Unified
 
         private void HandleNewGameClicked()
         {
+            m_LastClickedButtonIndex = 1;
             TriggerWithPunch(m_NewGameButton, () =>
             {
                 ModernLevelSelection.SaveManager.ResetProgress();
@@ -223,6 +229,7 @@ namespace MainGame.UI.Unified
 
         private void HandleCollectClicked()
         {
+            m_LastClickedButtonIndex = 2;
             TriggerWithPunch(m_CollectButton, () =>
             {
                 PushScreen(m_CollectionScreen);
@@ -231,6 +238,7 @@ namespace MainGame.UI.Unified
 
         private void HandleOptionsClicked()
         {
+            m_LastClickedButtonIndex = 3;
             TriggerWithPunch(m_OptionsButton, () =>
             {
                 PushScreen(m_OptionsScreen);
@@ -239,6 +247,7 @@ namespace MainGame.UI.Unified
 
         private void HandleCreditsClicked()
         {
+            m_LastClickedButtonIndex = 4;
             TriggerWithPunch(m_CreditsButton, () =>
             {
                 PushScreen(m_CreditsScreen);
@@ -247,6 +256,7 @@ namespace MainGame.UI.Unified
 
         private void HandleExitClicked()
         {
+            m_LastClickedButtonIndex = 5;
             TriggerWithPunch(m_ExitButton, () =>
             {
                 if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)

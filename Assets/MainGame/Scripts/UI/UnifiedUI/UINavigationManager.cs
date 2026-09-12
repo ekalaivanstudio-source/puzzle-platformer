@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using MainGame.UI.RoboticEffects;
+using MainGame.UI.CinematicEffects;
 
 namespace MainGame.UI.Unified
 {
@@ -290,6 +291,11 @@ namespace MainGame.UI.Unified
                 EventSystem.current.SetSelectedGameObject(null);
             }
 
+            if (CinematicUIFXManager.Instance != null)
+            {
+                CinematicUIFXManager.Instance.TriggerScreenTransitionStart(oldScreen, newScreen);
+            }
+
             // Audio hook
             if (newScreen.name.Contains("Confirmation") || newScreen.name.Contains("Popup"))
             {
@@ -331,6 +337,11 @@ namespace MainGame.UI.Unified
                 yield return null;
             }
 
+            if (CinematicUIFXManager.Instance != null)
+            {
+                CinematicUIFXManager.Instance.TriggerScreenTransitionComplete(newScreen);
+            }
+
             // Restore selection
             GameObject selectTarget = GetTargetSelectionForScreen(newScreen);
             RestoreSelectedElement(selectTarget);
@@ -348,6 +359,11 @@ namespace MainGame.UI.Unified
             {
                 EventSystem.current.sendNavigationEvents = false;
                 EventSystem.current.SetSelectedGameObject(null);
+            }
+
+            if (CinematicUIFXManager.Instance != null)
+            {
+                CinematicUIFXManager.Instance.TriggerScreenTransitionStart(poppedScreen, targetScreen);
             }
 
             // Audio hook
@@ -400,6 +416,11 @@ namespace MainGame.UI.Unified
             while (!enterFinished || !exitFinished)
             {
                 yield return null;
+            }
+
+            if (CinematicUIFXManager.Instance != null)
+            {
+                CinematicUIFXManager.Instance.TriggerScreenTransitionComplete(targetScreen);
             }
 
             // Retrieve selection: prefer remembered selection on targetScreen, else fallbackSelection
