@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -21,12 +22,24 @@ namespace MainGame.UI.Feedback
         RobotBoot,
         RobotScan,
         SliderTick,
-        PopupSlam
+        PopupSlam,
+        // Bespoke Music-Aligned SFX:
+        RetryCoreActivation,
+        ContinueImpact,
+        NewGameImpact,
+        CollectImpact,
+        OptionsImpact,
+        CreditsImpact,
+        ExitImpact,
+        MajorTransitionImpact,
+        EnergyCharge,
+        WarningAlert
     }
 
     /// <summary>
     /// Centralized UI Audio service that routes all UI sounds strictly through the
-    /// project's existing SFX AudioMixerGroup with pitch variation and stepped pitch support.
+    /// project's existing SFX AudioMixerGroup with musical anti-fatigue variation,
+    /// focus debouncing, and stepped pitch support.
     /// Self-provisioning singleton that persists across scenes.
     /// </summary>
     [DisallowMultipleComponent]
@@ -70,9 +83,32 @@ namespace MainGame.UI.Feedback
         [SerializeField] private AudioClip m_SliderTickClip;
         [SerializeField] private AudioClip m_PopupSlamClip;
 
+        [Header("Bespoke Music-Aligned Clips")]
+        [SerializeField] private AudioClip m_RetryCoreClip;
+        [SerializeField] private AudioClip m_ContinueImpactClip;
+        [SerializeField] private AudioClip m_NewGameImpactClip;
+        [SerializeField] private AudioClip m_CollectImpactClip;
+        [SerializeField] private AudioClip m_OptionsImpactClip;
+        [SerializeField] private AudioClip m_CreditsImpactClip;
+        [SerializeField] private AudioClip m_ExitImpactClip;
+        [SerializeField] private AudioClip m_MajorTransitionClip;
+
         private AudioSource m_AudioSource;
         private AudioSource m_SecondarySource;
         private readonly Dictionary<UISfxType, AudioClip> m_ClipMap = new Dictionary<UISfxType, AudioClip>();
+
+        // Variation pools
+        private AudioClip[] m_FocusClips;
+        private AudioClip[] m_ConfirmClips;
+        private AudioClip[] m_ImpactClips;
+
+        private int m_FocusIndex = 0;
+        private int m_ConfirmIndex = 0;
+        private int m_ImpactIndex = 0;
+        private float m_LastFocusTime = -1f;
+        private const float k_FocusDebounceInterval = 0.040f; // 40ms minimum cooldown for focus ticks
+
+        private Coroutine m_DuckingRoutine;
 
         private void Awake()
         {
@@ -139,28 +175,62 @@ namespace MainGame.UI.Feedback
         public void RebuildClipMap()
         {
             m_ClipMap.Clear();
-            RegisterClip(UISfxType.Navigate, ref m_NavigateClip, "ui_navigate");
-            RegisterClip(UISfxType.Confirm, ref m_ConfirmClip, "ui_confirm");
+            RegisterClip(UISfxType.Navigate, ref m_NavigateClip, "ui_focus_a", "ui_navigate");
+            RegisterClip(UISfxType.Confirm, ref m_ConfirmClip, "ui_confirm_a", "ui_confirm");
             RegisterClip(UISfxType.Back, ref m_BackClip, "ui_back");
             RegisterClip(UISfxType.Whoosh, ref m_WhooshClip, "ui_whoosh");
-            RegisterClip(UISfxType.Impact, ref m_ImpactClip, "ui_impact");
+            RegisterClip(UISfxType.Impact, ref m_ImpactClip, "ui_impact_a", "ui_impact");
             RegisterClip(UISfxType.Deploy, ref m_DeployClip, "ui_deploy");
             RegisterClip(UISfxType.Retract, ref m_RetractClip, "ui_retract");
             RegisterClip(UISfxType.NodeActivate, ref m_NodeActivateClip, "ui_node_activate");
             RegisterClip(UISfxType.BubblePop, ref m_BubblePopClip, "ui_bubble_pop");
-            RegisterClip(UISfxType.Pulse, ref m_PulseClip, "ui_pulse");
+            RegisterClip(UISfxType.Pulse, ref m_PulseClip, "ui_pulse", "ui_energy_charge");
             RegisterClip(UISfxType.PointerSnap, ref m_PointerSnapClip, "ui_pointer_snap");
             RegisterClip(UISfxType.RobotBoot, ref m_RobotBootClip, "ui_robot_boot");
             RegisterClip(UISfxType.RobotScan, ref m_RobotScanClip, "ui_robot_scan");
             RegisterClip(UISfxType.SliderTick, ref m_SliderTickClip, "ui_slider_tick");
             RegisterClip(UISfxType.PopupSlam, ref m_PopupSlamClip, "ui_popup_slam");
+
+            // Bespoke Music-Aligned clips
+            RegisterClip(UISfxType.RetryCoreActivation, ref m_RetryCoreClip, "ui_retry_core", "ui_impact");
+            RegisterClip(UISfxType.ContinueImpact, ref m_ContinueImpactClip, "ui_impact_continue", "ui_impact");
+            RegisterClip(UISfxType.NewGameImpact, ref m_NewGameImpactClip, "ui_impact_newgame", "ui_impact");
+            RegisterClip(UISfxType.CollectImpact, ref m_CollectImpactClip, "ui_impact_collect", "ui_impact");
+            RegisterClip(UISfxType.OptionsImpact, ref m_OptionsImpactClip, "ui_impact_options", "ui_impact");
+            RegisterClip(UISfxType.CreditsImpact, ref m_CreditsImpactClip, "ui_impact_credits", "ui_impact");
+            RegisterClip(UISfxType.ExitImpact, ref m_ExitImpactClip, "ui_impact_exit", "ui_popup_slam");
+            RegisterClip(UISfxType.MajorTransitionImpact, ref m_MajorTransitionClip, "ui_major_transition", "ui_impact");
+            RegisterClip(UISfxType.EnergyCharge, ref m_PulseClip, "ui_energy_charge", "ui_pulse");
+            RegisterClip(UISfxType.WarningAlert, ref m_PopupSlamClip, "ui_popup_slam");
+
+            // Build variation pools
+            List<AudioClip> focusList = new List<AudioClip>();
+            TryAddPoolClip(focusList, "ui_focus_a", "ui_navigate");
+            TryAddPoolClip(focusList, "ui_focus_b");
+            TryAddPoolClip(focusList, "ui_focus_c");
+            m_FocusClips = focusList.ToArray();
+
+            List<AudioClip> confirmList = new List<AudioClip>();
+            TryAddPoolClip(confirmList, "ui_confirm_a", "ui_confirm");
+            TryAddPoolClip(confirmList, "ui_confirm_b");
+            m_ConfirmClips = confirmList.ToArray();
+
+            List<AudioClip> impactList = new List<AudioClip>();
+            TryAddPoolClip(impactList, "ui_impact_a", "ui_impact");
+            TryAddPoolClip(impactList, "ui_impact_b");
+            TryAddPoolClip(impactList, "ui_impact_c");
+            m_ImpactClips = impactList.ToArray();
         }
 
-        private void RegisterClip(UISfxType type, ref AudioClip clipField, string resourceName)
+        private void RegisterClip(UISfxType type, ref AudioClip clipField, string primaryResource, string fallbackResource = null)
         {
             if (clipField == null)
             {
-                clipField = Resources.Load<AudioClip>("Audio/UI/" + resourceName);
+                clipField = Resources.Load<AudioClip>("Audio/UI/" + primaryResource);
+                if (clipField == null && !string.IsNullOrEmpty(fallbackResource))
+                {
+                    clipField = Resources.Load<AudioClip>("Audio/UI/" + fallbackResource);
+                }
             }
             if (clipField != null)
             {
@@ -168,26 +238,89 @@ namespace MainGame.UI.Feedback
             }
         }
 
-        /// <summary>
-        /// Plays a UI sound with subtle anti-fatigue pitch variation through the SFX mixer.
-        /// </summary>
-        public void Play(UISfxType type, float volumeScale = 1f, float pitchVariance = 0.03f)
+        private void TryAddPoolClip(List<AudioClip> list, string primaryResource, string fallbackResource = null)
         {
-            if (m_ClipMap.TryGetValue(type, out AudioClip clip) && clip != null)
+            AudioClip clip = Resources.Load<AudioClip>("Audio/UI/" + primaryResource);
+            if (clip == null && !string.IsNullOrEmpty(fallbackResource))
             {
-                float pitch = 1f;
-                if (pitchVariance > 0f)
-                {
-                    pitch = UnityEngine.Random.Range(1f - pitchVariance, 1f + pitchVariance);
-                }
+                clip = Resources.Load<AudioClip>("Audio/UI/" + fallbackResource);
+            }
+            if (clip != null)
+            {
+                list.Add(clip);
+            }
+        }
 
-                AudioSource src = (m_AudioSource != null && m_AudioSource.isPlaying) ? m_SecondarySource : m_AudioSource;
-                if (src != null)
+        /// <summary>
+        /// Plays a UI sound with musical anti-fatigue variation through the SFX mixer.
+        /// </summary>
+        public void Play(UISfxType type, float volumeScale = 1f, float pitchVariance = 0.02f)
+        {
+            // Focus debouncing & variation
+            if (type == UISfxType.Navigate)
+            {
+                float now = Time.unscaledTime;
+                if (m_LastFocusTime > 0f && (now - m_LastFocusTime) < k_FocusDebounceInterval)
                 {
-                    src.pitch = pitch;
-                    src.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
+                    return; // debounced to prevent machine-gun audio stutter during rapid stick navigation
+                }
+                m_LastFocusTime = now;
+
+                if (m_FocusClips != null && m_FocusClips.Length > 0)
+                {
+                    AudioClip focusClip = m_FocusClips[m_FocusIndex % m_FocusClips.Length];
+                    m_FocusIndex++;
+                    PlayClipInternal(type, focusClip, volumeScale, pitchVariance);
+                    return;
                 }
             }
+            else if (type == UISfxType.Confirm && m_ConfirmClips != null && m_ConfirmClips.Length > 0)
+            {
+                AudioClip confirmClip = m_ConfirmClips[m_ConfirmIndex % m_ConfirmClips.Length];
+                m_ConfirmIndex++;
+                PlayClipInternal(type, confirmClip, volumeScale, pitchVariance);
+                return;
+            }
+            else if (type == UISfxType.Impact && m_ImpactClips != null && m_ImpactClips.Length > 0)
+            {
+                AudioClip impactClip = m_ImpactClips[m_ImpactIndex % m_ImpactClips.Length];
+                m_ImpactIndex++;
+                PlayClipInternal(type, impactClip, volumeScale, pitchVariance);
+                return;
+            }
+
+            if (m_ClipMap.TryGetValue(type, out AudioClip clip) && clip != null)
+            {
+                PlayClipInternal(type, clip, volumeScale, pitchVariance);
+            }
+        }
+
+        private void PlayClipInternal(UISfxType type, AudioClip clip, float volumeScale, float pitchVariance)
+        {
+            if (clip == null) return;
+
+            // Controlled micro-pitch variation (-2% to +2%)
+            float clampedVariance = Mathf.Clamp(pitchVariance, 0f, 0.025f);
+            float pitch = 1f;
+            if (clampedVariance > 0f)
+            {
+                pitch = UnityEngine.Random.Range(1f - clampedVariance, 1f + clampedVariance);
+            }
+
+            AudioSource src = (m_AudioSource != null && m_AudioSource.isPlaying) ? m_SecondarySource : m_AudioSource;
+            if (src != null)
+            {
+                src.pitch = pitch;
+                src.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
+            }
+
+#if UNITY_EDITOR || DEBUG
+            if (MainGame.UI.CinematicEffects.BeatSync.MusicBeatManager.Instance != null)
+            {
+                var curBeat = MainGame.UI.CinematicEffects.BeatSync.MusicBeatManager.Instance.CurrentBeat;
+                Debug.Log($"[MusicSync] Beat: #{curBeat.BeatIndex} (Bar {curBeat.BarIndex}:{curBeat.BeatInBar}) | [UI] {type} | [SFX] {clip.name} (Vol: {volumeScale:F2}, Pitch: {pitch:F2})");
+            }
+#endif
         }
 
         /// <summary>
@@ -206,12 +339,65 @@ namespace MainGame.UI.Feedback
                     src.pitch = pitch;
                     src.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
                 }
+
+#if UNITY_EDITOR || DEBUG
+                if (MainGame.UI.CinematicEffects.BeatSync.MusicBeatManager.Instance != null)
+                {
+                    var curBeat = MainGame.UI.CinematicEffects.BeatSync.MusicBeatManager.Instance.CurrentBeat;
+                    Debug.Log($"[MusicSync] Stepped Beat: #{curBeat.BeatIndex} (Bar {curBeat.BarIndex}) | Step: {stepIndex}/{totalSteps} | [SFX] {clip.name} (Pitch: {pitch:F2})");
+                }
+#endif
             }
+        }
+
+        /// <summary>
+        /// Briefly ducks background music volume during major screen transitions (e.g. Home -> Level Selection).
+        /// </summary>
+        public void DuckMusicBriefly(float targetScale = 0.88f, float duration = 0.25f)
+        {
+            AudioSource bgSource = BackgroundMusic.Source;
+            if (bgSource == null || !bgSource.isPlaying) return;
+
+            if (m_DuckingRoutine != null)
+            {
+                StopCoroutine(m_DuckingRoutine);
+            }
+            m_DuckingRoutine = StartCoroutine(MusicDuckingRoutine(bgSource, targetScale, duration));
+        }
+
+        private IEnumerator MusicDuckingRoutine(AudioSource bgSource, float targetScale, float duration)
+        {
+            float baseVol = bgSource.volume;
+            float targetVol = baseVol * targetScale;
+            float halfDur = duration * 0.5f;
+
+            // Duck
+            float elapsed = 0f;
+            while (elapsed < halfDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / halfDur);
+                bgSource.volume = Mathf.Lerp(baseVol, targetVol, t);
+                yield return null;
+            }
+
+            // Return
+            elapsed = 0f;
+            while (elapsed < halfDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / halfDur);
+                bgSource.volume = Mathf.Lerp(targetVol, baseVol, t);
+                yield return null;
+            }
+
+            bgSource.volume = baseVol;
+            m_DuckingRoutine = null;
         }
 
         // ─── Static Convenience Helpers ──────────────────────────────────────
 
-        public static void PlaySfx(UISfxType type, float volumeScale = 1f, float pitchVariance = 0.03f)
+        public static void PlaySfx(UISfxType type, float volumeScale = 1f, float pitchVariance = 0.02f)
         {
             Instance.Play(type, volumeScale, pitchVariance);
         }

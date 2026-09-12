@@ -171,14 +171,14 @@ namespace MainGame.UI.Unified
         /// <summary>
         /// Deploys the RETRY logo with a cinematic power sweep, border energy pulse, and spark burst.
         /// </summary>
-        public void DeploySequence(Action onComplete = null)
+        public void DeploySequence(Action onComplete = null, Action onImpact = null)
         {
             KillMotion();
             SetupAssembly();
-            m_ActiveRoutine = StartCoroutine(CinematicDeployRoutine(onComplete));
+            m_ActiveRoutine = StartCoroutine(CinematicDeployRoutine(onComplete, onImpact));
         }
 
-        private IEnumerator CinematicDeployRoutine(Action onComplete)
+        private IEnumerator CinematicDeployRoutine(Action onComplete, Action onImpact)
         {
             if (m_OriginalTitleImage != null)
             {
@@ -210,8 +210,8 @@ namespace MainGame.UI.Unified
 
             yield return new WaitForSecondsRealtime(0.12f);
 
-            // Step 3: Spark burst & impact flash
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.65f, 0.02f);
+            // Step 3: Spark burst & impact flash (synchronized to beat downbeat)
+            UIFeedbackAudio.PlaySfx(UISfxType.RetryCoreActivation, 0.90f, 0.02f);
             UIMicroShake.Shake(0.30f, 0.05f);
 
             if (CinematicUI != null)
@@ -223,6 +223,8 @@ namespace MainGame.UI.Unified
             {
                 CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_LogoRoot, new Color(1.0f, 0.85f, 0.35f, 1f), 6, 22f);
             }
+
+            onImpact?.Invoke();
 
             // Step 4: Settle into subtle living breathing
             if (CinematicUI != null)

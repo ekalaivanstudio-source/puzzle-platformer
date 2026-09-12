@@ -7,6 +7,7 @@ using MainGame.UI.Animation;
 using MainGame.UI.Feedback;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.CinematicEffects;
+using MainGame.UI.CinematicEffects.BeatSync;
 
 namespace MainGame.UI.Unified
 {
@@ -55,7 +56,7 @@ namespace MainGame.UI.Unified
         [SerializeField] private Button m_CreditsButton;
         [SerializeField] private Button m_ExitButton;
 
-        private MechanicalTransformElement[] m_ButtonElements;
+        private MainMenuButtonEnergyAnimator[] m_ButtonAnimators;
 
         // Baseline Rest Transforms
         private Vector2 m_CharRestPos;
@@ -161,40 +162,42 @@ namespace MainGame.UI.Unified
                 m_ExitButton
             };
 
-            MechanicalMechanismType[] mechanismTypes = new MechanicalMechanismType[]
+            UISfxType[] impactSfxTypes = new UISfxType[]
             {
-                MechanicalMechanismType.RotatingArm,          // CONTINUE
-                MechanicalMechanismType.SlidingChassisPanel,   // NEW GAME
-                MechanicalMechanismType.HingedFoldOut,        // COLLECT
-                MechanicalMechanismType.CornerPivotSwing,     // OPTIONS
-                MechanicalMechanismType.PneumaticExtension,   // CREDITS
-                MechanicalMechanismType.HeavyDualRailPlunge   // EXIT
+                UISfxType.ContinueImpact,
+                UISfxType.NewGameImpact,
+                UISfxType.CollectImpact,
+                UISfxType.OptionsImpact,
+                UISfxType.CreditsImpact,
+                UISfxType.ExitImpact
             };
 
-            MechanicalWeight[] weights = new MechanicalWeight[]
-            {
-                MechanicalWeight.Medium,
-                MechanicalWeight.Medium,
-                MechanicalWeight.Medium,
-                MechanicalWeight.Medium,
-                MechanicalWeight.Light,
-                MechanicalWeight.VeryHeavy
-            };
-
-            m_ButtonElements = new MechanicalTransformElement[buttons.Length];
+            m_ButtonAnimators = new MainMenuButtonEnergyAnimator[buttons.Length];
             for (int i = 0; i < buttons.Length; i++)
             {
                 if (buttons[i] != null)
                 {
-                    MechanicalTransformElement elem = buttons[i].GetComponent<MechanicalTransformElement>();
-                    if (elem == null)
+                    MainMenuButtonEnergyAnimator anim = buttons[i].GetComponent<MainMenuButtonEnergyAnimator>();
+                    if (anim == null)
                     {
-                        elem = buttons[i].gameObject.AddComponent<MechanicalTransformElement>();
+                        anim = buttons[i].gameObject.AddComponent<MainMenuButtonEnergyAnimator>();
                     }
-                    elem.Mechanism = mechanismTypes[i];
-                    elem.Weight = weights[i];
-                    elem.CaptureRestState();
-                    m_ButtonElements[i] = elem;
+                    anim.EntranceImpactSfx = impactSfxTypes[i];
+                    anim.IsExitButton = (i == 5); // Exit is the destructive action
+                    anim.ConfirmSfx = (i == 5) ? UISfxType.ExitImpact : UISfxType.Confirm;
+
+                    // Neutralize conflicting legacy scripts on these buttons
+                    UIAnimatedButton legacyAnim = buttons[i].GetComponent<UIAnimatedButton>();
+                    if (legacyAnim != null) legacyAnim.enabled = false;
+
+                    UIButtonEffect legacyEffect = buttons[i].GetComponent<UIButtonEffect>();
+                    if (legacyEffect != null) legacyEffect.enabled = false;
+
+                    MechanicalTransformElement legacyMech = buttons[i].GetComponent<MechanicalTransformElement>();
+                    if (legacyMech != null) legacyMech.enabled = false;
+
+                    anim.CaptureRestState();
+                    m_ButtonAnimators[i] = anim;
                 }
             }
 
@@ -265,13 +268,13 @@ namespace MainGame.UI.Unified
                 m_LogoAssembly.ResetToRestState();
             }
 
-            if (m_ButtonElements != null)
+            if (m_ButtonAnimators != null)
             {
-                for (int i = 0; i < m_ButtonElements.Length; i++)
+                for (int i = 0; i < m_ButtonAnimators.Length; i++)
                 {
-                    if (m_ButtonElements[i] != null)
+                    if (m_ButtonAnimators[i] != null)
                     {
-                        m_ButtonElements[i].ResetToRestState();
+                        m_ButtonAnimators[i].ResetToRestState();
                     }
                 }
             }
@@ -323,14 +326,14 @@ namespace MainGame.UI.Unified
                 m_LogoAssembly.PrepareRetractedState();
             }
 
-            // 4. Buttons in their individual mechanical retracted states
-            if (m_ButtonElements != null)
+            // 4. Buttons in their fast snap dormant states
+            if (m_ButtonAnimators != null)
             {
-                for (int i = 0; i < m_ButtonElements.Length; i++)
+                for (int i = 0; i < m_ButtonAnimators.Length; i++)
                 {
-                    if (m_ButtonElements[i] != null)
+                    if (m_ButtonAnimators[i] != null)
                     {
-                        m_ButtonElements[i].PrepareRetractedState();
+                        m_ButtonAnimators[i].PrepareDormantState();
                     }
                 }
             }
@@ -388,13 +391,13 @@ namespace MainGame.UI.Unified
                 m_LogoAssembly.KillMotion();
             }
 
-            if (m_ButtonElements != null)
+            if (m_ButtonAnimators != null)
             {
-                for (int i = 0; i < m_ButtonElements.Length; i++)
+                for (int i = 0; i < m_ButtonAnimators.Length; i++)
                 {
-                    if (m_ButtonElements[i] != null)
+                    if (m_ButtonAnimators[i] != null)
                     {
-                        m_ButtonElements[i].KillMotion();
+                        m_ButtonAnimators[i].KillMotion();
                     }
                 }
             }
@@ -405,23 +408,63 @@ namespace MainGame.UI.Unified
             if (c != null) m_ChildCoroutines.Add(c);
         }
 
+        private IEnumerator WaitForTrackTime(float targetTime, float maxWait = 1.0f)
+        {
+            if (MusicBeatManager.Instance != null && MusicBeatManager.Instance.GetAudioSource() != null && MusicBeatManager.Instance.GetAudioSource().isPlaying)
+            {
+                float startTime = Time.unscaledTime;
+                while (Time.unscaledTime - startTime < maxWait)
+                {
+                    float cur = MusicBeatManager.Instance.CurrentTrackTime;
+                    if (cur >= targetTime) yield break;
+                    yield return null;
+                }
+            }
+            else
+            {
+                yield return new WaitForSecondsRealtime(Mathf.Min(maxWait, 0.25f));
+            }
+        }
+
+        private IEnumerator WaitForNextMusicalBeat(float leadTime = 0f)
+        {
+            float wait = 0.52955f;
+            if (MusicBeatManager.Instance != null && MusicBeatManager.Instance.GetAudioSource() != null && MusicBeatManager.Instance.GetAudioSource().isPlaying)
+            {
+                wait = MusicBeatManager.Instance.TimeToNextBeat - leadTime;
+                if (wait < 0.05f) wait += MusicBeatManager.Instance.BeatDuration;
+            }
+            yield return new WaitForSecondsRealtime(Mathf.Clamp(wait, 0.05f, 0.60f));
+        }
+
         // ═════════════════════════════════════════════════════════════════════════════
-        // MASTER MACHINE ASSEMBLY SEQUENCE (ENTRANCE)
+        // MASTER MACHINE ASSEMBLY SEQUENCE (ENTRANCE — MUSIC BEAT SYNCHRONIZED)
         // ═════════════════════════════════════════════════════════════════════════════
 
         private IEnumerator MasterMachineAssemblySequence(Action onComplete)
         {
             // ─── PHASE 1: DORMANT DARK STATE ───────────────────────────────────
             // Background, logo, and signboards prepared in dormant coordinates
+            float startTrackTime = MusicBeatManager.Instance != null ? MusicBeatManager.Instance.CurrentTrackTime : 0f;
+            bool isFromIntro = startTrackTime < 2.0f;
 
-            // ─── PHASE 2: TINY ELECTRICAL ACTIVITY ─────────────────────────────
+            // ─── PHASE 2: TINY ELECTRICAL ACTIVITY (Bar 0, Beat 1 / Pickup - 0.136s) ─────
             UIFeedbackAudio.PlaySfx(UISfxType.RobotBoot, 0.70f, 0.02f);
             if (CinematicUIParticleSystem.Instance != null && m_ScreenPanelRoot != null)
             {
                 CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_ScreenPanelRoot, new Color(0.35f, 0.85f, 1f, 0.9f), 4, 28f);
             }
 
-            // ─── PHASE 3: CORE RADIAL ENERGY PULSE FROM RETRY CORE ──────────────
+            // ─── PHASE 3: CORE RADIAL ENERGY PULSE FROM RETRY CORE (Bar 0, Beat 3 - 1.195s) ───
+            if (isFromIntro)
+            {
+                yield return WaitForTrackTime(1.195f, 1.20f);
+            }
+            else
+            {
+                yield return WaitForNextMusicalBeat();
+            }
+
             if (m_Background != null)
             {
                 TrackCoroutine(StartCoroutine(AnimateScale(m_Background, m_BgRestScale * m_BgStartScale, m_BgRestScale, m_BgZoomDuration, EasingType.EaseOutQuad)));
@@ -434,85 +477,62 @@ namespace MainGame.UI.Unified
                 }
             }
 
-            yield return new WaitForSecondsRealtime(0.08f);
+            // ─── PHASE 4: RETRY RECEIVES ENERGY & IMPACT SLAM (Bar 1, Beat 1 - 2.254s Downbeat) ───
+            // DeploySequence takes ~0.18s of anticipation sweep before impact flash & slam
+            if (isFromIntro)
+            {
+                yield return WaitForTrackTime(2.074f, 0.90f); // 2.254s - 0.18s = 2.074s
+            }
+            else
+            {
+                yield return WaitForNextMusicalBeat(0.18f);
+            }
 
-            // ─── PHASE 4, 5, 6: RETRY RECEIVES ENERGY, SHADER ACTIVATES & SPARKS
             bool logoDone = false;
             if (m_LogoAssembly != null)
             {
-                m_LogoAssembly.DeploySequence(() =>
-                {
-                    logoDone = true;
-                    if (CinematicUIParticleSystem.Instance != null && m_Logo != null)
+                m_LogoAssembly.DeploySequence(
+                    onComplete: () => logoDone = true,
+                    onImpact: () =>
                     {
-                        CinematicUIParticleSystem.Instance.SpawnSparkBurst(m_Logo.position, new Color(1.0f, 0.92f, 0.35f, 1f), 10, 32f);
-                    }
-                });
+                        if (CinematicUIParticleSystem.Instance != null && m_Logo != null)
+                        {
+                            CinematicUIParticleSystem.Instance.SpawnSparkBurst(m_Logo.position, new Color(1.0f, 0.92f, 0.35f, 1f), 10, 32f);
+                        }
+                        if (m_Background != null)
+                        {
+                            CinematicUIEffect bgEffect = m_Background.GetComponent<CinematicUIEffect>();
+                            if (bgEffect != null)
+                            {
+                                bgEffect.TriggerRadialPulse(0.35f, new Color(1.0f, 0.92f, 0.35f, 0.6f), new Vector2(0.5f, 0.72f), 1.2f, 2.0f, 0.03f);
+                            }
+                        }
+                    });
             }
             else
             {
                 logoDone = true;
             }
 
-            // Let logo power pulse settle before buttons deploy
-            yield return new WaitForSecondsRealtime(0.18f);
+            // ─── PHASE 5: BUTTON POWER CASCADE (FAST SNAP + IMPACT + SETTLE) ──────
+            // Rapid stagger of 0.05s between buttons so the entire menu activates in ~0.35s
+            float staggerDelay = 0.05f;
+            int buttonsPending = 0;
 
-            // ─── PHASE 7-10: BUTTONS ACTIVATE SEQUENTIALLY WITH PRE-ENERGY, SPEED TRAILS & LOCK
-            bool[] buttonDone = new bool[6];
-
-            // 5.1: CONTINUE
-            if (GetButtonValid(0))
+            if (m_ButtonAnimators != null)
             {
-                m_ButtonElements[0].Deploy(() => buttonDone[0] = true);
+                for (int i = 0; i < m_ButtonAnimators.Length; i++)
+                {
+                    if (GetButtonValid(i))
+                    {
+                        buttonsPending++;
+                        int idx = i;
+                        m_ButtonAnimators[idx].PlaySnapEntrance(idx * staggerDelay, () => buttonsPending--);
+                    }
+                }
             }
-            else buttonDone[0] = true;
 
-            yield return new WaitForSecondsRealtime(0.10f);
-
-            // 5.2: NEW GAME
-            if (GetButtonValid(1))
-            {
-                m_ButtonElements[1].Deploy(() => buttonDone[1] = true);
-            }
-            else buttonDone[1] = true;
-
-            yield return new WaitForSecondsRealtime(0.10f);
-
-            // 5.3: COLLECT
-            if (GetButtonValid(2))
-            {
-                m_ButtonElements[2].Deploy(() => buttonDone[2] = true);
-            }
-            else buttonDone[2] = true;
-
-            yield return new WaitForSecondsRealtime(0.08f);
-
-            // 5.4: OPTIONS
-            if (GetButtonValid(3))
-            {
-                m_ButtonElements[3].Deploy(() => buttonDone[3] = true);
-            }
-            else buttonDone[3] = true;
-
-            yield return new WaitForSecondsRealtime(0.08f);
-
-            // 5.5: CREDITS
-            if (GetButtonValid(4))
-            {
-                m_ButtonElements[4].Deploy(() => buttonDone[4] = true);
-            }
-            else buttonDone[4] = true;
-
-            yield return new WaitForSecondsRealtime(0.08f);
-
-            // 5.6: EXIT
-            if (GetButtonValid(5))
-            {
-                m_ButtonElements[5].Deploy(() => buttonDone[5] = true);
-            }
-            else buttonDone[5] = true;
-
-            // ─── PHASE 11: LIVING LAB CORE ACTIVATION ────────────────────────────
+            // Also boot character & robot living lab core
             if (m_CharacterArtwork != null)
             {
                 TrackCoroutine(StartCoroutine(CharacterLifeEntranceRoutine()));
@@ -522,16 +542,13 @@ namespace MainGame.UI.Unified
                 TrackCoroutine(StartCoroutine(RobotSystemBootRoutine()));
             }
 
-            // Wait for all mechanisms to complete their locks
-            while (!logoDone || !buttonDone[0] || !buttonDone[1] || !buttonDone[2] || !buttonDone[3] || !buttonDone[4] || !buttonDone[5])
+            // Wait for logo and all buttons to complete their snap & impact settle
+            while (!logoDone || buttonsPending > 0)
             {
                 yield return null;
             }
 
-            // ─── PHASE 12: FINAL SYSTEM LOCK & SETTLE ────────────────────────────
             ResetToRestState();
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.65f, 0.02f);
-            UIMicroShake.Shake(0.30f, 0.05f);
 
             // Begin subtle ambient living breathing loop
             m_AmbientRoutine = StartCoroutine(AmbientLivingLoop());
@@ -547,37 +564,40 @@ namespace MainGame.UI.Unified
         private IEnumerator MasterMachineReconfigurationSequence(int selectedIndex, Action onComplete)
         {
             // ─── STEP 1: SELECTED BUTTON CONFIRM PUNCH ──────────────────────────
-            if (selectedIndex >= 0 && selectedIndex < m_ButtonElements.Length && m_ButtonElements[selectedIndex] != null)
+            if (selectedIndex >= 0 && m_ButtonAnimators != null && selectedIndex < m_ButtonAnimators.Length && m_ButtonAnimators[selectedIndex] != null)
             {
                 bool lockDone = false;
-                m_ButtonElements[selectedIndex].PlaySelectionLockPunch(() => lockDone = true);
+                m_ButtonAnimators[selectedIndex].PlayConfirmPunch(() => lockDone = true);
                 while (!lockDone)
                 {
                     yield return null;
                 }
             }
 
-            // ─── STEP 2: OTHER SIGNBOARDS RETRACT WITH SPEED TRAILS ─────────────
+            // ─── STEP 2: OTHER BUTTONS POWER DOWN / RETRACT ─────────────────────
             UIFeedbackAudio.PlaySfx(UISfxType.Retract, 0.85f, 0.02f);
 
             int pendingRetracts = 0;
-            for (int i = 0; i < m_ButtonElements.Length; i++)
+            if (m_ButtonAnimators != null)
             {
-                if (i != selectedIndex && m_ButtonElements[i] != null && m_ButtonElements[i].gameObject.activeInHierarchy)
+                for (int i = 0; i < m_ButtonAnimators.Length; i++)
                 {
-                    pendingRetracts++;
-                    int idx = i;
-                    m_ButtonElements[idx].Retract(() => pendingRetracts--);
+                    if (i != selectedIndex && m_ButtonAnimators[i] != null && m_ButtonAnimators[i].gameObject.activeInHierarchy)
+                    {
+                        pendingRetracts++;
+                        int idx = i;
+                        m_ButtonAnimators[idx].PlayRetract(() => pendingRetracts--);
+                    }
                 }
             }
 
-            yield return new WaitForSecondsRealtime(0.06f);
+            yield return new WaitForSecondsRealtime(0.04f);
 
             // ─── STEP 3: SELECTED BUTTON RETRACTS ───────────────────────────────
-            if (selectedIndex >= 0 && selectedIndex < m_ButtonElements.Length && m_ButtonElements[selectedIndex] != null && m_ButtonElements[selectedIndex].gameObject.activeInHierarchy)
+            if (selectedIndex >= 0 && m_ButtonAnimators != null && selectedIndex < m_ButtonAnimators.Length && m_ButtonAnimators[selectedIndex] != null && m_ButtonAnimators[selectedIndex].gameObject.activeInHierarchy)
             {
                 pendingRetracts++;
-                m_ButtonElements[selectedIndex].Retract(() => pendingRetracts--);
+                m_ButtonAnimators[selectedIndex].PlayRetract(() => pendingRetracts--);
             }
 
             // ─── STEP 4: RETRY LOGO SHADER PIXEL DISSOLVE & SCATTERING SHARDS ───
@@ -592,6 +612,12 @@ namespace MainGame.UI.Unified
             }
 
             // ─── STEP 5: SCREEN EDGE ENERGY WAVE & DIGITAL GLITCH DISTORTION ────
+            UIFeedbackAudio.PlaySfx(UISfxType.MajorTransitionImpact, 0.85f, 0.02f);
+            if (UIFeedbackAudio.Instance != null)
+            {
+                UIFeedbackAudio.Instance.DuckMusicBriefly(0.88f, 0.25f);
+            }
+
             if (CinematicUIParticleSystem.Instance != null && m_ScreenPanelRoot != null)
             {
                 CinematicUIParticleSystem.Instance.SpawnScreenEdgeWave(m_ScreenPanelRoot, new Color(0.35f, 0.85f, 1f, 1f), 0.30f);
@@ -627,8 +653,8 @@ namespace MainGame.UI.Unified
 
         private bool GetButtonValid(int index)
         {
-            return m_ButtonElements != null && index < m_ButtonElements.Length &&
-                   m_ButtonElements[index] != null && m_ButtonElements[index].gameObject.activeInHierarchy;
+            return m_ButtonAnimators != null && index < m_ButtonAnimators.Length &&
+                   m_ButtonAnimators[index] != null && m_ButtonAnimators[index].gameObject.activeInHierarchy;
         }
 
         // ═════════════════════════════════════════════════════════════════════════════
@@ -703,62 +729,71 @@ namespace MainGame.UI.Unified
         private IEnumerator AmbientLivingLoop()
         {
             float timer = 0f;
-            float pulseInterval = UnityEngine.Random.Range(3.5f, 5.0f);
-            float pulseTimer = 0f;
+            int lastPulseBar = -1;
 
             while (true)
             {
                 float dt = Time.unscaledDeltaTime;
                 timer += dt;
-                pulseTimer += dt;
+
+                // Sync character, robot, and background subtle breathing to music BPM if available
+                float tempoSpeed = 1.88f; // ~113.3 BPM in rad/sec (113.3/60 * PI)
+                if (MusicBeatManager.Instance != null)
+                {
+                    tempoSpeed = (MusicBeatManager.Instance.Bpm / 60f) * Mathf.PI;
+                }
 
                 if (m_CharacterArtwork != null)
                 {
-                    float charBob = Mathf.Sin(timer * 1.2f) * 0.8f;
+                    float charBob = Mathf.Sin(timer * (tempoSpeed * 0.5f)) * 0.8f;
                     m_CharacterArtwork.anchoredPosition = m_CharRestPos + new Vector2(0f, charBob);
                 }
 
                 if (m_RobotArtwork != null)
                 {
-                    float botBob = Mathf.Sin(timer * 1.5f + 0.8f) * 0.5f;
+                    float botBob = Mathf.Sin(timer * (tempoSpeed * 0.5f) + 0.8f) * 0.5f;
                     m_RobotArtwork.anchoredPosition = m_RobotRestPos + new Vector2(0f, botBob);
                 }
 
                 if (m_Background != null)
                 {
-                    float bgParallax = Mathf.Sin(timer * 0.4f) * 1.2f;
+                    float bgParallax = Mathf.Sin(timer * (tempoSpeed * 0.25f)) * 1.2f;
                     m_Background.anchoredPosition = m_Bg1RestPos + new Vector2(bgParallax, 0f);
                 }
 
-                // Idle Living Machine Atmosphere: subtle low-frequency traveling micro-pulses
-                if (pulseTimer >= pulseInterval)
+                // Downbeat reaction: every 2 or 4 bars, trigger a very subtle rhythmic micro-pulse
+                int currentBar = -1;
+                if (MusicBeatManager.Instance != null)
                 {
-                    pulseTimer = 0f;
-                    pulseInterval = UnityEngine.Random.Range(4.0f, 6.0f);
+                    currentBar = MusicBeatManager.Instance.CurrentBeat.BarIndex;
+                }
+
+                if (currentBar >= 0 && currentBar != lastPulseBar && (currentBar % 2 == 0))
+                {
+                    lastPulseBar = currentBar;
+
+                    // Byte robot subtle core pulse on alternate bars
+                    if (m_RobotArtwork != null && (currentBar % 4 == 0))
+                    {
+                        CinematicUIEffect botFx = m_RobotArtwork.GetComponent<CinematicUIEffect>();
+                        if (botFx != null)
+                        {
+                            botFx.TriggerBorderPulse(0.18f, new Color(0.2f, 0.85f, 1f, 0.6f), 0.8f);
+                        }
+                    }
 
                     int target = UnityEngine.Random.Range(0, 7); // 0-5 = buttons, 6 = logo
-                    if (target < 6 && m_ButtonElements != null && target < m_ButtonElements.Length && m_ButtonElements[target] != null && m_ButtonElements[target].gameObject.activeInHierarchy)
+                    if (target < 6 && m_ButtonAnimators != null && target < m_ButtonAnimators.Length && m_ButtonAnimators[target] != null && m_ButtonAnimators[target].gameObject.activeInHierarchy)
                     {
-                        if (CinematicUIFXManager.Instance != null)
+                        m_ButtonAnimators[target].CinematicUI?.TriggerBorderPulse(0.20f, new Color(0.35f, 0.85f, 1f, 0.50f), 0.8f);
+                        if (CinematicUIParticleSystem.Instance != null && UnityEngine.Random.value > 0.7f)
                         {
-                            CinematicUIFXManager.Instance.TriggerEnergyDischarge(m_ButtonElements[target].RectTransformComponent, Vector2.zero, new Color(0.35f, 0.85f, 1f, 0.75f));
-                        }
-                        else
-                        {
-                            m_ButtonElements[target].CinematicUI?.TriggerBorderPulse(0.28f, new Color(0.35f, 0.85f, 1f, 0.65f), 1.2f);
-                            if (CinematicUIParticleSystem.Instance != null && UnityEngine.Random.value > 0.6f)
-                            {
-                                CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonElements[target].RectTransformComponent, new Color(0.35f, 0.85f, 1f, 0.75f), 2, 12f);
-                            }
+                            CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_ButtonAnimators[target].RectComponent, new Color(0.35f, 0.85f, 1f, 0.65f), 2, 10f);
                         }
                     }
                     else if (m_LogoAssembly != null && m_LogoAssembly.gameObject.activeInHierarchy)
                     {
-                        if (CinematicUIFXManager.Instance != null)
-                        {
-                            CinematicUIFXManager.Instance.TriggerEnergyStart(m_LogoAssembly, new Color(0.35f, 0.85f, 1f, 0.65f));
-                        }
-                        m_LogoAssembly.CinematicUI?.TriggerBorderPulse(0.32f, new Color(0.35f, 0.85f, 1f, 0.65f), 1.2f);
+                        m_LogoAssembly.CinematicUI?.TriggerBorderPulse(0.22f, new Color(1.0f, 0.92f, 0.35f, 0.50f), 0.8f);
                     }
                 }
 

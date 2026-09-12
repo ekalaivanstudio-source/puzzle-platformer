@@ -207,20 +207,19 @@ namespace MainGame.UI.Editor
                 SetObjProp(so, propName, btn);
             }
 
-            UIAnimatedButton animBtn = btnTrans.GetComponent<UIAnimatedButton>();
-            if (animBtn == null)
+            MainMenuButtonEnergyAnimator energyBtn = btnTrans.GetComponent<MainMenuButtonEnergyAnimator>();
+            if (energyBtn == null)
             {
-                animBtn = btnTrans.gameObject.AddComponent<UIAnimatedButton>();
+                energyBtn = btnTrans.gameObject.AddComponent<MainMenuButtonEnergyAnimator>();
             }
+            energyBtn.IsExitButton = isDestructive;
+            energyBtn.ConfirmSfx = isDestructive ? Feedback.UISfxType.ExitImpact : Feedback.UISfxType.Confirm;
 
-            SerializedObject btnSo = new SerializedObject(animBtn);
-            SetBoolProp(btnSo, "m_IsDestructiveOrBack", isDestructive);
-            Transform icon = btnTrans.Find("Select Icon") ?? btnTrans.Find("pointer");
-            if (icon != null)
+            UIAnimatedButton animBtn = btnTrans.GetComponent<UIAnimatedButton>();
+            if (animBtn != null)
             {
-                SetObjProp(btnSo, "m_LeftPointer", icon.GetComponent<RectTransform>());
+                animBtn.enabled = false; // Disable to prevent conflicts with MainMenuButtonEnergyAnimator
             }
-            btnSo.ApplyModifiedProperties();
         }
 
         private static void SetupLevelSelection(Transform screenManager)

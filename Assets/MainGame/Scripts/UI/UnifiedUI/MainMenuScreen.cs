@@ -192,6 +192,13 @@ namespace MainGame.UI.Unified
 
             if (button != null)
             {
+                MainMenuButtonEnergyAnimator energyBtn = button.GetComponent<MainMenuButtonEnergyAnimator>();
+                if (energyBtn != null)
+                {
+                    energyBtn.PlayConfirmPunch(callback);
+                    return;
+                }
+
                 UIAnimatedButton animBtn = button.GetComponent<UIAnimatedButton>();
                 if (animBtn != null)
                 {

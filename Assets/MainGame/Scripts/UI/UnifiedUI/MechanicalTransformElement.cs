@@ -380,7 +380,7 @@ namespace MainGame.UI.Unified
             }
 
             // Lock impact
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.ContinueImpact, 0.75f, 0.02f);
             UIMicroShake.Shake(0.35f, 0.05f);
             if (CinematicUI != null)
             {
@@ -453,7 +453,7 @@ namespace MainGame.UI.Unified
             }
 
             // Lock impact
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.NewGameImpact, 0.75f, 0.02f);
             UIMicroShake.Shake(0.35f, 0.05f);
             if (CinematicUI != null)
             {
@@ -525,7 +525,7 @@ namespace MainGame.UI.Unified
             }
 
             // Lock impact
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.70f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.CollectImpact, 0.70f, 0.02f);
             UIMicroShake.Shake(0.30f, 0.04f);
             if (CinematicUI != null)
             {
@@ -597,7 +597,7 @@ namespace MainGame.UI.Unified
             }
 
             // Lock impact
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.70f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.OptionsImpact, 0.70f, 0.02f);
             UIMicroShake.Shake(0.30f, 0.04f);
             if (CinematicUI != null)
             {
@@ -668,7 +668,7 @@ namespace MainGame.UI.Unified
             }
 
             // Lock impact
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.75f, 0.03f);
+            UIFeedbackAudio.PlaySfx(UISfxType.CreditsImpact, 0.75f, 0.02f);
             UIMicroShake.Shake(0.35f, 0.04f);
             if (CinematicUI != null)
             {
@@ -738,7 +738,7 @@ namespace MainGame.UI.Unified
             }
 
             // Very heavy impact!
-            UIFeedbackAudio.PlaySfx(UISfxType.Impact, 0.95f, 0.04f);
+            UIFeedbackAudio.PlaySfx(UISfxType.ExitImpact, 0.95f, 0.02f);
             UIMicroShake.Shake(1.4f, 0.08f);
             if (CinematicUI != null)
             {
