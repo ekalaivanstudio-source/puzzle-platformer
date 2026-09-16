@@ -299,12 +299,27 @@ namespace LevelSelection
         /// </summary>
         public void FocusCurrentLevelNode()
         {
-            if (UINavigationManager.Instance == null || levelNodes == null || levelNodes.Count == 0) return;
+            if (levelNodes == null || levelNodes.Count == 0) return;
 
             GameObject selectTarget = GetCurrentUnlockedLevelNodeObject();
             if (selectTarget != null)
             {
+                RestoreSelection(selectTarget);
+            }
+        }
+
+        private void RestoreSelection(GameObject selectTarget)
+        {
+            if (selectTarget == null) return;
+
+            if (UINavigationManager.Instance != null)
+            {
                 UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+            }
+            else if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+                UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(selectTarget);
             }
         }
 
@@ -442,7 +457,7 @@ namespace LevelSelection
             }
 
             // Restore selection focus
-            if (UINavigationManager.Instance != null && levelNodes.Count > 0)
+            if (levelNodes.Count > 0)
             {
                 GameObject selectTarget;
                 if (focusTargetNodeIndex == FocusCurrentLevel)
@@ -458,7 +473,7 @@ namespace LevelSelection
 
                 if (selectTarget != null)
                 {
-                    UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+                    RestoreSelection(selectTarget);
                 }
             }
         }
@@ -523,7 +538,7 @@ namespace LevelSelection
             OnArcReady?.Invoke(levelNodes, pathSegments, highestUnlockedLevel);
 
             // 6. Restore EventSystem focus only when explicitly requested (e.g. manual page change)
-            if (autoFocus && UINavigationManager.Instance != null && levelNodes.Count > 0)
+            if (autoFocus && levelNodes.Count > 0)
             {
                 GameObject selectTarget;
                 if (focusTargetNodeIndex == FocusCurrentLevel)
@@ -539,7 +554,7 @@ namespace LevelSelection
 
                 if (selectTarget != null)
                 {
-                    UINavigationManager.Instance.RestoreSelectedElement(selectTarget);
+                    RestoreSelection(selectTarget);
                 }
             }
         }

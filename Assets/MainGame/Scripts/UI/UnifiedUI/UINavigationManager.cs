@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.CinematicEffects;
@@ -54,6 +55,51 @@ namespace MainGame.UI.Unified
 
         public bool IsTransitioning => m_IsTransitioning;
 
+        public static UINavigationManager EnsureInstance(InputActionAsset inputAsset = null)
+        {
+            if (Instance != null)
+            {
+                if (Instance.m_UIInputActionAsset == null && inputAsset != null)
+                {
+                    Instance.SetInputActionAsset(inputAsset);
+                }
+                return Instance;
+            }
+
+            GameObject go = new GameObject("UINavigationManager");
+            UINavigationManager nav = go.AddComponent<UINavigationManager>();
+            if (inputAsset != null)
+            {
+                nav.SetInputActionAsset(inputAsset);
+            }
+            return nav;
+        }
+
+        public void SetInputActionAsset(InputActionAsset asset)
+        {
+            if (m_CancelAction != null)
+            {
+                m_CancelAction.performed -= OnCancelPerformed;
+                m_CancelAction = null;
+            }
+
+            m_UIInputActionAsset = asset;
+            if (m_UIInputActionAsset != null)
+            {
+                InputActionMap uiMap = m_UIInputActionAsset.FindActionMap("UI", throwIfNotFound: false);
+                if (uiMap != null)
+                {
+                    uiMap.Enable();
+                    m_CancelAction = uiMap.FindAction("Cancel", throwIfNotFound: false);
+                    if (m_CancelAction != null && isActiveAndEnabled)
+                    {
+                        m_CancelAction.performed += OnCancelPerformed;
+                    }
+                }
+            }
+            ConfigureUIInputModule();
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -63,6 +109,14 @@ namespace MainGame.UI.Unified
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            if (m_UIInputActionAsset == null)
+            {
+                if (DeviceInputProvider.Instance != null && DeviceInputProvider.Instance.InputActionAsset != null)
+                {
+                    m_UIInputActionAsset = DeviceInputProvider.Instance.InputActionAsset;
+                }
+            }
 
             if (m_UIInputActionAsset != null)
             {
@@ -86,6 +140,7 @@ namespace MainGame.UI.Unified
                 m_CancelAction.performed += OnCancelPerformed;
             }
             SceneManager.sceneLoaded += OnSceneLoaded;
+            ConfigureUIInputModule();
         }
 
         private void OnDisable()
@@ -107,6 +162,7 @@ namespace MainGame.UI.Unified
 
         private void Start()
         {
+            ConfigureUIInputModule();
             if (m_InitialScreen != null)
             {
                 PushScreen(m_InitialScreen);
@@ -127,6 +183,24 @@ namespace MainGame.UI.Unified
             {
                 StopCoroutine(m_TransitionCoroutine);
                 m_TransitionCoroutine = null;
+            }
+
+            ConfigureUIInputModule();
+        }
+
+        /// <summary>
+        /// Re-binds the active EventSystem's InputSystemUIInputModule Cancel action to our dedicated
+        /// UI Cancel action (Backspace on PC, B on Xbox), completely preventing ESC from acting as a UI back/cancel input.
+        /// </summary>
+        public void ConfigureUIInputModule()
+        {
+            InputSystemUIInputModule uiModule = EventSystem.current != null
+                ? EventSystem.current.GetComponent<InputSystemUIInputModule>()
+                : FindAnyObjectByType<InputSystemUIInputModule>();
+
+            if (uiModule != null && m_CancelAction != null)
+            {
+                uiModule.cancel = InputActionReference.Create(m_CancelAction);
             }
         }
 

@@ -2481,6 +2481,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 172092084}
   m_CullTransparentMesh: 1
+--- !u!1 &175239498 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7176625923814987150, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+  m_PrefabInstance: {fileID: 46567836852251311}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &177435525
 GameObject:
   m_ObjectHideFlags: 0
@@ -15265,7 +15270,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &984625472
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20704,7 +20709,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.18, b: 0.28, a: 0.65}
+  m_Color: {r: 0.35, g: 0.78, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -29276,12 +29281,32 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1254327794437873081, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4576431234105505657, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
       propertyPath: m_DefaultSelectedObject
       value: 
       objectReference: {fileID: 1134092944}
+    - target: {fileID: 5199582255685002906, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5199582255685002906, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 175239498}
+    - target: {fileID: 5199582255685002906, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SetActive
+      objectReference: {fileID: 0}
+    - target: {fileID: 5199582255685002906, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: UnityEngine.GameObject, UnityEngine
+      objectReference: {fileID: 0}
+    - target: {fileID: 5199582255685002906, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_BoolArgument
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5202397615808478253, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
       propertyPath: m_IsActive
       value: 1

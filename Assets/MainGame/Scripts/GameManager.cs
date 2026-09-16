@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -132,6 +132,7 @@ public class GameManager : MonoBehaviour
     /// <summary>Reloads the currently active scene.</summary>
     public void ReloadLevel()
     {
+        Time.timeScale = 1f;
         OnFullReset?.Invoke();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
@@ -147,6 +148,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void LoadNextLevel()
     {
+        Time.timeScale = 1f;
         int next = SceneManager.GetActiveScene().buildIndex + 1;
 
         // Levels are build indices 1..N. Past the last one — or from a scene that isn't in the
@@ -162,14 +164,27 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape) && !RestartConfirmationUI.IsOpen)
+        // Escape only enables the pause menu in game levels, never in the home screen
+        if (SceneManager.GetActiveScene().name == HomeSceneName)
         {
-            RestartConfirmationUI.ShowHomeScreen();
+            return;
+        }
+
+        bool pauseTriggered = Input.GetKeyDown(KeyCode.Escape);
+        if (!pauseTriggered && UnityEngine.InputSystem.Gamepad.current != null && UnityEngine.InputSystem.Gamepad.current.startButton.wasPressedThisFrame)
+        {
+            pauseTriggered = true;
+        }
+
+        if (pauseTriggered)
+        {
+            MainGame.UI.Unified.PauseMenuScreen.Toggle();
         }
     }
 
     public void GoToMainMenu()
     {
+        Time.timeScale = 1f;
         // By name, not index: build index 0 is the Launcher splash, and the home screen sits at
         // the end of the build list so the levels keep matching their build indices.
         SceneManager.LoadScene(HomeSceneName);

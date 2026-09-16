@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -200,7 +200,7 @@ public class DeviceInputProvider : MonoBehaviour
     // confirmation is up so R cannot reload the level from underneath it.
     private void OnRestart(InputAction.CallbackContext c)
     {
-        if (RestartConfirmationUI.IsOpen) return;
+        if (RestartConfirmationUI.IsOpen || MainGame.UI.Unified.PauseMenuScreen.IsPaused) return;
         GameManager.Instance?.RestartLevel();
     }
     private void OnSubmit(InputAction.CallbackContext c) { if (IsEnabled) { GameManager.Instance?.OnPlayClicked(); AudioManager.Instance?.PlaySubmit(); } }

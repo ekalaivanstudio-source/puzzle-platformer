@@ -495,6 +495,10 @@ namespace LevelSelection
                 yield return null;
             }
 
+            // Guarantee normal timeScale and input before transitioning to any level scene
+            Time.timeScale = 1f;
+            DeviceInputProvider.Instance?.SetEnabled(true);
+
             // Load the scene corresponding to the level number
             UnityEngine.SceneManagement.SceneManager.LoadScene(levelNumber);
         }
