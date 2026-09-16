@@ -38,6 +38,7 @@ namespace MainGame.UI.Unified
         private Vector2 m_PanelRestPos;
         private Vector2 m_TitleRestPos;
         private Vector2[] m_ButtonRestPositions;
+        private MainMenuButtonEnergyAnimator[] m_ButtonEnergyAnimators;
 
         private Coroutine m_ActiveRoutine;
         private bool m_HasCapturedRest = false;
@@ -101,11 +102,13 @@ namespace MainGame.UI.Unified
             if (m_Buttons != null && m_Buttons.Length > 0)
             {
                 m_ButtonRestPositions = new Vector2[m_Buttons.Length];
+                m_ButtonEnergyAnimators = new MainMenuButtonEnergyAnimator[m_Buttons.Length];
                 for (int i = 0; i < m_Buttons.Length; i++)
                 {
                     if (m_Buttons[i] != null)
                     {
                         m_ButtonRestPositions[i] = m_Buttons[i].anchoredPosition;
+                        m_ButtonEnergyAnimators[i] = m_Buttons[i].GetComponent<MainMenuButtonEnergyAnimator>();
                     }
                 }
             }
@@ -135,14 +138,21 @@ namespace MainGame.UI.Unified
                 m_TitleDialog.localScale = Vector3.one;
             }
 
-            if (m_Buttons != null && m_ButtonRestPositions != null)
+            if (m_Buttons != null)
             {
                 for (int i = 0; i < m_Buttons.Length; i++)
                 {
-                    if (m_Buttons[i] != null && i < m_ButtonRestPositions.Length)
+                    if (m_Buttons[i] != null)
                     {
-                        m_Buttons[i].anchoredPosition = m_ButtonRestPositions[i];
-                        m_Buttons[i].localScale = Vector3.one;
+                        if (m_ButtonEnergyAnimators != null && i < m_ButtonEnergyAnimators.Length && m_ButtonEnergyAnimators[i] != null)
+                        {
+                            m_ButtonEnergyAnimators[i].ResetToRestState();
+                        }
+                        else if (m_ButtonRestPositions != null && i < m_ButtonRestPositions.Length)
+                        {
+                            m_Buttons[i].anchoredPosition = m_ButtonRestPositions[i];
+                            m_Buttons[i].localScale = Vector3.one;
+                        }
                     }
                 }
             }
@@ -152,6 +162,27 @@ namespace MainGame.UI.Unified
         {
             StopActiveAnimation();
             CaptureRestState();
+
+            // Prime all buttons in dormant state before entrance begins
+            if (m_Buttons != null)
+            {
+                for (int i = 0; i < m_Buttons.Length; i++)
+                {
+                    if (m_Buttons[i] != null)
+                    {
+                        if (m_ButtonEnergyAnimators != null && i < m_ButtonEnergyAnimators.Length && m_ButtonEnergyAnimators[i] != null)
+                        {
+                            m_ButtonEnergyAnimators[i].PrepareDormantState();
+                        }
+                        else if (m_ButtonRestPositions != null && i < m_ButtonRestPositions.Length)
+                        {
+                            m_Buttons[i].anchoredPosition = new Vector2(m_ButtonRestPositions[i].x, m_ButtonRestPositions[i].y - 45f);
+                            m_Buttons[i].localScale = new Vector3(0.90f, 0.90f, 1f);
+                        }
+                    }
+                }
+            }
+
             m_ActiveRoutine = StartCoroutine(EntranceRoutine(onComplete));
         }
 
@@ -173,24 +204,23 @@ namespace MainGame.UI.Unified
 
         private IEnumerator EntranceRoutine(Action onComplete)
         {
-            // 1. Background darkens instantly (0.08s)
+            // 1. Background darkens instantly (0.06s)
             if (m_DarkOverlay != null)
             {
                 m_DarkOverlay.alpha = 0f;
-                StartCoroutine(AnimateOverlayAlpha(0f, m_OverlayTargetAlpha, m_OverlayDuration));
+                StartCoroutine(AnimateOverlayAlpha(0f, m_OverlayTargetAlpha, 0.06f));
             }
 
-            // 2. Fast slam from top (0.18s) with overshoot and micro-shake
+            // 2. Fast panel drop slam from top (0.14s total) with overshoot and micro-shake
             if (m_PausePanel != null)
             {
                 Vector2 startPos = new Vector2(m_PanelRestPos.x, m_PanelRestPos.y + m_SlamDistance);
-                Vector2 overshootPos = new Vector2(m_PanelRestPos.x, m_PanelRestPos.y - 14f);
-                Vector2 reboundPos = new Vector2(m_PanelRestPos.x, m_PanelRestPos.y + 3f);
+                Vector2 overshootPos = new Vector2(m_PanelRestPos.x, m_PanelRestPos.y - 12f);
 
                 m_PausePanel.anchoredPosition = startPos;
 
-                // Phase A: Rapid drop (approx 78% of slam duration)
-                float dropDur = m_SlamDuration * 0.78f;
+                // Phase A: Rapid drop (0.10s)
+                float dropDur = 0.10f;
                 float elapsed = 0f;
                 while (elapsed < dropDur)
                 {
@@ -202,7 +232,7 @@ namespace MainGame.UI.Unified
                 }
 
                 m_PausePanel.anchoredPosition = overshootPos;
-                UIMicroShake.Shake(0.65f, 0.06f);
+                UIMicroShake.Shake(0.55f, 0.05f);
                 UIFeedbackAudio.PlaySfx(UISfxType.PopupSlam, 1.0f, 0.02f);
 
                 RoboticUIPanelEffect panelFX = m_PausePanel.GetComponent<RoboticUIPanelEffect>();
@@ -216,7 +246,7 @@ namespace MainGame.UI.Unified
                 }
                 if (panelFX != null)
                 {
-                    panelFX.PlayPowerUp(0.18f);
+                    panelFX.PlayPowerUp(0.14f);
                 }
 
                 if (RoboticUIManager.Instance != null)
@@ -224,8 +254,8 @@ namespace MainGame.UI.Unified
                     RoboticUIManager.Instance.SpawnSparkBurst(Vector2.zero, m_PausePanel, new Color(0.35f, 0.85f, 1.0f), 6, 16f);
                 }
 
-                // Phase B: Settle rebound (approx 22% of slam duration)
-                float settleDur = m_SlamDuration * 0.22f;
+                // Phase B: Settle rebound to rest position (0.04s)
+                float settleDur = 0.04f;
                 elapsed = 0f;
                 while (elapsed < settleDur)
                 {
@@ -238,7 +268,7 @@ namespace MainGame.UI.Unified
                 m_PausePanel.anchoredPosition = m_PanelRestPos;
             }
 
-            // 3. Rapid button stagger sequence (0.03s apart)
+            // 3. Fast sequential button snap (staggered 0.04s apart)
             if (m_Buttons != null && m_ButtonRestPositions != null)
             {
                 for (int i = 0; i < m_Buttons.Length; i++)
@@ -246,18 +276,24 @@ namespace MainGame.UI.Unified
                     RectTransform btn = m_Buttons[i];
                     if (btn == null) continue;
 
-                    Vector2 restPos = m_ButtonRestPositions[i];
-                    Vector2 startPos = new Vector2(restPos.x, restPos.y - 45f);
-                    float delay = 0.02f + (i * 0.03f); // rapid 0.03s apart!
+                    float staggerDelay = 0.02f + (i * 0.04f);
 
-                    btn.anchoredPosition = startPos;
-                    btn.localScale = new Vector3(0.92f, 0.92f, 1f);
-
-                    StartCoroutine(AnimateButtonEntrance(btn, startPos, restPos, 0.15f, delay));
+                    if (m_ButtonEnergyAnimators != null && i < m_ButtonEnergyAnimators.Length && m_ButtonEnergyAnimators[i] != null)
+                    {
+                        m_ButtonEnergyAnimators[i].PlaySnapEntrance(staggerDelay);
+                    }
+                    else
+                    {
+                        Vector2 restPos = m_ButtonRestPositions[i];
+                        Vector2 startPos = new Vector2(restPos.x, restPos.y - 45f);
+                        StartCoroutine(AnimateButtonEntrance(btn, startPos, restPos, 0.14f, staggerDelay));
+                    }
                 }
             }
 
-            float totalWait = 0.18f + 0.12f;
+            // Wait for sequential snaps to complete:
+            // Last button stagger (0.10s) + snap duration (0.14s) = 0.24s
+            float totalWait = 0.24f;
             float timer = 0f;
             while (timer < totalWait)
             {
@@ -313,6 +349,18 @@ namespace MainGame.UI.Unified
             if (m_DarkOverlay != null)
             {
                 StartCoroutine(AnimateOverlayAlpha(m_DarkOverlay.alpha, 0f, 0.08f));
+            }
+
+            // Buttons retract rapidly
+            if (m_ButtonEnergyAnimators != null)
+            {
+                for (int i = 0; i < m_ButtonEnergyAnimators.Length; i++)
+                {
+                    if (m_ButtonEnergyAnimators[i] != null)
+                    {
+                        m_ButtonEnergyAnimators[i].PlayRetract();
+                    }
+                }
             }
 
             // Panel flings up into ceiling (+700px)

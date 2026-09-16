@@ -212,9 +212,24 @@ namespace MainGame.UI.PauseMenu
         {
             m_IsOpen = false;
 
+            if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                GameObject cur = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (cur != null && cur.transform.IsChildOf(transform))
+                {
+                    UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
+                }
+            }
+
             if (m_LevelSelectionManager != null)
             {
                 m_LevelSelectionManager.CancelActiveTransition();
+            }
+
+            if (m_CanvasGroup != null)
+            {
+                m_CanvasGroup.interactable = false;
+                m_CanvasGroup.blocksRaycasts = false;
             }
 
             if (m_Animator != null)

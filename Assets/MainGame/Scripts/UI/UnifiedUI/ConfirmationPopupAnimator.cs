@@ -22,16 +22,17 @@ namespace MainGame.UI.Unified
     [DisallowMultipleComponent]
     public class ConfirmationPopupAnimator : MonoBehaviour
     {
-        [Header("Darkening Overlay")]
+        [Header("Darkening Overlay / Scrim")]
         [Tooltip("Background dimmer image or canvas group.")]
         [SerializeField] private CanvasGroup m_DarkOverlay;
-        [SerializeField] private float m_OverlayMaxAlpha = 0.70f;
+        [SerializeField] private Image m_BackdropScrim;
+        [SerializeField] private float m_OverlayMaxAlpha = 0.85f;
 
         [Header("Dialog Window")]
         [Tooltip("The main dialog box transform that scales and pops.")]
         [SerializeField] private RectTransform m_DialogWindow;
         [SerializeField] private float m_CeilingDropDistance = 600f;
-        [SerializeField] private float m_DialogDuration = 0.28f;
+        [SerializeField] private float m_DialogDuration = 0.20f;
 
         [Header("Header / Title")]
         [Tooltip("EXIT header image that lands slightly before buttons.")]
@@ -68,9 +69,23 @@ namespace MainGame.UI.Unified
         {
             if (m_HasCapturedRest) return;
 
+            if (m_BackdropScrim == null)
+            {
+                m_BackdropScrim = GetComponent<Image>();
+            }
+
             if (m_DarkOverlay == null)
             {
-                m_DarkOverlay = GetComponent<CanvasGroup>();
+                Transform bg = transform.Find("BackgroundDim") ?? transform.Find("DarkOverlay") ?? transform.Find("Scrim");
+                if (bg != null) m_DarkOverlay = bg.GetComponent<CanvasGroup>();
+            }
+
+            CanvasGroup cg = GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.interactable = true;
+                cg.blocksRaycasts = true;
             }
 
             if (m_DialogWindow == null)
@@ -81,7 +96,7 @@ namespace MainGame.UI.Unified
 
             if (m_TitleImage == null)
             {
-                Transform title = transform.Find("Dialog/Message") ?? transform.Find("Dialog/Title");
+                Transform title = transform.Find("Dialog/Title") ?? transform.Find("Dialog/Message");
                 if (title != null) m_TitleImage = title as RectTransform;
             }
 
@@ -126,9 +141,24 @@ namespace MainGame.UI.Unified
             StopActiveAnimation();
             if (!m_HasCapturedRest) return;
 
-            if (m_DarkOverlay != null)
+            CanvasGroup cg = GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.interactable = true;
+                cg.blocksRaycasts = true;
+            }
+
+            if (m_DarkOverlay != null && m_DarkOverlay.gameObject != this.gameObject)
             {
                 m_DarkOverlay.alpha = 0f;
+            }
+
+            if (m_BackdropScrim != null)
+            {
+                Color c = m_BackdropScrim.color;
+                c.a = 0f;
+                m_BackdropScrim.color = c;
             }
 
             if (m_DialogWindow != null)
@@ -162,6 +192,15 @@ namespace MainGame.UI.Unified
         {
             StopActiveAnimation();
             CaptureRestState();
+
+            CanvasGroup cg = GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.interactable = true;
+                cg.blocksRaycasts = true;
+            }
+
             m_ActiveRoutine = StartCoroutine(EntranceRoutine(onComplete));
         }
 
@@ -183,12 +222,8 @@ namespace MainGame.UI.Unified
 
         private IEnumerator EntranceRoutine(Action onComplete)
         {
-            // 1. Dark overlay fade in rapidly
-            if (m_DarkOverlay != null)
-            {
-                m_DarkOverlay.alpha = 0f;
-                StartCoroutine(AnimateOverlayAlpha(0f, m_OverlayMaxAlpha, 0.18f));
-            }
+            // 1. Dark overlay/scrim fade in rapidly (0.10s)
+            StartCoroutine(AnimateOverlayAlpha(0f, m_OverlayMaxAlpha, 0.10f));
 
             // 2. Dialog ceiling drop slam (Y = +500px -> -15px overshoot -> rebound -> settle)
             if (m_DialogWindow != null)
@@ -199,12 +234,12 @@ namespace MainGame.UI.Unified
             // 3. Title image micro bounce
             if (m_TitleImage != null)
             {
-                Vector2 startTitle = new Vector2(m_TitleRestPos.x, m_TitleRestPos.y + 40f);
+                Vector2 startTitle = new Vector2(m_TitleRestPos.x, m_TitleRestPos.y + 35f);
                 m_TitleImage.anchoredPosition = startTitle;
-                StartCoroutine(AnimateMotion(m_TitleImage, startTitle, m_TitleRestPos, 0f, 0f, 0.20f, 0f, EasingType.EaseOutBack, 1.25f));
+                StartCoroutine(AnimateMotion(m_TitleImage, startTitle, m_TitleRestPos, 0f, 0f, 0.18f, 0f, EasingType.EaseOutBack, 1.25f));
             }
 
-            // 4. Opposing YES and NO buttons:
+            // 4. Opposing YES and NO buttons enter concurrently:
             // YES from left (-300px, -5.5° tilt)
             if (m_YesButton != null)
             {
@@ -217,12 +252,12 @@ namespace MainGame.UI.Unified
                     m_YesButton,
                     startYes, m_YesRestPos,
                     -5.5f, 0f,
-                    0.26f, 0.02f,
-                    new Vector2(18f, 0f)
+                    0.20f, 0.02f,
+                    new Vector2(16f, 0f)
                 ));
             }
 
-            // NO from right (+450px, +5.5° tilt, distinct duration: 0.34s)
+            // NO from right (+450px, +5.5° tilt)
             if (m_NoButton != null)
             {
                 Vector2 startNo = new Vector2(m_NoRestPos.x + m_ButtonOffset, m_NoRestPos.y);
@@ -230,22 +265,20 @@ namespace MainGame.UI.Unified
                 m_NoButton.localScale = new Vector3(0.90f, 0.90f, 1f);
                 m_NoButton.localEulerAngles = new Vector3(0f, 0f, 5.5f);
 
-                yield return StartCoroutine(AnimateButtonPhysicalLanding(
+                StartCoroutine(AnimateButtonPhysicalLanding(
                     m_NoButton,
                     startNo, m_NoRestPos,
                     5.5f, 0f,
-                    0.34f, 0.04f,
-                    new Vector2(-18f, 0f)
+                    0.20f, 0.02f,
+                    new Vector2(-16f, 0f)
                 ));
             }
-            else
+
+            float timer = 0f;
+            while (timer < 0.22f)
             {
-                float timer = 0f;
-                while (timer < 0.28f)
-                {
-                    timer += Time.unscaledDeltaTime;
-                    yield return null;
-                }
+                timer += Time.unscaledDeltaTime;
+                yield return null;
             }
 
             m_ActiveRoutine = null;
@@ -463,13 +496,11 @@ namespace MainGame.UI.Unified
 
         private IEnumerator ExitRoutine(Action onComplete)
         {
-            float duration = 0.20f;
+            float duration = 0.16f;
 
             // Overlay fade out
-            if (m_DarkOverlay != null)
-            {
-                StartCoroutine(AnimateOverlayAlpha(m_DarkOverlay.alpha, 0f, duration));
-            }
+            float curAlpha = m_BackdropScrim != null ? m_BackdropScrim.color.a : ((m_DarkOverlay != null && m_DarkOverlay.gameObject != this.gameObject) ? m_DarkOverlay.alpha : m_OverlayMaxAlpha);
+            StartCoroutine(AnimateOverlayAlpha(curAlpha, 0f, duration));
 
             // YES flings left (-600px)
             if (m_YesButton != null)
@@ -524,16 +555,33 @@ namespace MainGame.UI.Unified
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
-                if (m_DarkOverlay != null)
+                float val = Mathf.Lerp(from, to, t);
+
+                if (m_DarkOverlay != null && m_DarkOverlay.gameObject != this.gameObject)
                 {
-                    m_DarkOverlay.alpha = Mathf.Lerp(from, to, t);
+                    m_DarkOverlay.alpha = val;
                 }
+
+                if (m_BackdropScrim != null)
+                {
+                    Color c = m_BackdropScrim.color;
+                    c.a = val;
+                    m_BackdropScrim.color = c;
+                }
+
                 yield return null;
             }
 
-            if (m_DarkOverlay != null)
+            if (m_DarkOverlay != null && m_DarkOverlay.gameObject != this.gameObject)
             {
                 m_DarkOverlay.alpha = to;
+            }
+
+            if (m_BackdropScrim != null)
+            {
+                Color c = m_BackdropScrim.color;
+                c.a = to;
+                m_BackdropScrim.color = c;
             }
         }
 

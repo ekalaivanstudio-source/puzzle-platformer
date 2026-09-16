@@ -78,6 +78,12 @@ namespace MainGame.UI.PauseMenu
             }
         }
 
+        private void OnEnable()
+        {
+            EnsureEventSystem();
+            BuildVerticalNavigationLoop();
+        }
+
         private void Update()
         {
             if (PauseMenuController.Instance == null || PauseMenuController.Instance.CurrentState != PauseState.MainPause)
@@ -87,63 +93,48 @@ namespace MainGame.UI.PauseMenu
 
             if (m_ResetButton == null || m_LevelsButton == null || m_ExitButton == null) return;
 
-            bool upPressed = false;
-            bool downPressed = false;
-            bool submitPressed = false;
-
-            if (Keyboard.current != null)
-            {
-                upPressed = Keyboard.current.upArrowKey.wasPressedThisFrame || Keyboard.current.wKey.wasPressedThisFrame;
-                downPressed = Keyboard.current.downArrowKey.wasPressedThisFrame || Keyboard.current.sKey.wasPressedThisFrame;
-                submitPressed = Keyboard.current.enterKey.wasPressedThisFrame ||
-                                Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
-                                Keyboard.current.spaceKey.wasPressedThisFrame;
-            }
-
-            if (Gamepad.current != null)
-            {
-                upPressed |= Gamepad.current.dpad.up.wasPressedThisFrame || Gamepad.current.leftStick.up.wasPressedThisFrame;
-                downPressed |= Gamepad.current.dpad.down.wasPressedThisFrame || Gamepad.current.leftStick.down.wasPressedThisFrame;
-                submitPressed |= Gamepad.current.buttonSouth.wasPressedThisFrame;
-            }
-
-#if ENABLE_LEGACY_INPUT_MANAGER
-            if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) upPressed = true;
-            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) downPressed = true;
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)) submitPressed = true;
-#endif
-
+            // Selection recovery: If nothing is selected, any navigation key recovers focus to default/last button
             GameObject cur = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
 
-            // If nothing is selected, any navigation or submit key immediately focuses the default/last button
-            if (cur == null || !cur.activeInHierarchy || (cur != m_ResetButton.gameObject && cur != m_LevelsButton.gameObject && cur != m_ExitButton.gameObject))
+            bool isResetOrChild = m_ResetButton != null && cur != null && (cur == m_ResetButton.gameObject || cur.transform.IsChildOf(m_ResetButton.transform));
+            bool isLevelOrChild = m_LevelsButton != null && cur != null && (cur == m_LevelsButton.gameObject || cur.transform.IsChildOf(m_LevelsButton.transform));
+            bool isExitOrChild = m_ExitButton != null && cur != null && (cur == m_ExitButton.gameObject || cur.transform.IsChildOf(m_ExitButton.transform));
+
+            if (cur == null || !cur.activeInHierarchy || (!isResetOrChild && !isLevelOrChild && !isExitOrChild))
             {
-                if (upPressed || downPressed || submitPressed)
+                bool anyNav = false;
+                if (Keyboard.current != null)
+                {
+                    anyNav = Keyboard.current.upArrowKey.wasPressedThisFrame || Keyboard.current.downArrowKey.wasPressedThisFrame ||
+                             Keyboard.current.wKey.wasPressedThisFrame || Keyboard.current.sKey.wasPressedThisFrame ||
+                             Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame;
+                }
+
+                if (Gamepad.current != null)
+                {
+                    anyNav |= Gamepad.current.dpad.up.wasPressedThisFrame || Gamepad.current.dpad.down.wasPressedThisFrame ||
+                              Gamepad.current.leftStick.up.wasPressedThisFrame || Gamepad.current.leftStick.down.wasPressedThisFrame ||
+                              Gamepad.current.buttonSouth.wasPressedThisFrame;
+                }
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow) ||
+                    Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.S) ||
+                    Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+                {
+                    anyNav = true;
+                }
+#endif
+
+                if (anyNav)
                 {
                     RestoreLastSelection();
-                    return;
                 }
             }
-
-            if (upPressed)
+            else
             {
-                if (cur == m_ResetButton.gameObject) SetSelected(m_ExitButton.gameObject);
-                else if (cur == m_LevelsButton.gameObject) SetSelected(m_ResetButton.gameObject);
-                else if (cur == m_ExitButton.gameObject) SetSelected(m_LevelsButton.gameObject);
-                else RestoreLastSelection();
-            }
-            else if (downPressed)
-            {
-                if (cur == m_ResetButton.gameObject) SetSelected(m_LevelsButton.gameObject);
-                else if (cur == m_LevelsButton.gameObject) SetSelected(m_ExitButton.gameObject);
-                else if (cur == m_ExitButton.gameObject) SetSelected(m_ResetButton.gameObject);
-                else RestoreLastSelection();
-            }
-            else if (submitPressed)
-            {
-                if (cur == m_ResetButton.gameObject) m_ResetButton.onClick.Invoke();
-                else if (cur == m_LevelsButton.gameObject) m_LevelsButton.onClick.Invoke();
-                else if (cur == m_ExitButton.gameObject) m_ExitButton.onClick.Invoke();
+                // Track currently focused button so RestoreLastSelection always remembers the latest
+                m_LastFocusedButton = cur;
             }
         }
 
@@ -216,11 +207,17 @@ namespace MainGame.UI.PauseMenu
             EnsureEventSystem();
             if (EventSystem.current == null) return;
 
-            EventSystem.current.SetSelectedGameObject(null);
             if (target != null && target.activeInHierarchy)
             {
-                EventSystem.current.SetSelectedGameObject(target);
-                PlayFocusPunch(target.transform);
+                if (EventSystem.current.currentSelectedGameObject != target)
+                {
+                    EventSystem.current.SetSelectedGameObject(target);
+                    PlayFocusPunch(target.transform);
+                }
+            }
+            else
+            {
+                EventSystem.current.SetSelectedGameObject(null);
             }
         }
 
@@ -235,6 +232,9 @@ namespace MainGame.UI.PauseMenu
         private void PlayFocusPunch(Transform target)
         {
             if (target == null) return;
+            // If the target has MainMenuButtonEnergyAnimator, it manages its own crisp 0.96 -> 1.03 -> 1.00 focus punch!
+            if (target.GetComponent<MainGame.UI.Unified.MainMenuButtonEnergyAnimator>() != null) return;
+
             if (m_PunchRoutine != null)
             {
                 StopCoroutine(m_PunchRoutine);

@@ -143,7 +143,9 @@ namespace MainGame.UI.PauseMenu
                     break;
 
                 case PauseState.Confirmation:
-                    m_Controller.CancelConfirmation();
+                    // Per requirement: "if the conformation panel is turnd on the esc shouldnt work,
+                    // it should work if the user is not selected any button conformaation"
+                    // ESC is ignored while confirmation modal is open.
                     break;
 
                 case PauseState.LevelSelection:
@@ -168,7 +170,7 @@ namespace MainGame.UI.PauseMenu
                     break;
 
                 case PauseState.Confirmation:
-                    m_Controller.CancelConfirmation();
+                    // Confirmation modal requires explicit selection (e.g. clicking NO)
                     break;
 
                 case PauseState.LevelSelection:

@@ -261,7 +261,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 793052989015094833}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -1975,7 +1975,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4518936259825847503}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -2050,7 +2050,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4584693016138676113}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
@@ -3330,7 +3330,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: MainGame.UI.PauseMenu::MainGame.UI.PauseMenu.PauseConfirmationController
   m_PopupCanvasGroup: {fileID: 1066542936171878273}
-  m_DialogTransform: {fileID: 5177369970868973773}
+  m_DialogTransform: {fileID: 5100218001875156333}
   m_YesButton: {fileID: 3775834960255963423}
   m_NoButton: {fileID: 275992631590393285}
   m_TitleImage: {fileID: 7667272366225763049}
@@ -3349,6 +3349,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.ConfirmationPopupAnimator
   m_DarkOverlay: {fileID: 1066542936171878273}
+  m_BackdropScrim: {fileID: 0}
   m_OverlayMaxAlpha: 1
   m_DialogWindow: {fileID: 5177369970868973773}
   m_CeilingDropDistance: 600

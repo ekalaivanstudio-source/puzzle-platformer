@@ -73,10 +73,40 @@ namespace MainGame.UI.PauseMenu
                 if (no != null) m_NoButton = no.GetComponent<Button>();
             }
 
-            if (m_TitleImage == null && m_DialogTransform != null)
+            if (m_DialogTransform != null)
             {
-                Transform title = m_DialogTransform.Find("Title") ?? m_DialogTransform.Find("Message");
-                if (title != null) m_TitleImage = title.GetComponent<Image>();
+                Transform title = m_DialogTransform.Find("Title");
+                if (title != null)
+                {
+                    m_TitleImage = title.GetComponent<Image>();
+                }
+                else if (m_TitleImage == null)
+                {
+                    Transform msg = m_DialogTransform.Find("Message");
+                    if (msg != null) m_TitleImage = msg.GetComponent<Image>();
+                }
+            }
+
+            // Deactivate any duplicate Message GameObject (ghost header bug)
+            if (m_DialogTransform != null)
+            {
+                Transform msg = m_DialogTransform.Find("Message");
+                if (msg != null && (m_TitleImage == null || msg != m_TitleImage.transform))
+                {
+                    msg.gameObject.SetActive(false);
+                }
+            }
+
+            // Ensure dark backdrop scrim Image exists on ConfirmationPopup
+            Image scrim = GetComponent<Image>();
+            if (scrim == null)
+            {
+                scrim = gameObject.AddComponent<Image>();
+            }
+            if (scrim != null)
+            {
+                scrim.color = new Color(0f, 0f, 0f, 0.85f);
+                scrim.raycastTarget = true;
             }
 
             if (m_Animator == null)
@@ -93,6 +123,14 @@ namespace MainGame.UI.PauseMenu
 
         private void OnEnable()
         {
+            if (m_PopupCanvasGroup != null)
+            {
+                m_PopupCanvasGroup.alpha = 1f;
+                m_PopupCanvasGroup.interactable = true;
+                m_PopupCanvasGroup.blocksRaycasts = true;
+            }
+            EnsureButtonsInteractable();
+            BuildHorizontalNavigation();
             if (m_YesButton != null) m_YesButton.onClick.AddListener(HandleYesClicked);
             if (m_NoButton != null) m_NoButton.onClick.AddListener(HandleNoClicked);
         }
@@ -101,6 +139,33 @@ namespace MainGame.UI.PauseMenu
         {
             if (m_YesButton != null) m_YesButton.onClick.RemoveListener(HandleYesClicked);
             if (m_NoButton != null) m_NoButton.onClick.RemoveListener(HandleNoClicked);
+        }
+
+        public void EnsureButtonsInteractable()
+        {
+            if (m_YesButton != null)
+            {
+                m_YesButton.interactable = true;
+                CanvasGroup yesCg = m_YesButton.GetComponent<CanvasGroup>();
+                if (yesCg != null)
+                {
+                    yesCg.alpha = 1f;
+                    yesCg.interactable = true;
+                    yesCg.blocksRaycasts = true;
+                }
+            }
+
+            if (m_NoButton != null)
+            {
+                m_NoButton.interactable = true;
+                CanvasGroup noCg = m_NoButton.GetComponent<CanvasGroup>();
+                if (noCg != null)
+                {
+                    noCg.alpha = 1f;
+                    noCg.interactable = true;
+                    noCg.blocksRaycasts = true;
+                }
+            }
         }
 
         public void BuildHorizontalNavigation()
@@ -126,6 +191,18 @@ namespace MainGame.UI.PauseMenu
             m_IsOpen = true;
 
             gameObject.SetActive(true);
+            ResolveReferences();
+
+            // Guarantee CanvasGroup and buttons are fully opaque, interactable, and raycast-ready
+            if (m_PopupCanvasGroup != null)
+            {
+                m_PopupCanvasGroup.alpha = 1f;
+                m_PopupCanvasGroup.interactable = true;
+                m_PopupCanvasGroup.blocksRaycasts = true;
+            }
+            EnsureButtonsInteractable();
+
+            BuildHorizontalNavigation();
 
             if (m_TitleImage != null && request.TitleSprite != null)
             {
@@ -134,10 +211,14 @@ namespace MainGame.UI.PauseMenu
 
             if (m_Audio != null) m_Audio.PlayWarningPopup();
 
+            // Focus NO button immediately so there is no unselected frame gap
+            FocusNoButton();
+
             if (m_Animator != null)
             {
                 m_Animator.PlayEntrance(() =>
                 {
+                    EnsureButtonsInteractable();
                     FocusNoButton();
                     onOpened?.Invoke();
                 });
@@ -146,6 +227,7 @@ namespace MainGame.UI.PauseMenu
             {
                 PlaySimpleEntrance(() =>
                 {
+                    EnsureButtonsInteractable();
                     FocusNoButton();
                     onOpened?.Invoke();
                 });
@@ -155,6 +237,21 @@ namespace MainGame.UI.PauseMenu
         public void Hide(Action onClosed = null)
         {
             m_IsOpen = false;
+
+            if (EventSystem.current != null)
+            {
+                GameObject cur = EventSystem.current.currentSelectedGameObject;
+                if (cur != null && cur.transform.IsChildOf(transform))
+                {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
+            }
+
+            if (m_PopupCanvasGroup != null)
+            {
+                m_PopupCanvasGroup.interactable = false;
+                m_PopupCanvasGroup.blocksRaycasts = false;
+            }
 
             if (m_Animator != null)
             {
@@ -176,19 +273,25 @@ namespace MainGame.UI.PauseMenu
 
         public void FocusNoButton()
         {
+            if (EventSystem.current == null) EventSystem.current = FindAnyObjectByType<EventSystem>();
             if (m_NoButton != null && EventSystem.current != null)
             {
-                EventSystem.current.SetSelectedGameObject(null);
-                EventSystem.current.SetSelectedGameObject(m_NoButton.gameObject);
+                if (EventSystem.current.currentSelectedGameObject != m_NoButton.gameObject)
+                {
+                    EventSystem.current.SetSelectedGameObject(m_NoButton.gameObject);
+                }
             }
         }
 
         public void FocusYesButton()
         {
+            if (EventSystem.current == null) EventSystem.current = FindAnyObjectByType<EventSystem>();
             if (m_YesButton != null && EventSystem.current != null)
             {
-                EventSystem.current.SetSelectedGameObject(null);
-                EventSystem.current.SetSelectedGameObject(m_YesButton.gameObject);
+                if (EventSystem.current.currentSelectedGameObject != m_YesButton.gameObject)
+                {
+                    EventSystem.current.SetSelectedGameObject(m_YesButton.gameObject);
+                }
             }
         }
 
@@ -196,34 +299,23 @@ namespace MainGame.UI.PauseMenu
         {
             if (!m_IsOpen) return;
 
+            // Notice: Escape is deliberately excluded. Per requirement:
+            // "if the conformation panel is turnd on the esc shouldnt work,
+            // it should work if the user is not selected any button conformaation"
             bool cancelPressed = false;
-            bool leftPressed = false;
-            bool rightPressed = false;
-            bool submitPressed = false;
 
             if (Keyboard.current != null)
             {
-                cancelPressed = Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.backspaceKey.wasPressedThisFrame;
-                leftPressed = Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame;
-                rightPressed = Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame;
-                submitPressed = Keyboard.current.enterKey.wasPressedThisFrame ||
-                                Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
-                                Keyboard.current.spaceKey.wasPressedThisFrame;
+                cancelPressed = Keyboard.current.backspaceKey.wasPressedThisFrame;
             }
 
             if (Gamepad.current != null)
             {
                 cancelPressed |= Gamepad.current.bButton.wasPressedThisFrame;
-                leftPressed |= Gamepad.current.dpad.left.wasPressedThisFrame || Gamepad.current.leftStick.left.wasPressedThisFrame;
-                rightPressed |= Gamepad.current.dpad.right.wasPressedThisFrame || Gamepad.current.leftStick.right.wasPressedThisFrame;
-                submitPressed |= Gamepad.current.buttonSouth.wasPressedThisFrame;
             }
 
 #if ENABLE_LEGACY_INPUT_MANAGER
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Backspace)) cancelPressed = true;
-            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) leftPressed = true;
-            if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) rightPressed = true;
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)) submitPressed = true;
+            if (Input.GetKeyDown(KeyCode.Backspace)) cancelPressed = true;
 #endif
 
             if (cancelPressed)
@@ -232,37 +324,30 @@ namespace MainGame.UI.PauseMenu
                 return;
             }
 
+            // Selection recovery: if focus is lost from Yes/No buttons, recover to NO button on any key
             GameObject cur = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
 
-            if (cur == null || !cur.activeInHierarchy || (m_YesButton != null && cur != m_YesButton.gameObject && m_NoButton != null && cur != m_NoButton.gameObject))
-            {
-                if (leftPressed || rightPressed || submitPressed)
-                {
-                    FocusNoButton();
-                    return;
-                }
-            }
+            bool isYesOrChild = m_YesButton != null && cur != null && (cur == m_YesButton.gameObject || cur.transform.IsChildOf(m_YesButton.transform));
+            bool isNoOrChild = m_NoButton != null && cur != null && (cur == m_NoButton.gameObject || cur.transform.IsChildOf(m_NoButton.transform));
 
-            if (leftPressed || rightPressed)
+            if (cur == null || !cur.activeInHierarchy || (!isYesOrChild && !isNoOrChild))
             {
-                if (m_YesButton != null && cur == m_YesButton.gameObject)
+                bool anyNav = false;
+                if (Keyboard.current != null)
+                {
+                    anyNav = Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.rightArrowKey.wasPressedThisFrame ||
+                             Keyboard.current.aKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame ||
+                             Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame;
+                }
+                if (Gamepad.current != null)
+                {
+                    anyNav |= Gamepad.current.dpad.left.wasPressedThisFrame || Gamepad.current.dpad.right.wasPressedThisFrame ||
+                              Gamepad.current.leftStick.left.wasPressedThisFrame || Gamepad.current.leftStick.right.wasPressedThisFrame ||
+                              Gamepad.current.buttonSouth.wasPressedThisFrame;
+                }
+                if (anyNav)
                 {
                     FocusNoButton();
-                }
-                else
-                {
-                    FocusYesButton();
-                }
-            }
-            else if (submitPressed)
-            {
-                if (m_YesButton != null && cur == m_YesButton.gameObject)
-                {
-                    HandleYesClicked();
-                }
-                else
-                {
-                    HandleNoClicked();
                 }
             }
         }

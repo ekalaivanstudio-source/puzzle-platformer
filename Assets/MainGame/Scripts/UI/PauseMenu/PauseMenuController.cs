@@ -5,6 +5,7 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 using MainGame.UI.Feedback;
 using MainGame.UI.Unified;
 
@@ -245,6 +246,9 @@ namespace MainGame.UI.PauseMenu
             DeviceInputProvider.Instance?.SetEnabled(false);
 
             SetUIVisible(true);
+            SetPauseMainVisible(true);
+
+            // Isolate modal panels
             if (m_Confirmation != null && m_Confirmation.gameObject.activeSelf) m_Confirmation.gameObject.SetActive(false);
             if (m_LevelSelection != null && m_LevelSelection.gameObject.activeSelf) m_LevelSelection.gameObject.SetActive(false);
 
@@ -312,7 +316,12 @@ namespace MainGame.UI.PauseMenu
             TriggerButtonPunch(m_ResetButton, () =>
             {
                 m_Navigation?.StoreCurrentSelection();
+                m_Navigation?.ClearSelection();
                 m_CurrentState = PauseState.Confirmation;
+
+                // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
+                SetPauseMainVisible(false);
+                if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -332,7 +341,12 @@ namespace MainGame.UI.PauseMenu
             TriggerButtonPunch(m_LevelsButton, () =>
             {
                 m_Navigation?.StoreCurrentSelection();
+                m_Navigation?.ClearSelection();
                 m_CurrentState = PauseState.Confirmation;
+
+                // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
+                SetPauseMainVisible(false);
+                if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -352,7 +366,12 @@ namespace MainGame.UI.PauseMenu
             TriggerButtonPunch(m_ExitButton, () =>
             {
                 m_Navigation?.StoreCurrentSelection();
+                m_Navigation?.ClearSelection();
                 m_CurrentState = PauseState.Confirmation;
+
+                // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
+                SetPauseMainVisible(false);
+                if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -409,8 +428,9 @@ namespace MainGame.UI.PauseMenu
 
             m_CurrentState = PauseState.LevelSelection;
 
-            // Hide main pause panel while level selection is open
-            if (m_PausePanel != null) m_PausePanel.gameObject.SetActive(false);
+            // Strict isolation: ensure PauseMain and Confirmation are hidden before Level Selection opens
+            SetPauseMainVisible(false);
+            if (m_Confirmation != null) m_Confirmation.gameObject.SetActive(false);
 
             if (m_Audio != null) m_Audio.PlayLevelSelectionOpen();
 
@@ -429,8 +449,8 @@ namespace MainGame.UI.PauseMenu
 
             m_CurrentState = PauseState.MainPause;
 
-            if (m_PausePanel != null) m_PausePanel.gameObject.SetActive(true);
-
+            // Reactivate PauseMain and restore focus to LEVELS button
+            SetPauseMainVisible(true);
             m_Navigation?.RestoreLastSelection();
         }
 
@@ -464,6 +484,7 @@ namespace MainGame.UI.PauseMenu
             }
 
             m_CurrentState = PauseState.MainPause;
+            SetPauseMainVisible(true);
             m_Navigation?.RestoreLastSelection();
         }
 
@@ -493,6 +514,33 @@ namespace MainGame.UI.PauseMenu
             callback?.Invoke();
         }
 
+        public void SetPauseMainVisible(bool visible)
+        {
+            if (m_PausePanel != null)
+            {
+                if (!visible && EventSystem.current != null)
+                {
+                    GameObject cur = EventSystem.current.currentSelectedGameObject;
+                    if (cur != null && cur.transform.IsChildOf(m_PausePanel))
+                    {
+                        EventSystem.current.SetSelectedGameObject(null);
+                    }
+                }
+
+                CanvasGroup cg = m_PausePanel.GetComponent<CanvasGroup>();
+                if (cg != null)
+                {
+                    cg.alpha = visible ? 1f : 0f;
+                    cg.interactable = visible;
+                    cg.blocksRaycasts = visible;
+                }
+                else
+                {
+                    m_PausePanel.gameObject.SetActive(visible);
+                }
+            }
+        }
+
         private void SetUIVisible(bool visible)
         {
             Transform screen = transform.Find("Pause screen");
@@ -505,10 +553,7 @@ namespace MainGame.UI.PauseMenu
                 m_DarkOverlay.blocksRaycasts = visible;
             }
 
-            if (m_PausePanel != null)
-            {
-                m_PausePanel.gameObject.SetActive(visible);
-            }
+            SetPauseMainVisible(visible);
         }
 
         #endregion
