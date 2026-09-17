@@ -251,7 +251,8 @@ namespace MainGame.UI.CinematicEffects
             UIBackgroundLayerController layerCtrl = GetComponent<UIBackgroundLayerController>();
             if (layerCtrl != null)
             {
-                layerCtrl.TriggerPulse(0.12f, 0.25f, new Color(1f, 0.95f, 0.8f, 1f));
+                layerCtrl.PulseOutline(0.15f, 0.22f, new Color(1f, 0.95f, 0.8f, 1f));
+                layerCtrl.TriggerPulse(0.10f, 0.22f, new Color(1f, 0.95f, 0.8f, 1f));
             }
         }
 
@@ -260,7 +261,8 @@ namespace MainGame.UI.CinematicEffects
             UIBackgroundLayerController layerCtrl = GetComponent<UIBackgroundLayerController>();
             if (layerCtrl != null)
             {
-                layerCtrl.TriggerPulse(strength, 0.4f, new Color(0.95f, 0.2f, 0.2f, 1f));
+                layerCtrl.PulseOutline(strength, 0.30f, new Color(1.0f, 0.165f, 0.28f, 1.0f));
+                layerCtrl.TriggerPulse(strength, 0.35f, new Color(0.95f, 0.2f, 0.2f, 1f));
             }
 
             if (CinematicUIParticleSystem.Instance != null)

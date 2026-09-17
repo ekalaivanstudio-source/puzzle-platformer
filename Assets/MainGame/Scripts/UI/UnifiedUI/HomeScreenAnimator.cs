@@ -76,6 +76,19 @@ namespace MainGame.UI.Unified
         private void Awake()
         {
             CaptureRestState();
+            EnsureBackgroundDirector();
+        }
+
+        private void EnsureBackgroundDirector()
+        {
+            Transform sm = transform.parent;
+            if (sm != null && (sm.name == "ScreenManager" || sm.name.Contains("ScreenManager")))
+            {
+                if (sm.GetComponent<MainMenuBackgroundDirector>() == null)
+                {
+                    sm.gameObject.AddComponent<MainMenuBackgroundDirector>();
+                }
+            }
         }
 
         private void Start()

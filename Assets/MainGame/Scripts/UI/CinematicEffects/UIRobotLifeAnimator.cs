@@ -209,6 +209,7 @@ namespace MainGame.UI.CinematicEffects
             m_CurrentPhase = RobotEnergyPhase.Pulse;
             if (m_LayerController != null)
             {
+                m_LayerController.PulseOutline(0.35f, 0.45f, m_EnergyColor);
                 m_LayerController.TriggerPulse(0.22f, 0.35f, m_EnergyColor);
             }
 
@@ -239,6 +240,7 @@ namespace MainGame.UI.CinematicEffects
         {
             if (m_LayerController != null)
             {
+                m_LayerController.PulseOutline(strength * 1.2f, 0.28f, m_EnergyColor);
                 m_LayerController.TriggerPulse(strength, 0.25f, m_EnergyColor);
             }
 

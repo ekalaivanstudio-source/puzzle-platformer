@@ -94,7 +94,7 @@ namespace MainGame.UI.CinematicEffects
         private void Awake()
         {
             m_RectTransform = GetComponent<RectTransform>();
-            m_TitleShaderCtrl = GetComponent<UIBackgroundLayerController>();
+            m_TitleShaderCtrl = GetComponent<UIBackgroundLayerController>() ?? GetComponentInChildren<UIBackgroundLayerController>();
             EnsureRestCaptured();
         }
 
@@ -215,6 +215,11 @@ namespace MainGame.UI.CinematicEffects
             float torque = UnityEngine.Random.Range(-0.45f, 0.45f);
             Impulse(new Vector2(0f, kickY), torque);
 
+            if (m_TitleShaderCtrl != null && isDownbeat)
+            {
+                m_TitleShaderCtrl.PulseOutline(0.12f, 0.22f);
+            }
+
             if (isDownbeat && UnityEngine.Random.value < 0.35f)
             {
                 TriggerAttachmentSparks();
@@ -330,15 +335,16 @@ namespace MainGame.UI.CinematicEffects
 
         public void TriggerAttachmentSparks()
         {
-            if (CinematicUIParticleSystem.Instance == null) return;
-
-            Color sparkCol = new Color(0.4f, 0.9f, 1f, 0.9f);
-            CinematicUIParticleSystem.Instance.SpawnSparkBurst(LeftAttachmentWorldPosition, sparkCol, 3, 10f);
-            CinematicUIParticleSystem.Instance.SpawnSparkBurst(RightAttachmentWorldPosition, sparkCol, 3, 10f);
+            if (CinematicUIParticleSystem.Instance != null)
+            {
+                Color sparkCol = new Color(0.4f, 0.9f, 1f, 0.9f);
+                CinematicUIParticleSystem.Instance.SpawnSparkBurst(LeftAttachmentWorldPosition, sparkCol, 3, 10f);
+                CinematicUIParticleSystem.Instance.SpawnSparkBurst(RightAttachmentWorldPosition, sparkCol, 3, 10f);
+            }
 
             if (m_TitleShaderCtrl != null)
             {
-                m_TitleShaderCtrl.TriggerPulse(0.08f, 0.20f, sparkCol);
+                m_TitleShaderCtrl.PulseOutline(0.18f, 0.25f, new Color(0.22f, 0.88f, 1f, 1f));
             }
         }
 

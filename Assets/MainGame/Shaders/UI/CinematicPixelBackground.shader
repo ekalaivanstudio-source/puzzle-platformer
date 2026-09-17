@@ -44,6 +44,21 @@ Shader "MainGame/UI/CinematicPixelBackground"
         _EdgeIntensity ("Edge Accent Intensity", Range(0, 2.0)) = 0.0
         _EdgeColor ("Edge Color", Color) = (0.35, 0.85, 1.0, 1)
 
+        [Header(Character and Title Outline)]
+        _OutlineColor ("Outline Color", Color) = (0, 0, 0, 0)
+        _OutlineWidth ("Outline Width (Texels)", Range(0, 10)) = 0.0
+        _OutlineGlow ("Outline Glow Strength", Range(0, 5)) = 1.0
+        _OutlinePulseSpeed ("Outline Pulse Speed", Float) = 2.0
+        _OutlinePulseAmount ("Outline Pulse Amplitude", Range(0, 1)) = 0.25
+        _OutlineFlicker ("Outline Pixel Flicker", Range(0, 1)) = 0.12
+        [Toggle] _OutlineOnly ("Outline Only (Discard Fill)", Float) = 0.0
+
+        [Header(Inner Rim Lighting)]
+        _InnerRimColor ("Inner Rim Color", Color) = (0, 0, 0, 0)
+        _InnerRimIntensity ("Inner Rim Intensity", Range(0, 3)) = 0.0
+        _InnerRimWidth ("Inner Rim Width (Texels)", Range(0, 6)) = 1.5
+        _EdgeSharpness ("Edge Sharpness", Range(1, 10)) = 3.0
+
         [Header(Effect Mode)]
         _EffectMode ("Effect Mode (0:Bg, 1:Char, 2:Title, 3:Robot, 4:Energy, 5:Glitch)", Float) = 0.0
 
@@ -153,6 +168,19 @@ Shader "MainGame/UI/CinematicPixelBackground"
             float _EdgeIntensity;
             fixed4 _EdgeColor;
 
+            fixed4 _OutlineColor;
+            float _OutlineWidth;
+            float _OutlineGlow;
+            float _OutlinePulseSpeed;
+            float _OutlinePulseAmount;
+            float _OutlineFlicker;
+            float _OutlineOnly;
+
+            fixed4 _InnerRimColor;
+            float _InnerRimIntensity;
+            float _InnerRimWidth;
+            float _EdgeSharpness;
+
             float _EffectMode;
 
             v2f vert(appdata_t IN)
@@ -174,6 +202,16 @@ Shader "MainGame/UI/CinematicPixelBackground"
                 p = frac(p * float2(123.34, 456.21));
                 p += dot(p, p + 45.32);
                 return frac(p.x * p.y);
+            }
+
+            // Bounded texture alpha sampling (prevents border clamping streaking)
+            float SampleAlphaBounded(sampler2D tex, float2 uvCoord)
+            {
+                if (uvCoord.x < 0.0 || uvCoord.x > 1.0 || uvCoord.y < 0.0 || uvCoord.y > 1.0)
+                {
+                    return 0.0;
+                }
+                return tex2D(tex, uvCoord).a;
             }
 
             fixed4 frag(v2f IN) : SV_Target
@@ -254,15 +292,140 @@ Shader "MainGame/UI/CinematicPixelBackground"
                 color.a *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
                 #endif
 
-                #ifdef UNITY_UI_ALPHACLIP
-                clip (color.a - 0.001);
-                #endif
+                bool hasOutline = (_OutlineWidth > 0.001 && _OutlineColor.a > 0.001);
+                bool hasInnerRim = (_InnerRimIntensity > 0.001 && (_InnerRimColor.r + _InnerRimColor.g + _InnerRimColor.b) > 0.001);
 
-                // If pixel is transparent, skip heavy additive styling
-                if (color.a < 0.01)
+                // Fast-path: layers without outline or inner rim skip 12-sample kernel
+                if (!hasOutline && !hasInnerRim)
                 {
-                    return color;
+                    #ifdef UNITY_UI_ALPHACLIP
+                    clip (color.a - 0.001);
+                    #endif
+
+                    if (color.a < 0.01)
+                    {
+                        return color;
+                    }
                 }
+
+                // ─── OUTLINE & INNER RIM ALPHA NEIGHBORHOOD SAMPLING ───────────
+                float maxA = 0.0;
+                float minA = 1.0;
+                float finalGlow = _OutlineGlow;
+
+                if (hasOutline || hasInnerRim)
+                {
+                    float stepDist = _OutlineWidth;
+                    if (_SnapDistortionToGrid > 0.5 && _PixelGridStep > 1.0)
+                    {
+                        stepDist = max(1.0, floor(stepDist + 0.5));
+                    }
+                    float2 texel = _MainTex_TexelSize.xy;
+                    float2 offset = texel * max(stepDist, _InnerRimWidth);
+                    float2 offsetHalf = offset * 0.5;
+
+                    // 12-sample kernel (4 cardinal full, 4 diagonal full, 4 cardinal half)
+                    float a0 = SampleAlphaBounded(_MainTex, sampleUV + float2( offset.x,  0.0));
+                    float a1 = SampleAlphaBounded(_MainTex, sampleUV + float2(-offset.x,  0.0));
+                    float a2 = SampleAlphaBounded(_MainTex, sampleUV + float2( 0.0,       offset.y));
+                    float a3 = SampleAlphaBounded(_MainTex, sampleUV + float2( 0.0,      -offset.y));
+
+                    float a4 = SampleAlphaBounded(_MainTex, sampleUV + float2( offset.x * 0.7071,  offset.y * 0.7071));
+                    float a5 = SampleAlphaBounded(_MainTex, sampleUV + float2(-offset.x * 0.7071,  offset.y * 0.7071));
+                    float a6 = SampleAlphaBounded(_MainTex, sampleUV + float2( offset.x * 0.7071, -offset.y * 0.7071));
+                    float a7 = SampleAlphaBounded(_MainTex, sampleUV + float2(-offset.x * 0.7071, -offset.y * 0.7071));
+
+                    float a8 = SampleAlphaBounded(_MainTex, sampleUV + float2( offsetHalf.x,  0.0));
+                    float a9 = SampleAlphaBounded(_MainTex, sampleUV + float2(-offsetHalf.x,  0.0));
+                    float a10 = SampleAlphaBounded(_MainTex, sampleUV + float2( 0.0,          offsetHalf.y));
+                    float a11 = SampleAlphaBounded(_MainTex, sampleUV + float2( 0.0,         -offsetHalf.y));
+
+                    maxA = max(max(max(a0, a1), max(a2, a3)), max(max(a4, a5), max(a6, a7)));
+                    maxA = max(maxA, max(max(a8, a9), max(a10, a11)));
+
+                    minA = min(min(min(a0, a1), min(a2, a3)), min(min(a4, a5), min(a6, a7)));
+                    minA = min(minA, min(min(a8, a9), min(a10, a11)));
+
+                    // Breathing pulse & electric shimmer
+                    float pulse = 1.0;
+                    if (_OutlinePulseAmount > 0.001)
+                    {
+                        float pWave = sin(time * _OutlinePulseSpeed) * 0.5 + 0.5;
+                        pWave += sin(time * (_OutlinePulseSpeed * 2.1) + sampleUV.y * 6.0) * 0.12;
+                        pulse = 1.0 + (pWave * _OutlinePulseAmount);
+                    }
+                    finalGlow = _OutlineGlow * pulse;
+
+                    if (_OutlineFlicker > 0.001)
+                    {
+                        float flickerTime = floor(time * 8.0);
+                        float2 pixelCoord = floor(uv * _MainTex_TexelSize.zw);
+                        float fHash = Hash21(pixelCoord + float2(flickerTime * 13.1, flickerTime * 27.7));
+                        float flicker = 1.0 + (fHash - 0.5) * _OutlineFlicker;
+                        finalGlow *= flicker;
+                    }
+                }
+
+                // ─── DEDICATED OUTLINE-ONLY LAYER (BEHIND ARTWORK) ──────────────
+                if (_OutlineOnly > 0.5)
+                {
+                    // Discard inner sprite pixels so untouched foreground image renders cleanly
+                    if (color.a >= 0.15)
+                    {
+                        #ifdef UNITY_UI_ALPHACLIP
+                        clip(-1);
+                        #endif
+                        return half4(0, 0, 0, 0);
+                    }
+
+                    if (hasOutline && maxA > 0.15)
+                    {
+                        float outlineAlpha = step(0.18, maxA) * _OutlineColor.a * IN.color.a;
+
+                        #ifdef UNITY_UI_CLIP_RECT
+                        outlineAlpha *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
+                        #endif
+
+                        #ifdef UNITY_UI_ALPHACLIP
+                        clip(outlineAlpha - 0.001);
+                        #endif
+
+                        return half4(_OutlineColor.rgb * finalGlow, outlineAlpha);
+                    }
+
+                    #ifdef UNITY_UI_ALPHACLIP
+                    clip(-1);
+                    #endif
+                    return half4(0, 0, 0, 0);
+                }
+
+                // ─── STANDARD / FOREGROUND LAYER (OUTER MARGIN CHECK) ───────────
+                if (color.a < 0.15)
+                {
+                    if (hasOutline && maxA > 0.15)
+                    {
+                        float outlineAlpha = step(0.18, maxA) * _OutlineColor.a * IN.color.a;
+
+                        #ifdef UNITY_UI_CLIP_RECT
+                        outlineAlpha *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
+                        #endif
+
+                        #ifdef UNITY_UI_ALPHACLIP
+                        clip(outlineAlpha - 0.001);
+                        #endif
+
+                        return half4(_OutlineColor.rgb * finalGlow, outlineAlpha);
+                    }
+
+                    #ifdef UNITY_UI_ALPHACLIP
+                    clip(-1);
+                    #endif
+                    return half4(0, 0, 0, 0);
+                }
+
+                #ifdef UNITY_UI_ALPHACLIP
+                clip(color.a - 0.001);
+                #endif
 
                 // ─── 7. STEPPED ANIMATED PIXEL NOISE ───────────────────────────
                 if (_NoiseStrength > 0.0005)
@@ -308,6 +471,17 @@ Shader "MainGame/UI/CinematicPixelBackground"
                     if (isEdge > 0.1)
                     {
                         color.rgb += _EdgeColor.rgb * (isEdge * _EdgeIntensity);
+                    }
+                }
+
+                // ─── 10. INNER RIM LIGHTING (SHARP PIXEL CONTOUR) ──────────────
+                if (hasInnerRim)
+                {
+                    float isInnerEdge = saturate((color.a - minA) * _EdgeSharpness);
+                    if (isInnerEdge > 0.05)
+                    {
+                        half3 rimAdd = _InnerRimColor.rgb * (_InnerRimIntensity * isInnerEdge * finalGlow);
+                        color.rgb += rimAdd;
                     }
                 }
 

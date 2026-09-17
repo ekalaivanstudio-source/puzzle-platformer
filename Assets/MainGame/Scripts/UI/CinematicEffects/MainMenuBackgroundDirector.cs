@@ -45,6 +45,11 @@ namespace MainGame.UI.CinematicEffects
         [SerializeField] private UITitleSuspensionSystem m_TitleSuspension;
         [SerializeField] private UIRobotLifeAnimator m_RobotAnimator;
 
+        [Header("Character & Title Outline Controllers")]
+        [SerializeField] private UIBackgroundLayerController m_VillainOutlineController;
+        [SerializeField] private UIBackgroundLayerController m_HeroOutlineController;
+        [SerializeField] private UIBackgroundLayerController m_TitleOutlineController;
+
         [Header("Atmosphere & Parallax")]
         [SerializeField] private UISparkAtmosphereSystem m_SparkAtmosphere;
         [SerializeField] private UIParallaxController m_ParallaxController;
@@ -76,6 +81,10 @@ namespace MainGame.UI.CinematicEffects
         public UIRobotLifeAnimator RobotAnimator { get => m_RobotAnimator; set => m_RobotAnimator = value; }
         public UISparkAtmosphereSystem SparkAtmosphere { get => m_SparkAtmosphere; set => m_SparkAtmosphere = value; }
         public UIParallaxController ParallaxController { get => m_ParallaxController; set => m_ParallaxController = value; }
+
+        public UIBackgroundLayerController VillainOutlineController { get => m_VillainOutlineController; set => m_VillainOutlineController = value; }
+        public UIBackgroundLayerController HeroOutlineController { get => m_HeroOutlineController; set => m_HeroOutlineController = value; }
+        public UIBackgroundLayerController TitleOutlineController { get => m_TitleOutlineController; set => m_TitleOutlineController = value; }
 
         private void Awake()
         {
@@ -146,6 +155,14 @@ namespace MainGame.UI.CinematicEffects
                     }
                 }
 
+                Transform villainTrans = bgRoot.Find("DR") ?? bgRoot.Find("Villan") ?? bgRoot.Find("Villain") ?? bgRoot.Find("CharacterArtwork");
+                if (villainTrans != null && m_VillainOutlineController == null)
+                {
+                    m_VillainOutlineController = villainTrans.GetComponent<UIBackgroundLayerController>() ?? villainTrans.gameObject.AddComponent<UIBackgroundLayerController>();
+                    m_VillainOutlineController.Profile = BackgroundLayerProfile.Villain;
+                    m_VillainOutlineController.EnsureOutlineLayer();
+                }
+
                 if (m_RobotAnimator == null)
                 {
                     Transform robot = bgRoot.Find("Hero") ?? bgRoot.Find("Robot") ?? bgRoot.Find("Byte");
@@ -153,6 +170,14 @@ namespace MainGame.UI.CinematicEffects
                     {
                         m_RobotAnimator = robot.GetComponent<UIRobotLifeAnimator>() ?? robot.gameObject.AddComponent<UIRobotLifeAnimator>();
                     }
+                }
+
+                Transform robotTrans = bgRoot.Find("Hero") ?? bgRoot.Find("Robot") ?? bgRoot.Find("Byte");
+                if (robotTrans != null && m_HeroOutlineController == null)
+                {
+                    m_HeroOutlineController = robotTrans.GetComponent<UIBackgroundLayerController>() ?? robotTrans.gameObject.AddComponent<UIBackgroundLayerController>();
+                    m_HeroOutlineController.Profile = BackgroundLayerProfile.Hero;
+                    m_HeroOutlineController.EnsureOutlineLayer();
                 }
 
                 if (m_SparkAtmosphere == null)
@@ -183,6 +208,14 @@ namespace MainGame.UI.CinematicEffects
                         m_TitleSuspension.VillainAnimator = m_VillainAnimator;
                     }
                     m_TitleSuspension.CreateEnergyLinksIfMissing();
+
+                    Transform titleImgTrans = titleRoot.Find("Title") ?? titleRoot;
+                    if (titleImgTrans.GetComponent<Image>() != null && m_TitleOutlineController == null)
+                    {
+                        m_TitleOutlineController = titleImgTrans.GetComponent<UIBackgroundLayerController>() ?? titleImgTrans.gameObject.AddComponent<UIBackgroundLayerController>();
+                        m_TitleOutlineController.Profile = BackgroundLayerProfile.Title;
+                        m_TitleOutlineController.EnsureOutlineLayer();
+                    }
                 }
             }
 
@@ -231,6 +264,10 @@ namespace MainGame.UI.CinematicEffects
                 {
                     m_RedYellowController.TriggerPulse(0.04f, 0.22f);
                 }
+                if (m_TitleOutlineController != null)
+                {
+                    m_TitleOutlineController.PulseOutline(0.08f, 0.20f);
+                }
             }
         }
 
@@ -242,6 +279,14 @@ namespace MainGame.UI.CinematicEffects
             if (m_RobotAnimator != null)
             {
                 m_RobotAnimator.TriggerSubtleEnergyPulse(0.12f);
+            }
+            if (m_HeroOutlineController != null)
+            {
+                m_HeroOutlineController.PulseOutline(0.12f, 0.24f);
+            }
+            if (m_TitleOutlineController != null)
+            {
+                m_TitleOutlineController.PulseOutline(0.10f, 0.22f);
             }
             if (m_TitleSuspension != null && UnityEngine.Random.value < 0.4f)
             {
@@ -256,12 +301,16 @@ namespace MainGame.UI.CinematicEffects
             if (evt.BarIndex == m_LastFiredBar) return;
             m_LastFiredBar = evt.BarIndex;
 
-            // Every Nth bar, trigger machinery breathing pulse
+            // Every Nth bar, trigger machinery breathing pulse and villain controlled energy presence
             if (evt.BarIndex % Mathf.Max(1, m_BarPulseInterval) == 0)
             {
                 if (m_BgRedController != null)
                 {
                     m_BgRedController.TriggerPulse(0.08f, 0.40f);
+                }
+                if (m_VillainOutlineController != null)
+                {
+                    m_VillainOutlineController.PulseOutline(0.12f, 0.35f);
                 }
             }
         }
@@ -278,10 +327,18 @@ namespace MainGame.UI.CinematicEffects
 
             if (btnName.Contains("continue"))
             {
-                // CONTINUE: subtle cyan/blue energy response
+                // CONTINUE: subtle cyan/blue energy response on Title and Villain
                 if (m_RedYellowController != null)
                 {
                     m_RedYellowController.TriggerPulse(0.10f, 0.25f, new Color(0.35f, 0.85f, 1f, 1f));
+                }
+                if (m_TitleOutlineController != null)
+                {
+                    m_TitleOutlineController.PulseOutline(0.14f, 0.25f, new Color(0.22f, 0.88f, 1f, 1f));
+                }
+                if (m_VillainOutlineController != null)
+                {
+                    m_VillainOutlineController.PulseOutline(0.10f, 0.25f, new Color(0.35f, 0.85f, 1f, 1f));
                 }
             }
             else if (btnName.Contains("new") || btnName.Contains("game"))
@@ -290,6 +347,10 @@ namespace MainGame.UI.CinematicEffects
                 if (m_TitleSuspension != null)
                 {
                     m_TitleSuspension.Impulse(new Vector2(0f, 2.5f), 0.4f);
+                }
+                if (m_TitleOutlineController != null)
+                {
+                    m_TitleOutlineController.PulseOutline(0.18f, 0.30f);
                 }
                 if (m_RobotAnimator != null)
                 {
@@ -303,6 +364,10 @@ namespace MainGame.UI.CinematicEffects
                 {
                     m_RobotAnimator.TriggerSubtleEnergyPulse(0.20f);
                 }
+                if (m_HeroOutlineController != null)
+                {
+                    m_HeroOutlineController.PulseOutline(0.25f, 0.35f);
+                }
             }
             else if (btnName.Contains("option") || btnName.Contains("setting"))
             {
@@ -314,10 +379,14 @@ namespace MainGame.UI.CinematicEffects
             }
             else if (btnName.Contains("credit"))
             {
-                // CREDITS: subtle ambient brightness shift
+                // CREDITS: subtle title brightness shift
                 if (m_RedYellowController != null)
                 {
                     m_RedYellowController.TriggerPulse(0.08f, 0.35f, new Color(1f, 0.85f, 0.5f, 1f));
+                }
+                if (m_TitleOutlineController != null)
+                {
+                    m_TitleOutlineController.PulseOutline(0.12f, 0.25f, new Color(1f, 0.88f, 0.35f, 1f));
                 }
             }
             else if (btnName.Contains("exit") || btnName.Contains("quit"))
@@ -330,6 +399,10 @@ namespace MainGame.UI.CinematicEffects
                 if (m_VillainAnimator != null)
                 {
                     m_VillainAnimator.TriggerVillainEnergyPulse(0.15f);
+                }
+                if (m_VillainOutlineController != null)
+                {
+                    m_VillainOutlineController.PulseOutline(0.25f, 0.35f, new Color(1f, 0.165f, 0.28f, 1f));
                 }
             }
         }
