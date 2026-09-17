@@ -126,11 +126,15 @@ namespace MainGame.UI.Unified
             if (m_YesButton != null)
             {
                 m_YesRestPos = m_YesButton.anchoredPosition;
+                UIAnimatedButton anim = m_YesButton.GetComponent<UIAnimatedButton>();
+                if (anim != null) anim.EnableTilt = false;
             }
 
             if (m_NoButton != null)
             {
                 m_NoRestPos = m_NoButton.anchoredPosition;
+                UIAnimatedButton anim = m_NoButton.GetComponent<UIAnimatedButton>();
+                if (anim != null) anim.EnableTilt = false;
             }
 
             m_HasCapturedRest = true;
@@ -178,6 +182,8 @@ namespace MainGame.UI.Unified
                 m_YesButton.anchoredPosition = m_YesRestPos;
                 m_YesButton.localScale = Vector3.one;
                 m_YesButton.localEulerAngles = Vector3.zero;
+                UIAnimatedButton anim = m_YesButton.GetComponent<UIAnimatedButton>();
+                if (anim != null) anim.EnableTilt = false;
             }
 
             if (m_NoButton != null)
@@ -185,6 +191,8 @@ namespace MainGame.UI.Unified
                 m_NoButton.anchoredPosition = m_NoRestPos;
                 m_NoButton.localScale = Vector3.one;
                 m_NoButton.localEulerAngles = Vector3.zero;
+                UIAnimatedButton anim = m_NoButton.GetComponent<UIAnimatedButton>();
+                if (anim != null) anim.EnableTilt = false;
             }
         }
 
@@ -240,37 +248,37 @@ namespace MainGame.UI.Unified
             }
 
             // 4. Opposing YES and NO buttons enter concurrently:
-            // YES from left (-300px, -5.5° tilt)
+            // YES from left (-300px, strictly 0° rotation, aerodynamic stretch)
             if (m_YesButton != null)
             {
                 Vector2 startYes = new Vector2(m_YesRestPos.x - m_ButtonOffset, m_YesRestPos.y);
                 m_YesButton.anchoredPosition = startYes;
-                m_YesButton.localScale = new Vector3(0.90f, 0.90f, 1f);
-                m_YesButton.localEulerAngles = new Vector3(0f, 0f, -5.5f);
+                m_YesButton.localScale = new Vector3(1.10f, 0.90f, 1f);
+                m_YesButton.localEulerAngles = Vector3.zero;
 
                 StartCoroutine(AnimateButtonPhysicalLanding(
                     m_YesButton,
                     startYes, m_YesRestPos,
-                    -5.5f, 0f,
                     0.20f, 0.02f,
-                    new Vector2(16f, 0f)
+                    new Vector2(16f, 0f),
+                    true
                 ));
             }
 
-            // NO from right (+450px, +5.5° tilt)
+            // NO from right (+450px, strictly 0° rotation, aerodynamic stretch)
             if (m_NoButton != null)
             {
                 Vector2 startNo = new Vector2(m_NoRestPos.x + m_ButtonOffset, m_NoRestPos.y);
                 m_NoButton.anchoredPosition = startNo;
-                m_NoButton.localScale = new Vector3(0.90f, 0.90f, 1f);
-                m_NoButton.localEulerAngles = new Vector3(0f, 0f, 5.5f);
+                m_NoButton.localScale = new Vector3(1.10f, 0.90f, 1f);
+                m_NoButton.localEulerAngles = Vector3.zero;
 
                 StartCoroutine(AnimateButtonPhysicalLanding(
                     m_NoButton,
                     startNo, m_NoRestPos,
-                    5.5f, 0f,
                     0.20f, 0.02f,
-                    new Vector2(-16f, 0f)
+                    new Vector2(-16f, 0f),
+                    false
                 ));
             }
 
@@ -433,9 +441,9 @@ namespace MainGame.UI.Unified
         private IEnumerator AnimateButtonPhysicalLanding(
             RectTransform target,
             Vector2 startPos, Vector2 restPos,
-            float startRotZ, float targetRotZ,
             float duration, float delay,
-            Vector2 overshootOffset)
+            Vector2 overshootOffset,
+            bool isYes = true)
         {
             if (delay > 0f)
             {
@@ -449,11 +457,15 @@ namespace MainGame.UI.Unified
 
             if (target == null) yield break;
 
+            target.localEulerAngles = Vector3.zero;
             Vector2 overshootPos = restPos + overshootOffset;
-            float travelDur = duration * 0.70f;
+            float travelDur = duration * 0.65f;
             float elapsed = 0f;
 
-            // Travel & straighten
+            // Phase 1: High-speed horizontal flight with aerodynamic stretch -> impact squash (strictly 0 deg)
+            Vector3 flightStretch = new Vector3(1.12f, 0.90f, 1f);
+            Vector3 impactSquash = new Vector3(0.92f, 1.08f, 1f);
+
             while (elapsed < travelDur)
             {
                 elapsed += Time.unscaledDeltaTime;
@@ -463,25 +475,40 @@ namespace MainGame.UI.Unified
                 if (target != null)
                 {
                     target.anchoredPosition = Vector2.Lerp(startPos, overshootPos, ease);
-                    target.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(startRotZ, targetRotZ, ease));
+                    target.localScale = Vector3.Lerp(flightStretch, impactSquash, ease);
+                    target.localEulerAngles = Vector3.zero;
                 }
                 yield return null;
             }
 
-            // Settle sequence
+            // Energy flash & spark impact upon landing
+            Color impactCol = isYes ? new Color(0.35f, 0.85f, 1f, 1f) : new Color(1f, 0.40f, 0.25f, 1f);
+            CinematicUIEffect fx = target.GetComponent<CinematicUIEffect>() ?? target.GetComponentInChildren<CinematicUIEffect>();
+            if (fx != null)
+            {
+                fx.TriggerBorderPulse(0.18f, impactCol, 2.2f);
+            }
+            if (CinematicUIParticleSystem.Instance != null)
+            {
+                CinematicUIParticleSystem.Instance.SpawnSparkBurst(target.position, impactCol, 4, 14f);
+            }
+
+            // Phase 2: Elastic rebound and settle into crisp rest pose
             Vector2 reboundPos = restPos - (overshootOffset * 0.25f);
-            float settleDur = duration * 0.30f;
+            float settleDur = duration * 0.35f;
             elapsed = 0f;
+
             while (elapsed < settleDur)
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / settleDur);
-                float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.35f);
 
                 if (target != null)
                 {
-                    target.anchoredPosition = Vector2.Lerp(overshootPos, restPos, ease);
-                    target.localScale = Vector3.Lerp(new Vector3(0.94f, 1.04f, 1f), Vector3.one, ease);
+                    target.anchoredPosition = Vector2.Lerp(overshootPos, restPos, t);
+                    target.localScale = Vector3.Lerp(impactSquash, Vector3.one, ease);
+                    target.localEulerAngles = Vector3.zero;
                 }
                 yield return null;
             }
@@ -490,7 +517,7 @@ namespace MainGame.UI.Unified
             {
                 target.anchoredPosition = restPos;
                 target.localScale = Vector3.one;
-                target.localEulerAngles = new Vector3(0f, 0f, targetRotZ);
+                target.localEulerAngles = Vector3.zero;
             }
         }
 
@@ -502,18 +529,18 @@ namespace MainGame.UI.Unified
             float curAlpha = m_BackdropScrim != null ? m_BackdropScrim.color.a : ((m_DarkOverlay != null && m_DarkOverlay.gameObject != this.gameObject) ? m_DarkOverlay.alpha : m_OverlayMaxAlpha);
             StartCoroutine(AnimateOverlayAlpha(curAlpha, 0f, duration));
 
-            // YES flings left (-600px)
+            // YES flings left (-600px, strictly 0° tilt)
             if (m_YesButton != null)
             {
                 Vector2 targetYes = new Vector2(m_YesRestPos.x - 600f, m_YesRestPos.y);
-                StartCoroutine(AnimateMotion(m_YesButton, m_YesButton.anchoredPosition, targetYes, 0f, -8f, duration, 0f, EasingType.EaseInBack, 1.15f));
+                StartCoroutine(AnimateMotion(m_YesButton, m_YesButton.anchoredPosition, targetYes, 0f, 0f, duration, 0f, EasingType.EaseInBack, 1.15f));
             }
 
-            // NO flings right (+600px)
+            // NO flings right (+600px, strictly 0° tilt)
             if (m_NoButton != null)
             {
                 Vector2 targetNo = new Vector2(m_NoRestPos.x + 600f, m_NoRestPos.y);
-                StartCoroutine(AnimateMotion(m_NoButton, m_NoButton.anchoredPosition, targetNo, 0f, 8f, duration, 0f, EasingType.EaseInBack, 1.15f));
+                StartCoroutine(AnimateMotion(m_NoButton, m_NoButton.anchoredPosition, targetNo, 0f, 0f, duration, 0f, EasingType.EaseInBack, 1.15f));
             }
 
             // Dialog flings down into floor (-650px)

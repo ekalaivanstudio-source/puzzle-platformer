@@ -28,6 +28,10 @@ namespace MainGame.UI.Unified
         [Tooltip("Angular tilt in degrees when selected (+1.2 deg).")]
         [SerializeField] private float m_SelectedTilt = 1.2f;
 
+        [Header("Rotation / Tilt Toggle")]
+        [Tooltip("If disabled, button remains strictly horizontal (0 deg) and uses pneumatic vertical lift and scale pulse instead of rotating.")]
+        [SerializeField] private bool m_EnableTilt = true;
+
         [Tooltip("Duration of focus in transition (0.12 - 0.16s).")]
         [SerializeField] private float m_FocusInDuration = 0.14f;
 
@@ -99,6 +103,19 @@ namespace MainGame.UI.Unified
         public float FloatSpeed { get => m_FloatSpeed; set => m_FloatSpeed = value; }
         public float FloatTiltAngle { get => m_FloatTiltAngle; set => m_FloatTiltAngle = value; }
         public float FocusFloatLift { get => m_FocusFloatLift; set => m_FocusFloatLift = value; }
+
+        public bool EnableTilt
+        {
+            get => m_EnableTilt;
+            set
+            {
+                m_EnableTilt = value;
+                if (!m_EnableTilt && m_ButtonVisual != null)
+                {
+                    m_ButtonVisual.localEulerAngles = Vector3.zero;
+                }
+            }
+        }
 
         public bool IsFocused => m_IsFocused;
         public RectTransform ButtonVisual => m_ButtonVisual;
@@ -281,7 +298,7 @@ namespace MainGame.UI.Unified
 
             Vector2 startPos = m_ButtonVisual.anchoredPosition;
             Vector2 targetPos = focusIn 
-                ? new Vector2(m_OriginalVisualPos.x + m_SelectedOffsetX, m_OriginalVisualPos.y) 
+                ? new Vector2(m_OriginalVisualPos.x + m_SelectedOffsetX, m_OriginalVisualPos.y + (m_EnableTilt ? 0f : m_FocusFloatLift)) 
                 : m_OriginalVisualPos;
 
             Vector3 startScale = m_ButtonVisual.localScale;
@@ -289,8 +306,8 @@ namespace MainGame.UI.Unified
                 ? new Vector3(m_SelectedScale, m_SelectedScale, 1f) 
                 : Vector3.one;
 
-            Vector3 startRot = m_ButtonVisual.localEulerAngles;
-            Vector3 targetRot = focusIn ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
+            Vector3 startRot = m_EnableTilt ? m_ButtonVisual.localEulerAngles : Vector3.zero;
+            Vector3 targetRot = (focusIn && m_EnableTilt) ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
 
             if (focusIn)
             {
@@ -348,14 +365,14 @@ namespace MainGame.UI.Unified
                         Vector2 currentPos = Vector2.Lerp(startPos, targetPos, t) + new Vector2(-1f * pulseFactor, 0f);
                         m_ButtonVisual.localScale = currentScale;
                         m_ButtonVisual.anchoredPosition = currentPos;
-                        m_ButtonVisual.localEulerAngles = Vector3.Lerp(startRot, targetRot, t);
+                        m_ButtonVisual.localEulerAngles = m_EnableTilt ? Vector3.Lerp(startRot, targetRot, t) : Vector3.zero;
                     }
                     else
                     {
                         float ease = UIEasing.Evaluate(EasingType.EaseOutQuad, t);
                         m_ButtonVisual.anchoredPosition = Vector2.Lerp(startPos, targetPos, ease);
                         m_ButtonVisual.localScale = Vector3.Lerp(startScale, targetScale, ease);
-                        m_ButtonVisual.localEulerAngles = Vector3.Lerp(startRot, targetRot, ease);
+                        m_ButtonVisual.localEulerAngles = m_EnableTilt ? Vector3.Lerp(startRot, targetRot, ease) : Vector3.zero;
                     }
                 }
 
@@ -370,7 +387,7 @@ namespace MainGame.UI.Unified
 
             m_ButtonVisual.anchoredPosition = targetPos;
             m_ButtonVisual.localScale = targetScale;
-            m_ButtonVisual.localEulerAngles = targetRot;
+            m_ButtonVisual.localEulerAngles = m_EnableTilt ? targetRot : Vector3.zero;
             if (m_LeftPointer != null && focusIn) m_LeftPointer.anchoredPosition = targetPointerPos;
             m_AnimationCoroutine = null;
 
@@ -415,7 +432,7 @@ namespace MainGame.UI.Unified
             float currentLift = m_IsFocused ? m_FocusFloatLift : 0f;
             float currentXOffset = m_IsFocused ? m_SelectedOffsetX : 0f;
             float currentBaseScale = m_IsFocused ? m_SelectedScale : 1.0f;
-            float currentBaseTilt = m_IsFocused ? m_SelectedTilt : 0f;
+            float currentBaseTilt = (m_IsFocused && m_EnableTilt) ? m_SelectedTilt : 0f;
 
             while (m_EnableFloating && m_ButtonVisual != null)
             {
@@ -425,7 +442,7 @@ namespace MainGame.UI.Unified
                 float targetLift = m_IsFocused ? m_FocusFloatLift : 0f;
                 float targetX = m_IsFocused ? m_SelectedOffsetX : 0f;
                 float targetScale = m_IsFocused ? m_SelectedScale : 1.0f;
-                float targetTilt = m_IsFocused ? m_SelectedTilt : 0f;
+                float targetTilt = (m_IsFocused && m_EnableTilt) ? m_SelectedTilt : 0f;
 
                 currentLift = Mathf.Lerp(currentLift, targetLift, dt * 10f);
                 currentXOffset = Mathf.Lerp(currentXOffset, targetX, dt * 10f);
@@ -435,7 +452,7 @@ namespace MainGame.UI.Unified
                 // Floating oscillation
                 float wave = Mathf.Sin(time * m_FloatSpeed + phase);
                 float yBob = wave * (m_IsFocused ? m_FloatAmplitude * 1.15f : m_FloatAmplitude) + currentLift;
-                float rock = Mathf.Cos(time * (m_FloatSpeed * 0.85f) + phase) * m_FloatTiltAngle;
+                float rock = m_EnableTilt ? (Mathf.Cos(time * (m_FloatSpeed * 0.85f) + phase) * m_FloatTiltAngle) : 0f;
 
                 // Heartbeat pulse when focused
                 float pulse = m_IsFocused ? Mathf.Sin(time * 4.5f) * 0.016f : 0f;
@@ -443,7 +460,7 @@ namespace MainGame.UI.Unified
 
                 m_ButtonVisual.anchoredPosition = new Vector2(m_OriginalVisualPos.x + currentXOffset, m_OriginalVisualPos.y + yBob);
                 m_ButtonVisual.localScale = new Vector3(finalScale, finalScale, 1f);
-                m_ButtonVisual.localEulerAngles = new Vector3(0f, 0f, currentBaseTilt + rock);
+                m_ButtonVisual.localEulerAngles = m_EnableTilt ? new Vector3(0f, 0f, currentBaseTilt + rock) : Vector3.zero;
 
                 // Pointer bobbing ping-pong when pointer is active and focused
                 if (m_LeftPointer != null && m_IsFocused)
@@ -498,8 +515,8 @@ namespace MainGame.UI.Unified
 
             Vector3 baseScale = m_IsFocused ? new Vector3(m_SelectedScale, m_SelectedScale, 1f) : Vector3.one;
             Vector3 pressedScale = new Vector3(m_ConfirmPressedScale, m_ConfirmPressedScale, 1f);
-            Vector3 baseRot = m_IsFocused ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
-            Vector3 pressedRot = new Vector3(0f, 0f, -1.5f);
+            Vector3 baseRot = (m_IsFocused && m_EnableTilt) ? new Vector3(0f, 0f, m_SelectedTilt) : Vector3.zero;
+            Vector3 pressedRot = m_EnableTilt ? new Vector3(0f, 0f, -1.5f) : Vector3.zero;
 
             // Phase 1: Physical compression (1.035 -> 0.94)
             float elapsed = 0f;
@@ -511,7 +528,7 @@ namespace MainGame.UI.Unified
 
                 m_ButtonVisual.anchoredPosition = Vector2.Lerp(basePos, punchPos, ease);
                 m_ButtonVisual.localScale = Vector3.Lerp(baseScale, pressedScale, ease);
-                m_ButtonVisual.localEulerAngles = Vector3.Lerp(baseRot, pressedRot, ease);
+                m_ButtonVisual.localEulerAngles = m_EnableTilt ? Vector3.Lerp(baseRot, pressedRot, ease) : Vector3.zero;
                 yield return null;
             }
 
@@ -527,13 +544,13 @@ namespace MainGame.UI.Unified
 
                 m_ButtonVisual.anchoredPosition = Vector2.LerpUnclamped(punchPos, basePos, ease);
                 m_ButtonVisual.localScale = Vector3.LerpUnclamped(pressedScale, baseScale, ease);
-                m_ButtonVisual.localEulerAngles = Vector3.LerpUnclamped(pressedRot, baseRot, ease);
+                m_ButtonVisual.localEulerAngles = m_EnableTilt ? Vector3.LerpUnclamped(pressedRot, baseRot, ease) : Vector3.zero;
                 yield return null;
             }
 
             m_ButtonVisual.anchoredPosition = basePos;
             m_ButtonVisual.localScale = baseScale;
-            m_ButtonVisual.localEulerAngles = baseRot;
+            m_ButtonVisual.localEulerAngles = m_EnableTilt ? baseRot : Vector3.zero;
             m_ConfirmCoroutine = null;
 
             if (m_EnableFloating && isActiveAndEnabled)

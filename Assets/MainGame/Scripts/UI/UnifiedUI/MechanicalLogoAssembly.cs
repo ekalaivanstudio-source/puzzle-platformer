@@ -90,6 +90,12 @@ namespace MainGame.UI.Unified
             if (m_LogoRoot != null)
             {
                 m_RootRestPos = m_LogoRoot.anchoredPosition;
+                // Enforce y = 0 if it was captured near 125 (to keep villain face visible)
+                if (Mathf.Abs(m_RootRestPos.y) > 0.01f && Mathf.Abs(m_RootRestPos.y - 125f) < 50f)
+                {
+                    m_RootRestPos.y = 0f;
+                    m_LogoRoot.anchoredPosition = m_RootRestPos;
+                }
                 m_RootRestScale = m_LogoRoot.localScale;
                 m_RootRestAngles = m_LogoRoot.localEulerAngles;
             }

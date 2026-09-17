@@ -21,6 +21,8 @@ namespace MainGame.UI.Unified
     [DisallowMultipleComponent]
     public class MainMenuButtonEnergyAnimator : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler
     {
+        public static event Action<MainMenuButtonEnergyAnimator, bool> OnAnyButtonFocused;
+
         [Header("Entrance Snap Settings")]
         [Tooltip("Positional offset when powered down / entering (relative to rest position).")]
         [SerializeField] private Vector2 m_StartOffset = new Vector2(-24f, 0f);
@@ -516,6 +518,8 @@ namespace MainGame.UI.Unified
         {
             CaptureRestState();
             m_IsFocused = focused;
+
+            OnAnyButtonFocused?.Invoke(this, focused);
 
             // Instantly kill any ongoing focus or idle animation
             KillMotion();

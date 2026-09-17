@@ -137,6 +137,17 @@ namespace MainGame.UI.Unified
                 }
             }
 
+            // Auto-ensure MainMenuBackgroundDirector on ScreenManager so background comes alive automatically
+            if (MainMenuBackgroundDirector.Instance == null)
+            {
+                Transform screenManager = transform.parent != null ? transform.parent : transform;
+                if (screenManager != null)
+                {
+                    MainMenuBackgroundDirector director = screenManager.GetComponent<MainMenuBackgroundDirector>() ?? screenManager.gameObject.AddComponent<MainMenuBackgroundDirector>();
+                    director.ResolveReferences();
+                }
+            }
+
             // Resolve buttons
             if (m_ContinueButton == null || m_NewGameButton == null)
             {
@@ -232,6 +243,11 @@ namespace MainGame.UI.Unified
             if (CinematicUIFXManager.Instance != null)
             {
                 CinematicUIFXManager.Instance.ResetFX();
+            }
+
+            if (MainMenuBackgroundDirector.Instance != null)
+            {
+                MainMenuBackgroundDirector.Instance.Reset();
             }
 
             if (m_ScreenPanelRoot != null)
@@ -375,6 +391,11 @@ namespace MainGame.UI.Unified
             {
                 StopCoroutine(m_AmbientRoutine);
                 m_AmbientRoutine = null;
+            }
+
+            if (MainMenuBackgroundDirector.Instance != null)
+            {
+                MainMenuBackgroundDirector.Instance.Stop();
             }
 
             for (int i = 0; i < m_ChildCoroutines.Count; i++)
@@ -553,6 +574,11 @@ namespace MainGame.UI.Unified
             // Begin subtle ambient living breathing loop
             m_AmbientRoutine = StartCoroutine(AmbientLivingLoop());
 
+            if (MainMenuBackgroundDirector.Instance != null)
+            {
+                MainMenuBackgroundDirector.Instance.Play();
+            }
+
             m_ActiveRoutine = null;
             onComplete?.Invoke();
         }
@@ -645,6 +671,11 @@ namespace MainGame.UI.Unified
             while (pendingRetracts > 0 || !logoBreakdownDone)
             {
                 yield return null;
+            }
+
+            if (MainMenuBackgroundDirector.Instance != null)
+            {
+                MainMenuBackgroundDirector.Instance.Stop();
             }
 
             m_ActiveRoutine = null;

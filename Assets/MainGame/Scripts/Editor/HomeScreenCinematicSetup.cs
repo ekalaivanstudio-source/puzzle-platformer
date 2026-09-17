@@ -14,7 +14,7 @@ namespace MainGame.UI.Editor
     {
         private const string k_MenuPath = "Tools/UI/Setup Cinematic Menu Animations";
         private const string k_HomeScenePath = "Assets/MainGame/Scenes/HomeScreen.unity";
-        private const string k_RunSessionKey = "HomeScreenCinematicSetup_Completed_v2";
+        private const string k_RunSessionKey = "HomeScreenCinematicSetup_Completed_v3";
 
         [InitializeOnLoadMethod]
         private static void OnProjectLoaded()
@@ -97,6 +97,7 @@ namespace MainGame.UI.Editor
             SetupSettingsPanel(screenManager);
             SetupCreditsPanel(screenManager);
             SetupConfirmationPopup(screenManager);
+            MainMenuBackgroundSetup.RunSetup(false);
 
             if (uiManagers != null)
             {
