@@ -86,6 +86,22 @@ namespace MainGame.UI.Unified
         [Tooltip("SFX played on button confirmation punch.")]
         [SerializeField] private UISfxType m_ConfirmSfx = UISfxType.Confirm;
 
+        [Header("Floating Effect Settings")]
+        [Tooltip("Enable continuous zero-drift floating motion for this button.")]
+        [SerializeField] private bool m_EnableFloating = true;
+
+        [Tooltip("Peak vertical floating displacement in pixels.")]
+        [SerializeField] private float m_FloatAmplitude = 4f;
+
+        [Tooltip("Floating oscillation speed in radians/sec.")]
+        [SerializeField] private float m_FloatSpeed = 2.2f;
+
+        [Tooltip("Subtle angular tilt during floating in degrees.")]
+        [SerializeField] private float m_FloatTiltAngle = 0.8f;
+
+        [Tooltip("Additional vertical lift when focused/selected.")]
+        [SerializeField] private float m_FocusFloatLift = 3.5f;
+
         [Header("Visual References")]
         [SerializeField] private RectTransform m_ButtonVisual;
         [SerializeField] private RectTransform m_PointerIcon;
@@ -100,10 +116,27 @@ namespace MainGame.UI.Unified
 
         // Active Routines
         private Coroutine m_ActiveRoutine;
+        private Coroutine m_FloatingRoutine;
         private bool m_IsFocused = false;
 
         // Cached CinematicUIEffect
         private CinematicUIEffect m_CinematicUI;
+
+        public bool EnableFloating
+        {
+            get => m_EnableFloating;
+            set
+            {
+                m_EnableFloating = value;
+                if (value) StartFloatingIdle();
+                else StopFloating();
+            }
+        }
+
+        public float FloatAmplitude { get => m_FloatAmplitude; set => m_FloatAmplitude = value; }
+        public float FloatSpeed { get => m_FloatSpeed; set => m_FloatSpeed = value; }
+        public float FloatTiltAngle { get => m_FloatTiltAngle; set => m_FloatTiltAngle = value; }
+        public float FocusFloatLift { get => m_FocusFloatLift; set => m_FocusFloatLift = value; }
 
         public bool IsExitButton
         {
@@ -151,6 +184,15 @@ namespace MainGame.UI.Unified
         private void Awake()
         {
             CaptureRestState();
+        }
+
+        private void Start()
+        {
+            CaptureRestState();
+            if (m_EnableFloating && m_ActiveRoutine == null && isActiveAndEnabled)
+            {
+                StartFloatingIdle();
+            }
         }
 
         private void OnDisable()
@@ -223,6 +265,11 @@ namespace MainGame.UI.Unified
             {
                 CinematicUI.ResetToIdle();
             }
+
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloatingIdle();
+            }
         }
 
         public void KillMotion()
@@ -233,10 +280,57 @@ namespace MainGame.UI.Unified
                 m_ActiveRoutine = null;
             }
 
+            StopFloating();
+
             if (CinematicUI != null)
             {
                 CinematicUI.ResetToIdle();
             }
+        }
+
+        public void StopFloating()
+        {
+            if (m_FloatingRoutine != null)
+            {
+                StopCoroutine(m_FloatingRoutine);
+                m_FloatingRoutine = null;
+            }
+        }
+
+        public void StartFloatingIdle()
+        {
+            if (!m_EnableFloating || !isActiveAndEnabled || m_ButtonVisual == null) return;
+
+            StopFloating();
+            m_FloatingRoutine = StartCoroutine(FloatingIdleRoutine());
+        }
+
+        private IEnumerator FloatingIdleRoutine()
+        {
+            CaptureRestState();
+            float phase = (m_RestAnchoredPos.x * 0.015f) + (m_RestAnchoredPos.y * -0.025f) + (transform.GetSiblingIndex() * 0.55f);
+            float currentLift = m_IsFocused ? m_FocusFloatLift : 0f;
+
+            while (m_EnableFloating && m_ButtonVisual != null)
+            {
+                float dt = Time.unscaledDeltaTime;
+                float time = Time.unscaledTime;
+
+                float targetLift = m_IsFocused ? m_FocusFloatLift : 0f;
+                currentLift = Mathf.Lerp(currentLift, targetLift, dt * 10f);
+
+                // Smooth sinusoidal floating oscillation
+                float wave = Mathf.Sin(time * m_FloatSpeed + phase);
+                float yBob = wave * m_FloatAmplitude + currentLift;
+                float tilt = Mathf.Cos(time * (m_FloatSpeed * 0.85f) + phase) * m_FloatTiltAngle;
+
+                m_ButtonVisual.anchoredPosition = new Vector2(m_RestAnchoredPos.x, m_RestAnchoredPos.y + yBob);
+                m_ButtonVisual.localEulerAngles = new Vector3(m_RestEulerAngles.x, m_RestEulerAngles.y, m_RestEulerAngles.z + tilt);
+
+                yield return null;
+            }
+
+            m_FloatingRoutine = null;
         }
 
         public Color GetEnergyColor()
@@ -389,6 +483,11 @@ namespace MainGame.UI.Unified
 
             m_ActiveRoutine = null;
             onComplete?.Invoke();
+
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloatingIdle();
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════════════
@@ -436,6 +535,11 @@ namespace MainGame.UI.Unified
                 if (CinematicUI != null)
                 {
                     CinematicUI.ResetToIdle();
+                }
+
+                if (m_EnableFloating && isActiveAndEnabled)
+                {
+                    StartFloatingIdle();
                 }
                 return;
             }
@@ -516,6 +620,11 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
+
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloatingIdle();
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════════════
@@ -617,6 +726,11 @@ namespace MainGame.UI.Unified
 
             m_ActiveRoutine = null;
             onComplete?.Invoke();
+
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloatingIdle();
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════════════

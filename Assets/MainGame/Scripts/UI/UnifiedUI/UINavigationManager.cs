@@ -8,6 +8,7 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using MainGame.UI.RoboticEffects;
 using MainGame.UI.CinematicEffects;
+using MainGame.UI;
 
 namespace MainGame.UI.Unified
 {
@@ -315,6 +316,8 @@ namespace MainGame.UI.Unified
                 Log($"Ignoring PushScreen({newScreen.name}) while transitioning.");
                 return;
             }
+
+            UIFloatingButton.AttachToAllButtonsIn(newScreen.gameObject);
 
             PruneDestroyedScreens();
             Log($"Pushing screen: {newScreen.gameObject.name}");

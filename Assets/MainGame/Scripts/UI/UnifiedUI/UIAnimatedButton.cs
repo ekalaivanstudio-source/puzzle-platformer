@@ -34,6 +34,22 @@ namespace MainGame.UI.Unified
         [Tooltip("Duration of focus out transition (seconds).")]
         [SerializeField] private float m_FocusOutDuration = 0.12f;
 
+        [Header("Floating Effect Settings")]
+        [Tooltip("Enable continuous floating motion for this button.")]
+        [SerializeField] private bool m_EnableFloating = true;
+
+        [Tooltip("Vertical floating bob amplitude in pixels.")]
+        [SerializeField] private float m_FloatAmplitude = 4f;
+
+        [Tooltip("Floating oscillation speed in radians/sec.")]
+        [SerializeField] private float m_FloatSpeed = 2.2f;
+
+        [Tooltip("Subtle angular tilt during floating in degrees.")]
+        [SerializeField] private float m_FloatTiltAngle = 0.8f;
+
+        [Tooltip("Additional vertical lift when focused/selected.")]
+        [SerializeField] private float m_FocusFloatLift = 3.5f;
+
         [Header("Physical Confirmation Punch")]
         [Tooltip("Duration of the physical compression and rebound when submitted/pressed.")]
         [SerializeField] private float m_ConfirmDuration = 0.14f;
@@ -68,6 +84,21 @@ namespace MainGame.UI.Unified
         private Coroutine m_ConfirmCoroutine;
         private bool m_IsFocused = false;
         private bool m_HasCapturedRestState = false;
+
+        public bool EnableFloating
+        {
+            get => m_EnableFloating;
+            set
+            {
+                m_EnableFloating = value;
+                if (value) StartFloating();
+                else StopFloating();
+            }
+        }
+        public float FloatAmplitude { get => m_FloatAmplitude; set => m_FloatAmplitude = value; }
+        public float FloatSpeed { get => m_FloatSpeed; set => m_FloatSpeed = value; }
+        public float FloatTiltAngle { get => m_FloatTiltAngle; set => m_FloatTiltAngle = value; }
+        public float FocusFloatLift { get => m_FocusFloatLift; set => m_FocusFloatLift = value; }
 
         public bool IsFocused => m_IsFocused;
         public RectTransform ButtonVisual => m_ButtonVisual;
@@ -116,6 +147,10 @@ namespace MainGame.UI.Unified
         private void Start()
         {
             CaptureRestState();
+            if (m_EnableFloating && m_AnimationCoroutine == null && m_ConfirmCoroutine == null && isActiveAndEnabled)
+            {
+                StartFloating();
+            }
         }
 
         public void CaptureRestState()
@@ -341,26 +376,77 @@ namespace MainGame.UI.Unified
 
             if (focusIn && m_IsFocused)
             {
-                m_LivingIdleCoroutine = StartCoroutine(LivingIdleRoutine());
+                if (m_EnableFloating && isActiveAndEnabled)
+                {
+                    StartFloating();
+                }
+                else
+                {
+                    m_LivingIdleCoroutine = StartCoroutine(LivingIdleRoutine());
+                }
+            }
+            else if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloating();
+            }
+        }
+
+        public void StartFloating()
+        {
+            if (!m_EnableFloating || !isActiveAndEnabled || m_ButtonVisual == null) return;
+
+            StopFloating();
+            m_LivingIdleCoroutine = StartCoroutine(LivingIdleRoutine());
+        }
+
+        public void StopFloating()
+        {
+            if (m_LivingIdleCoroutine != null)
+            {
+                StopCoroutine(m_LivingIdleCoroutine);
+                m_LivingIdleCoroutine = null;
             }
         }
 
         private IEnumerator LivingIdleRoutine()
         {
-            Vector3 baseScale = new Vector3(m_SelectedScale, m_SelectedScale, 1f);
+            CaptureRestState();
+            float phase = (m_OriginalVisualPos.x * 0.015f) + (m_OriginalVisualPos.y * -0.025f) + (transform.GetSiblingIndex() * 0.55f);
+            float currentLift = m_IsFocused ? m_FocusFloatLift : 0f;
+            float currentXOffset = m_IsFocused ? m_SelectedOffsetX : 0f;
+            float currentBaseScale = m_IsFocused ? m_SelectedScale : 1.0f;
+            float currentBaseTilt = m_IsFocused ? m_SelectedTilt : 0f;
 
-            while (m_IsFocused)
+            while (m_EnableFloating && m_ButtonVisual != null)
             {
+                float dt = Time.unscaledDeltaTime;
                 float time = Time.unscaledTime;
-                // Heartbeat pulse: subtle breathing on button scale
-                float pulse = Mathf.Sin(time * 4.5f) * 0.016f;
-                if (m_ButtonVisual != null)
-                {
-                    m_ButtonVisual.localScale = baseScale + new Vector3(pulse, pulse, 0f);
-                }
 
-                // Kinetic comic pointer ping-pong (4.5px amplitude)
-                if (m_LeftPointer != null)
+                float targetLift = m_IsFocused ? m_FocusFloatLift : 0f;
+                float targetX = m_IsFocused ? m_SelectedOffsetX : 0f;
+                float targetScale = m_IsFocused ? m_SelectedScale : 1.0f;
+                float targetTilt = m_IsFocused ? m_SelectedTilt : 0f;
+
+                currentLift = Mathf.Lerp(currentLift, targetLift, dt * 10f);
+                currentXOffset = Mathf.Lerp(currentXOffset, targetX, dt * 10f);
+                currentBaseScale = Mathf.Lerp(currentBaseScale, targetScale, dt * 10f);
+                currentBaseTilt = Mathf.Lerp(currentBaseTilt, targetTilt, dt * 10f);
+
+                // Floating oscillation
+                float wave = Mathf.Sin(time * m_FloatSpeed + phase);
+                float yBob = wave * (m_IsFocused ? m_FloatAmplitude * 1.15f : m_FloatAmplitude) + currentLift;
+                float rock = Mathf.Cos(time * (m_FloatSpeed * 0.85f) + phase) * m_FloatTiltAngle;
+
+                // Heartbeat pulse when focused
+                float pulse = m_IsFocused ? Mathf.Sin(time * 4.5f) * 0.016f : 0f;
+                float finalScale = currentBaseScale + pulse;
+
+                m_ButtonVisual.anchoredPosition = new Vector2(m_OriginalVisualPos.x + currentXOffset, m_OriginalVisualPos.y + yBob);
+                m_ButtonVisual.localScale = new Vector3(finalScale, finalScale, 1f);
+                m_ButtonVisual.localEulerAngles = new Vector3(0f, 0f, currentBaseTilt + rock);
+
+                // Pointer bobbing ping-pong when pointer is active and focused
+                if (m_LeftPointer != null && m_IsFocused)
                 {
                     float pointerBob = Mathf.Sin(time * 7f) * 4.5f;
                     m_LeftPointer.anchoredPosition = new Vector2(m_OriginalPointerPos.x + pointerBob, m_OriginalPointerPos.y);
@@ -368,6 +454,8 @@ namespace MainGame.UI.Unified
 
                 yield return null;
             }
+
+            m_LivingIdleCoroutine = null;
         }
 
         private IEnumerator ConfirmPunchRoutine(Action onComplete)
@@ -448,7 +536,11 @@ namespace MainGame.UI.Unified
             m_ButtonVisual.localEulerAngles = baseRot;
             m_ConfirmCoroutine = null;
 
-            if (m_IsFocused)
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloating();
+            }
+            else if (m_IsFocused)
             {
                 m_LivingIdleCoroutine = StartCoroutine(LivingIdleRoutine());
             }
@@ -484,12 +576,18 @@ namespace MainGame.UI.Unified
             {
                 m_ButtonVisual.anchoredPosition = m_OriginalVisualPos;
                 m_ButtonVisual.localScale = Vector3.one;
+                m_ButtonVisual.localEulerAngles = Vector3.zero;
             }
 
             if (m_LeftPointer != null)
             {
                 m_LeftPointer.anchoredPosition = m_OriginalPointerPos;
                 m_LeftPointer.gameObject.SetActive(false);
+            }
+
+            if (m_EnableFloating && isActiveAndEnabled)
+            {
+                StartFloating();
             }
         }
 
