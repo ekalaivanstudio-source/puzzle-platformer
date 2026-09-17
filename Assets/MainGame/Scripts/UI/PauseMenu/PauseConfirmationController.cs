@@ -12,7 +12,12 @@ namespace MainGame.UI.PauseMenu
 {
     public struct ConfirmationRequest
     {
-        public Sprite TitleSprite;
+        public Sprite MessageSprite;
+        public Sprite TitleSprite
+        {
+            get => MessageSprite;
+            set => MessageSprite = value;
+        }
         public Action OnConfirm;
         public Action OnCancel;
     }
@@ -33,6 +38,7 @@ namespace MainGame.UI.PauseMenu
         [SerializeField] private Button m_YesButton;
         [SerializeField] private Button m_NoButton;
         [SerializeField] private Image m_TitleImage;
+        [SerializeField] private Image m_MessageImage;
 
         [Header("Animator Reference")]
         [SerializeField] private ConfirmationPopupAnimator m_Animator;
@@ -80,21 +86,29 @@ namespace MainGame.UI.PauseMenu
                 {
                     m_TitleImage = title.GetComponent<Image>();
                 }
-                else if (m_TitleImage == null)
+
+                Transform msg = m_DialogTransform.Find("Message");
+                if (msg != null)
                 {
-                    Transform msg = m_DialogTransform.Find("Message");
-                    if (msg != null) m_TitleImage = msg.GetComponent<Image>();
+                    m_MessageImage = msg.GetComponent<Image>();
+                }
+                else if (m_MessageImage == null && m_TitleImage != null && m_TitleImage.gameObject.name == "Message")
+                {
+                    m_MessageImage = m_TitleImage;
+                    if (title != null) m_TitleImage = title.GetComponent<Image>();
                 }
             }
 
-            // Deactivate any duplicate Message GameObject (ghost header bug)
-            if (m_DialogTransform != null)
+            // Ensure both Title banner and selection Message are active and properly configured
+            if (m_TitleImage != null)
             {
-                Transform msg = m_DialogTransform.Find("Message");
-                if (msg != null && (m_TitleImage == null || msg != m_TitleImage.transform))
-                {
-                    msg.gameObject.SetActive(false);
-                }
+                m_TitleImage.gameObject.SetActive(true);
+            }
+
+            if (m_MessageImage != null)
+            {
+                m_MessageImage.gameObject.SetActive(true);
+                m_MessageImage.preserveAspect = true;
             }
 
             // Ensure dark backdrop scrim Image exists on ConfirmationPopup
@@ -204,9 +218,12 @@ namespace MainGame.UI.PauseMenu
 
             BuildHorizontalNavigation();
 
-            if (m_TitleImage != null && request.TitleSprite != null)
+            Sprite spriteToUse = request.MessageSprite != null ? request.MessageSprite : request.TitleSprite;
+            if (m_MessageImage != null && spriteToUse != null)
             {
-                m_TitleImage.sprite = request.TitleSprite;
+                m_MessageImage.gameObject.SetActive(true);
+                m_MessageImage.sprite = spriteToUse;
+                m_MessageImage.preserveAspect = true;
             }
 
             if (m_Audio != null) m_Audio.PlayWarningPopup();

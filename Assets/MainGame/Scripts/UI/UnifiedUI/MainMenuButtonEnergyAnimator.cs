@@ -19,7 +19,7 @@ namespace MainGame.UI.Unified
     /// - Safely interruptible with zero transform drift or fighting tweens.
     /// </summary>
     [DisallowMultipleComponent]
-    public class MainMenuButtonEnergyAnimator : MonoBehaviour, ISelectHandler, IDeselectHandler
+    public class MainMenuButtonEnergyAnimator : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler
     {
         [Header("Entrance Snap Settings")]
         [Tooltip("Positional offset when powered down / entering (relative to rest position).")]
@@ -403,6 +403,14 @@ namespace MainGame.UI.Unified
         public void OnDeselect(BaseEventData eventData)
         {
             SetFocusState(false);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (EventSystem.current != null && !PauseMenuScreen.IsPaused)
+            {
+                EventSystem.current.SetSelectedGameObject(gameObject);
+            }
         }
 
         private void SetFocusState(bool focused)

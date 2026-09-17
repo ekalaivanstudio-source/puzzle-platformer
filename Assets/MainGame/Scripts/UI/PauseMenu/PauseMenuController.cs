@@ -463,6 +463,11 @@ namespace MainGame.UI.PauseMenu
             SetUIVisible(false);
             m_CurrentState = PauseState.Gameplay;
 
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.sendNavigationEvents = true;
+            }
+
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.GoToMainMenu();

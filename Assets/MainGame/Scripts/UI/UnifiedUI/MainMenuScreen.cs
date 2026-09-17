@@ -150,6 +150,20 @@ namespace MainGame.UI.Unified
             {
                 PauseMenuScreen.AutoOpenLevelSelection = false;
                 StartCoroutine(OpenLevelSelectionNextFrame());
+                return;
+            }
+
+            // Self-healing fallback: Ensure MainMenuScreen is pushed and entrance animation plays
+            if (UINavigationManager.Instance != null)
+            {
+                if (UINavigationManager.Instance.CurrentScreen == null)
+                {
+                    UINavigationManager.Instance.PushScreen(this);
+                }
+            }
+            else
+            {
+                PlayEnterTransition(null);
             }
         }
 

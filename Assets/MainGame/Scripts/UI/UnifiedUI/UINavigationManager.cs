@@ -108,7 +108,6 @@ namespace MainGame.UI.Unified
                 return;
             }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
 
             if (m_UIInputActionAsset == null)
             {
@@ -163,7 +162,11 @@ namespace MainGame.UI.Unified
         private void Start()
         {
             ConfigureUIInputModule();
-            if (m_InitialScreen != null)
+            if (m_InitialScreen == null)
+            {
+                m_InitialScreen = FindAnyObjectByType<MainMenuScreen>(FindObjectsInactive.Include);
+            }
+            if (m_InitialScreen != null && m_ScreenHistory.Count == 0)
             {
                 PushScreen(m_InitialScreen);
             }
@@ -185,7 +188,24 @@ namespace MainGame.UI.Unified
                 m_TransitionCoroutine = null;
             }
 
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.sendNavigationEvents = true;
+            }
+
             ConfigureUIInputModule();
+
+            if (scene.name == "HomeScreen")
+            {
+                if (m_InitialScreen == null)
+                {
+                    m_InitialScreen = FindAnyObjectByType<MainMenuScreen>(FindObjectsInactive.Include);
+                }
+                if (m_InitialScreen != null && m_ScreenHistory.Count == 0)
+                {
+                    PushScreen(m_InitialScreen);
+                }
+            }
         }
 
         /// <summary>

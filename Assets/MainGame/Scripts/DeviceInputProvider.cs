@@ -74,6 +74,14 @@ public class DeviceInputProvider : MonoBehaviour
     private void OnEnable() => RegisterListeners(true);
     private void OnDisable() => RegisterListeners(false);
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
     private void RegisterListeners(bool register)
     {
         if (m_InputActionAsset == null) return;

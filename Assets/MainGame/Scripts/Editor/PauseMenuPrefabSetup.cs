@@ -141,8 +141,10 @@ namespace MainGame.Editor
                         if (dialog != null)
                         {
                             serializedConfirm.FindProperty("m_DialogTransform").objectReferenceValue = dialog as RectTransform;
-                            Transform title = dialog.Find("Title") ?? dialog.Find("Message");
+                            Transform title = dialog.Find("Title");
                             if (title != null) serializedConfirm.FindProperty("m_TitleImage").objectReferenceValue = title.GetComponent<Image>();
+                            Transform msg = dialog.Find("Message");
+                            if (msg != null) serializedConfirm.FindProperty("m_MessageImage").objectReferenceValue = msg.GetComponent<Image>();
                             Transform yes = dialog.Find("YesButton");
                             if (yes != null) serializedConfirm.FindProperty("m_YesButton").objectReferenceValue = yes.GetComponent<Button>();
                             Transform no = dialog.Find("NoButton");
