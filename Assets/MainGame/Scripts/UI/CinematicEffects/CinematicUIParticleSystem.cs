@@ -347,6 +347,45 @@ namespace MainGame.UI.CinematicEffects
         }
 
         /// <summary>
+        /// Spawns a stylized flying spark that floats across the screen with organic sinusoidal sway,
+        /// dynamic scaling, and smooth chromatic color transition from startColor to endColor.
+        /// </summary>
+        public void SpawnFloatingSpark(Vector2 startPos, Transform targetParent, Color startColor, Color endColor, Vector2 velocity, float duration, float size = 5f, float wobbleAmount = 18f, float wobbleFreq = 3f)
+        {
+            UIParticleItem p = GetAvailable();
+            if (p == null) return;
+
+            if (targetParent == null) targetParent = m_PoolContainer;
+
+            p.rect.SetParent(targetParent, false);
+            p.rect.sizeDelta = new Vector2(size, size);
+            p.rect.anchoredPosition = startPos;
+            p.rect.localEulerAngles = new Vector3(0f, 0f, UnityEngine.Random.Range(0f, 360f));
+
+            // Varied point-filtered retro sprites: sparks, glowing dots, and dynamic shards/arcs
+            int spriteIndex = UnityEngine.Random.Range(0, 4);
+            switch (spriteIndex)
+            {
+                case 0: p.image.sprite = s_SparkSprite; break;
+                case 1: p.image.sprite = s_DotSprite; break;
+                case 2: p.image.sprite = s_ArcSprite; break;
+                default: p.image.sprite = s_StreakSprite; break;
+            }
+
+            p.image.color = startColor;
+            p.canvasGroup.alpha = 0f;
+            p.root.SetActive(true);
+
+            StartCoroutine(AnimateFloatingSparkRoutine(p, startPos, velocity, duration, startColor, endColor, size, wobbleAmount, wobbleFreq));
+        }
+
+        public void SpawnFloatingSpark(Vector3 worldPos, Color startColor, Color endColor, Vector2 velocity, float duration, float size = 5f, float wobbleAmount = 18f, float wobbleFreq = 3f)
+        {
+            Vector2 localPos = (m_PoolContainer != null) ? (Vector2)m_PoolContainer.InverseTransformPoint(worldPos) : (Vector2)worldPos;
+            SpawnFloatingSpark(localPos, m_PoolContainer, startColor, endColor, velocity, duration, size, wobbleAmount, wobbleFreq);
+        }
+
+        /// <summary>
         /// Spawns a single subtle speed trail particle behind a moving UI element.
         /// </summary>
         public void SpawnEnergyTrail(Vector2 position, Transform targetParent, Color color, Vector2 velocity)
@@ -621,6 +660,78 @@ namespace MainGame.UI.CinematicEffects
 
                 p.rect.sizeDelta = Vector2.Lerp(baseSize, peakSize, t);
                 p.canvasGroup.alpha = 1f - t * t;
+                yield return null;
+            }
+
+            RecycleParticle(p);
+        }
+
+        private IEnumerator AnimateFloatingSparkRoutine(UIParticleItem p, Vector2 startPos, Vector2 velocity, float duration, Color startColor, Color endColor, float baseSize, float wobbleAmount, float wobbleFreq)
+        {
+            float elapsed = 0f;
+            float phaseOffset = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+            float rotSpeed = UnityEngine.Random.Range(-90f, 90f);
+            float startRot = p.rect.localEulerAngles.z;
+
+            // If streak sprite, orient along velocity direction
+            bool isStreak = (p.image.sprite == s_StreakSprite);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Base motion from continuous velocity
+                Vector2 currentPos = startPos + velocity * elapsed;
+
+                // Organic sinusoidal wind sway (horizontal / drift oscillation)
+                float wobble = Mathf.Sin((elapsed * wobbleFreq) + phaseOffset) * wobbleAmount;
+                currentPos.x += wobble;
+
+                p.rect.anchoredPosition = currentPos;
+
+                // Dynamic rotation
+                if (isStreak)
+                {
+                    Vector2 currentVel = velocity + new Vector2(Mathf.Cos((elapsed * wobbleFreq) + phaseOffset) * wobbleAmount * wobbleFreq, 0f);
+                    float angle = Mathf.Atan2(currentVel.y, currentVel.x) * Mathf.Rad2Deg;
+                    p.rect.localEulerAngles = new Vector3(0f, 0f, angle - 90f);
+                }
+                else
+                {
+                    p.rect.localEulerAngles = new Vector3(0f, 0f, startRot + rotSpeed * elapsed);
+                }
+
+                // Dynamic size twinkle / micro-pulse
+                float twinkle = 1f + 0.25f * Mathf.Sin(elapsed * 12f + phaseOffset);
+                p.rect.sizeDelta = new Vector2(baseSize * twinkle, baseSize * twinkle);
+
+                // Chromatic Color Transition over lifetime
+                p.image.color = Color.Lerp(startColor, endColor, t);
+
+                // Smooth Alpha envelope: Quick fade-in (first 15%), sustained hold, gentle fade-out
+                float alpha;
+                if (t < 0.15f)
+                {
+                    alpha = t / 0.15f;
+                }
+                else if (t > 0.70f)
+                {
+                    alpha = (1f - t) / 0.30f;
+                }
+                else
+                {
+                    alpha = 1f;
+                }
+
+                // Micro sparkle twinkle
+                if (UnityEngine.Random.value < 0.08f)
+                {
+                    alpha = Mathf.Min(1f, alpha * 1.35f);
+                }
+
+                p.canvasGroup.alpha = Mathf.Clamp01(alpha);
+
                 yield return null;
             }
 

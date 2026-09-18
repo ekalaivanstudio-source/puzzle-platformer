@@ -101,7 +101,7 @@ namespace MainGame.UI.CinematicEffects
             }
 
             string goName = gameObject.name.ToLowerInvariant();
-            return goName.Contains("bg red") || goName.Contains("spark");
+            return goName.Contains("bg red") || goName.Contains("backgroundred") || goName.Contains("bg_red");
         }
 
         public void ResolveTarget()

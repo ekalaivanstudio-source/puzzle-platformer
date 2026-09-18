@@ -482,14 +482,14 @@ namespace MainGame.UI.CinematicEffects
             m_LastFocusedButtonName = button.gameObject.name;
             m_CurrentHierarchyLevel = 3;
 
-            // Punctuate button focus with subtle Type A Micro Glitch ONLY on permitted background layers (Red BG & Spark)
+            // Punctuate button focus with subtle Type A Micro Glitch ONLY on permitted background layer (Red BG)
             if (m_BgRedController != null)
             {
                 m_BgRedController.TriggerControlledGlitch(ControlledGlitchType.TypeA_MicroGlitch, 0.8f);
             }
-            if (m_SparkController != null && UnityEngine.Random.value < 0.45f)
+            if (m_SparkAtmosphere != null && UnityEngine.Random.value < 0.45f)
             {
-                m_SparkController.TriggerControlledGlitch(ControlledGlitchType.TypeA_MicroGlitch, 0.8f);
+                m_SparkAtmosphere.TriggerLuminousFlyingBurst(5);
             }
 
             string btnName = button.gameObject.name.ToLowerInvariant();
@@ -615,10 +615,10 @@ namespace MainGame.UI.CinematicEffects
                         break;
 
                     case 3:
-                        // Spark electrical digital glitch burst (only Spark / Red BG permitted)
-                        if (m_SparkController != null)
+                        // Luminous flying spark burst with color morph
+                        if (m_SparkAtmosphere != null)
                         {
-                            m_SparkController.TriggerControlledGlitch(ControlledGlitchType.TypeB_DigitalTear, 1f);
+                            m_SparkAtmosphere.TriggerLuminousFlyingBurst(8);
                         }
                         else if (m_BgRedController != null)
                         {

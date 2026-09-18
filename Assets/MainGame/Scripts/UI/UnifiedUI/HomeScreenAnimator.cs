@@ -540,9 +540,9 @@ namespace MainGame.UI.Unified
                             {
                                 MainMenuBackgroundDirector.Instance.BgRedController.TriggerControlledGlitch(ControlledGlitchType.TypeD_MajorImpactGlitch, 0.85f);
                             }
-                            if (MainMenuBackgroundDirector.Instance.SparkController != null)
+                            if (MainMenuBackgroundDirector.Instance.SparkAtmosphere != null)
                             {
-                                MainMenuBackgroundDirector.Instance.SparkController.TriggerControlledGlitch(ControlledGlitchType.TypeD_MajorImpactGlitch, 0.85f);
+                                MainMenuBackgroundDirector.Instance.SparkAtmosphere.TriggerLuminousFlyingBurst(12);
                             }
                         }
                         if (m_Background != null)

@@ -143,11 +143,11 @@ namespace MainGame.Editor
                     director.BgRedController.TriggerControlledGlitch(ControlledGlitchType.TypeB_DigitalTear, 1f);
                 }
             }
-            if (GUILayout.Button("Glitch Spark FX", GUILayout.Height(24)))
+            if (GUILayout.Button("Fly Spark Burst", GUILayout.Height(24)))
             {
-                if (director.SparkController != null)
+                if (director.SparkAtmosphere != null)
                 {
-                    director.SparkController.TriggerControlledGlitch(ControlledGlitchType.TypeB_DigitalTear, 1f);
+                    director.SparkAtmosphere.TriggerLuminousFlyingBurst(12);
                 }
             }
             EditorGUILayout.EndHorizontal();

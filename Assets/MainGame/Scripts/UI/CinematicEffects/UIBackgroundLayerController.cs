@@ -280,6 +280,8 @@ namespace MainGame.UI.CinematicEffects
             set => m_LinkedOutlineLayer = value;
         }
 
+        public Color PulseColor { get => m_PulseColor; set { m_PulseColor = value; SyncShaderProperties(); } }
+
         public bool AllowGlitch
         {
             get => m_AllowGlitch;
@@ -288,7 +290,8 @@ namespace MainGame.UI.CinematicEffects
 
         public bool IsGlitchPermitted()
         {
-            if (m_Profile == BackgroundLayerProfile.BackgroundRed || m_Profile == BackgroundLayerProfile.Spark)
+            // Only BackgroundRed is permitted to undergo digital glitch/scan effects
+            if (m_Profile == BackgroundLayerProfile.BackgroundRed)
             {
                 return m_AllowGlitch;
             }
@@ -710,17 +713,17 @@ namespace MainGame.UI.CinematicEffects
 
                 case BackgroundLayerProfile.Spark:
                     m_ThemePreset = CinematicThemePreset.PlasmaBlue;
-                    m_PixelGridStep = 384f;
-                    m_DistortionStrength = 0.003f;
-                    m_DistortionSpeed = 1.2f;
-                    m_DistortionFrequency = 10.0f;
-                    m_NoiseStrength = 0.035f;
-                    m_NoiseScale = 64f;
-                    m_NoiseSpeed = 4.0f;
-                    m_BrightnessPulse = 0.15f;
+                    m_PixelGridStep = 0f;
+                    m_DistortionStrength = 0f;
+                    m_DistortionSpeed = 0f;
+                    m_DistortionFrequency = 0f;
+                    m_NoiseStrength = 0f;
+                    m_NoiseScale = 0f;
+                    m_NoiseSpeed = 0f;
+                    m_BrightnessPulse = 0f;
                     m_PulseColor = new Color(0.35f, 0.85f, 1f, 1f);
                     m_PulseSpeed = 2.0f;
-                    m_PulseAdditiveIntensity = 0.08f;
+                    m_PulseAdditiveIntensity = 0f;
                     m_GlitchStrength = 0f;
                     m_GlitchBlockSize = 16f;
                     m_GlitchRate = 12f;
@@ -729,7 +732,7 @@ namespace MainGame.UI.CinematicEffects
                     m_ScanSpeed = 0.6f;
                     m_OutlineWidth = 0f;
                     m_InnerRimIntensity = 0f;
-                    m_AllowGlitch = true;
+                    m_AllowGlitch = false;
                     break;
 
                 default:
