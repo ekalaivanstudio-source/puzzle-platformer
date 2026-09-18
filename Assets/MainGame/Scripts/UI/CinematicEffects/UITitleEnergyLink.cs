@@ -42,119 +42,47 @@ namespace MainGame.UI.CinematicEffects
         protected override void Awake()
         {
             base.Awake();
-            m_RectTransform = GetComponent<RectTransform>();
             raycastTarget = false;
             CanvasRenderer cr = GetComponent<CanvasRenderer>();
-            if (cr != null) cr.cull = false;
+            if (cr != null) cr.cull = true;
+
+            if (Application.isPlaying)
+            {
+                Destroy(gameObject);
+            }
+            else
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.delayCall += () =>
+                {
+                    if (this != null && gameObject != null)
+                    {
+                        DestroyImmediate(gameObject);
+                    }
+                };
+#endif
+            }
         }
 
         public void SetEndpoints(Vector3 startWorld, Vector3 endWorld, float tension = 1.0f)
         {
-            m_UseExplicitWorldPositions = true;
-            m_StartWorldPos = startWorld;
-            m_EndWorldPos = endWorld;
-            m_TensionFactor = tension;
-            SetVerticesDirty();
         }
 
         public void SetEndpoints(Transform startAnchor, Transform endAnchor, float tension = 1.0f)
         {
-            m_UseExplicitWorldPositions = false;
-            m_StartAnchor = startAnchor;
-            m_EndAnchor = endAnchor;
-            m_TensionFactor = tension;
-            SetVerticesDirty();
         }
 
         private void LateUpdate()
         {
-            // Redraw dynamically as anchors move
-            SetVerticesDirty();
         }
 
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();
-
-            Vector3 startW = m_UseExplicitWorldPositions ? m_StartWorldPos : (m_StartAnchor != null ? m_StartAnchor.position : transform.position);
-            Vector3 endW = m_UseExplicitWorldPositions ? m_EndWorldPos : (m_EndAnchor != null ? m_EndAnchor.position : transform.position + Vector3.down * 50f);
-
-            if (m_RectTransform == null) m_RectTransform = rectTransform;
-
-            Vector2 pStart = m_RectTransform.InverseTransformPoint(startW);
-            Vector2 pEnd = m_RectTransform.InverseTransformPoint(endW);
-
-            Vector2 diff = pEnd - pStart;
-            float totalDist = diff.magnitude;
-            if (totalDist < 1.0f) return;
-
-            Vector2 dir = diff / totalDist;
-            Vector2 normal = new Vector2(-dir.y, dir.x);
-
-            int segments = Mathf.Clamp(m_SegmentCount, 4, 32);
-            float step = 1.0f / segments;
-            float time = Time.unscaledTime;
-
-            // Tension modulates catenary sag (higher tension = straighter line)
-            float currentSag = m_SagAmplitude / Mathf.Max(0.1f, m_TensionFactor);
-
-            Vector2 prevPos = pStart;
-            for (int i = 1; i <= segments; i++)
-            {
-                float t = i * step;
-                Vector2 basePos = Vector2.Lerp(pStart, pEnd, t);
-
-                // Catenary sag curve
-                float sagCurve = Mathf.Sin(t * Mathf.PI);
-                float sagOffset = -sagCurve * currentSag;
-
-                // High-frequency digital energy jitter
-                float jitterPhase = Mathf.Floor((time * m_FlickerSpeed) + i * 2.1f);
-                float pseudoRand = Mathf.Repeat(Mathf.Sin(jitterPhase * 91.34f) * 43758.54f, 1f) - 0.5f;
-                float jitter = pseudoRand * m_JitterAmplitude;
-
-                Vector2 curPos = basePos + (normal * jitter) + new Vector2(0f, sagOffset);
-
-                // Energy traveling wave pulse
-                float pulse = Mathf.Repeat(t * 3f - time * m_EnergyPulseSpeed, 1f);
-                float pulseGlow = Mathf.Pow(Mathf.Sin(pulse * Mathf.PI), 2f);
-                Color segColor = Color.Lerp(m_GlowColor, m_CoreColor, pulseGlow * m_TensionFactor);
-
-                AddLineSegment(vh, prevPos, curPos, m_LineWidth, segColor);
-                prevPos = curPos;
-            }
         }
 
-        private void AddLineSegment(VertexHelper vh, Vector2 start, Vector2 end, float width, Color col)
+        public void TriggerTensionBurst(float intensity = 1.0f)
         {
-            Vector2 dir = (end - start).normalized;
-            Vector2 perp = new Vector2(-dir.y, dir.x) * (width * 0.5f);
-
-            int startIndex = vh.currentVertCount;
-
-            UIVertex v1 = UIVertex.simpleVert;
-            v1.position = start + perp;
-            v1.color = col;
-
-            UIVertex v2 = UIVertex.simpleVert;
-            v2.position = start - perp;
-            v2.color = col;
-
-            UIVertex v3 = UIVertex.simpleVert;
-            v3.position = end - perp;
-            v3.color = col;
-
-            UIVertex v4 = UIVertex.simpleVert;
-            v4.position = end + perp;
-            v4.color = col;
-
-            vh.AddVert(v1);
-            vh.AddVert(v2);
-            vh.AddVert(v3);
-            vh.AddVert(v4);
-
-            vh.AddTriangle(startIndex, startIndex + 1, startIndex + 2);
-            vh.AddTriangle(startIndex + 2, startIndex + 3, startIndex);
         }
     }
 }

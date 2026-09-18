@@ -278,12 +278,9 @@ Shader "MainGame/UI/CinematicPixelBackground"
                     uv.x += waveShift;
                 }
 
-                // ─── 5. PIXEL-GRID SNAPPING (PROTECT PIXEL-ART CRISPNESS) ──────
-                float2 sampleUV = uv;
-                if (_SnapDistortionToGrid > 0.5 && _PixelGridStep > 1.0)
-                {
-                    sampleUV = floor(uv * _PixelGridStep) / _PixelGridStep;
-                }
+                // ─── 5. NATIVE HIGH-RES TEXTURE SAMPLING ────────────────────────
+                // Retain 100% native source artwork resolution (never downsample sprite UVs)
+                float2 sampleUV = saturate(uv);
 
                 // ─── 6. SAMPLE BASE TEXTURE ────────────────────────────────────
                 half4 color = (tex2D(_MainTex, sampleUV) + _TextureSampleAdd) * IN.color;
@@ -351,7 +348,7 @@ Shader "MainGame/UI/CinematicPixelBackground"
                     if (_OutlinePulseAmount > 0.001)
                     {
                         float pWave = sin(time * _OutlinePulseSpeed) * 0.5 + 0.5;
-                        pWave += sin(time * (_OutlinePulseSpeed * 2.1) + sampleUV.y * 6.0) * 0.12;
+                        pWave += sin(time * (_OutlinePulseSpeed * 2.1)) * 0.12;
                         pulse = 1.0 + (pWave * _OutlinePulseAmount);
                     }
                     finalGlow = _OutlineGlow * pulse;

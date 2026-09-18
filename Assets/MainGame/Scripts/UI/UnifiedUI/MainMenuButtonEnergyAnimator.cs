@@ -35,22 +35,22 @@ namespace MainGame.UI.Unified
         [Range(0f, 1.0f)]
         [SerializeField] private float m_StartAlpha = 0.35f;
 
-        [Tooltip("Duration of the fast snap to final position in seconds (0.12 - 0.18s).")]
-        [Range(0.08f, 0.25f)]
-        [SerializeField] private float m_SnapDuration = 0.14f;
+        [Tooltip("Duration of the fast snap to final position in seconds (0.10 - 0.16s).")]
+        [Range(0.08f, 0.20f)]
+        [SerializeField] private float m_SnapDuration = 0.13f;
 
-        [Tooltip("Impact overshoot scale upon arrival (1.04 - 1.08).")]
-        [Range(1.02f, 1.15f)]
+        [Tooltip("Impact overshoot scale upon arrival (1.03 - 1.06).")]
+        [Range(1.02f, 1.10f)]
         [SerializeField] private float m_OvershootScale = 1.05f;
 
-        [Tooltip("Duration to settle back to scale 1.0 in seconds (0.06 - 0.10s).")]
-        [Range(0.04f, 0.15f)]
-        [SerializeField] private float m_SettleDuration = 0.08f;
+        [Tooltip("Duration to settle back to scale 1.0 in seconds (0.05 - 0.09s).")]
+        [Range(0.04f, 0.12f)]
+        [SerializeField] private float m_SettleDuration = 0.07f;
 
         [Header("Focus / Controller Navigation Settings")]
         [Tooltip("Duration of focus animation (0.10 - 0.16s).")]
-        [Range(0.08f, 0.20f)]
-        [SerializeField] private float m_FocusDuration = 0.13f;
+        [Range(0.08f, 0.18f)]
+        [SerializeField] private float m_FocusDuration = 0.12f;
 
         [Tooltip("Anticipation dip scale on focus (0.96).")]
         [SerializeField] private float m_FocusDipScale = 0.96f;
@@ -88,21 +88,24 @@ namespace MainGame.UI.Unified
         [Tooltip("SFX played on button confirmation punch.")]
         [SerializeField] private UISfxType m_ConfirmSfx = UISfxType.Confirm;
 
-        [Header("Floating Effect Settings")]
-        [Tooltip("Enable continuous zero-drift floating motion for this button.")]
-        [SerializeField] private bool m_EnableFloating = true;
+        [Header("Secondary Motion Settings")]
+        [Tooltip("Enable tiny post-impact tactile vibration.")]
+        [SerializeField] private bool m_EnableMicroVibration = true;
+
+        [Tooltip("Enable continuous zero-drift floating motion for this button (disabled by default to maintain solid console feel).")]
+        [SerializeField] private bool m_EnableFloating = false;
 
         [Tooltip("Peak vertical floating displacement in pixels.")]
-        [SerializeField] private float m_FloatAmplitude = 4f;
+        [SerializeField] private float m_FloatAmplitude = 2.5f;
 
         [Tooltip("Floating oscillation speed in radians/sec.")]
-        [SerializeField] private float m_FloatSpeed = 2.2f;
+        [SerializeField] private float m_FloatSpeed = 2.0f;
 
         [Tooltip("Subtle angular tilt during floating in degrees.")]
-        [SerializeField] private float m_FloatTiltAngle = 0.8f;
+        [SerializeField] private float m_FloatTiltAngle = 0.4f;
 
         [Tooltip("Additional vertical lift when focused/selected.")]
-        [SerializeField] private float m_FocusFloatLift = 3.5f;
+        [SerializeField] private float m_FocusFloatLift = 2.0f;
 
         [Header("Visual References")]
         [SerializeField] private RectTransform m_ButtonVisual;
@@ -470,6 +473,11 @@ namespace MainGame.UI.Unified
                 if (m_ButtonVisual != null)
                 {
                     m_ButtonVisual.localScale = Vector3.Lerp(impactScale, m_RestLocalScale, settleEase);
+                    if (m_EnableMicroVibration)
+                    {
+                        float vibY = Mathf.Sin(t * 36f) * 0.8f * (1f - t);
+                        m_ButtonVisual.anchoredPosition = new Vector2(m_RestAnchoredPos.x, m_RestAnchoredPos.y + vibY);
+                    }
                 }
 
                 yield return null;

@@ -9,12 +9,115 @@ using UnityEngine.UI;
 
 namespace MainGame.UI.Editor
 {
+    [InitializeOnLoad]
     public static class MainMenuBackgroundSetup
     {
         private const string k_MenuPath = "Tools/UI/Setup Living Cinematic Background";
         private const string k_OutlineMenuPath = "Tools/UI/Setup Living Character Outlines";
+        private const string k_RemoveLinksMenuPath = "Tools/UI/Remove Title Energy Links";
         private const string k_HomeScenePath = "Assets/MainGame/Scenes/HomeScreen.unity";
         private const string k_ShaderName = "MainGame/UI/CinematicPixelBackground";
+
+        static MainMenuBackgroundSetup()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                RemoveTitleEnergyLinks(false);
+                EnsureSceneComponentsBaked();
+            };
+        }
+
+        public static void EnsureSceneComponentsBaked()
+        {
+            try
+            {
+                Scene activeScene = SceneManager.GetActiveScene();
+                bool isHomeScreen = (activeScene.IsValid() && (activeScene.path == k_HomeScenePath || activeScene.name == "HomeScreen"));
+                
+                if (isHomeScreen)
+                {
+                    bool hasBgRedCtrl = false;
+                    foreach (var root in activeScene.GetRootGameObjects())
+                    {
+                        var ctrls = root.GetComponentsInChildren<UIBackgroundLayerController>(true);
+                        foreach (var c in ctrls)
+                        {
+                            if (c.gameObject.name == "BG Red" || c.gameObject.name == "BG_Red" || c.Profile == BackgroundLayerProfile.BackgroundRed)
+                            {
+                                hasBgRedCtrl = true;
+                                break;
+                            }
+                        }
+                        if (hasBgRedCtrl) break;
+                    }
+
+                    if (!hasBgRedCtrl)
+                    {
+                        RunSetup(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[MainMenuBackgroundSetup] Note in EnsureSceneComponentsBaked: " + ex.Message);
+            }
+        }
+
+        [MenuItem("Tools/UI/Bake Themes and Outlines to Scene", priority = 10)]
+        public static void BakeThemesAndOutlinesManual()
+        {
+            RunSetup(true);
+        }
+
+        [MenuItem(k_RemoveLinksMenuPath, priority = 30)]
+        public static void RemoveTitleEnergyLinksManual()
+        {
+            RemoveTitleEnergyLinks(true);
+        }
+
+        public static void RemoveTitleEnergyLinks(bool notifyUser)
+        {
+            int removed = 0;
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.IsValid())
+            {
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+                    foreach (var t in transforms)
+                    {
+                        if (t != null && (t.name == "TitleEnergyLink_Left" || t.name == "TitleEnergyLink_Right" || t.GetComponent<UITitleEnergyLink>() != null))
+                        {
+                            Undo.DestroyObjectImmediate(t.gameObject);
+                            removed++;
+                        }
+
+                        // Clean up any glitch controllers on objects where glitch is not allowed
+                        if (t != null)
+                        {
+                            MainMenuGlitchController gc = t.GetComponent<MainMenuGlitchController>();
+                            if (gc != null && !gc.IsGlitchAllowed())
+                            {
+                                Undo.DestroyObjectImmediate(gc);
+                            }
+                        }
+                    }
+                }
+                if (removed > 0)
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                }
+            }
+
+            if (notifyUser)
+            {
+                EditorUtility.DisplayDialog("Removed Title Energy Links", $"Successfully removed {removed} title energy link object(s).", "OK");
+            }
+            if (removed > 0)
+            {
+                Debug.Log($"[MainMenuBackgroundSetup] Removed {removed} title energy link object(s).");
+            }
+        }
 
         [MenuItem(k_MenuPath)]
         public static void RunSetupManual()
@@ -79,16 +182,12 @@ namespace MainGame.UI.Editor
 
             Transform bgRed = bgRoot.Find("BG Red") ?? bgRoot.Find("BG_Red");
             Transform redYellow = bgRoot.Find("Red and yellow layer") ?? bgRoot.Find("RedAndYellowLayer");
-            Transform villain = bgRoot.Find("DR") ?? bgRoot.Find("Villan") ?? bgRoot.Find("Villain") ?? bgRoot.Find("CharacterArtwork");
+            Transform villain = bgRoot.Find("Villan") ?? bgRoot.Find("DR") ?? bgRoot.Find("Villain") ?? bgRoot.Find("CharacterArtwork");
             Transform hero = bgRoot.Find("Hero") ?? bgRoot.Find("Robot") ?? bgRoot.Find("Byte");
             Transform spark = bgRoot.Find("Spark") ?? bgRoot.Find("FX");
 
-            Transform panel = screenManager.Find("HomeScreenPanel New") ?? screenManager.Find("HomeScreenPanel_New");
-            Transform holderTitle = (panel != null) ? (panel.Find("Holder Tittle") ?? panel.Find("Holder Title") ?? panel.Find("Title/Holder Tittle")) : null;
-            if (holderTitle == null)
-            {
-                holderTitle = screenManager.Find("Holder Tittle") ?? screenManager.Find("Holder Title");
-            }
+            Transform panel = FindHomeScreenPanel(screenManager);
+            Transform holderTitle = FindHolderTitle(screenManager, panel);
 
             List<string> missing = new List<string>();
             if (bgRed == null) missing.Add("BG Red");
@@ -115,33 +214,54 @@ namespace MainGame.UI.Editor
                 titleRect.anchoredPosition = new Vector2(539f, 0f);
             }
 
+            // Ensure color theme assets are generated
+            CinematicThemeAssetGenerator.GenerateAllThemes(false);
+
             // ─── 2. BG RED LAYER CONTROLLER ────────────────────────────────────
             UIBackgroundLayerController bgRedCtrl = GetOrAdd<UIBackgroundLayerController>(bgRed.gameObject);
             bgRedCtrl.Profile = BackgroundLayerProfile.BackgroundRed;
+            bgRedCtrl.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.Industrial);
+            bgRedCtrl.ThemePreset = CinematicThemePreset.Industrial;
+            bgRedCtrl.AllowGlitch = true;
 
             // ─── 3. RED AND YELLOW LAYER CONTROLLER ────────────────────────────
             UIBackgroundLayerController redYellowCtrl = GetOrAdd<UIBackgroundLayerController>(redYellow.gameObject);
             redYellowCtrl.Profile = BackgroundLayerProfile.RedYellowTransition;
+            redYellowCtrl.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.GoldenPower);
+            redYellowCtrl.ThemePreset = CinematicThemePreset.GoldenPower;
+            redYellowCtrl.AllowGlitch = false;
 
             // ─── 4. VILLAIN LIVING CHARACTER ANIMATOR & OUTLINE ────────────────
             UIVillainAnimator villainAnim = GetOrAdd<UIVillainAnimator>(villain.gameObject);
             UIBackgroundLayerController villainLayerCtrl = GetOrAdd<UIBackgroundLayerController>(villain.gameObject);
             villainLayerCtrl.Profile = BackgroundLayerProfile.Villain;
+            villainLayerCtrl.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.VillainCrimson);
+            villainLayerCtrl.ThemePreset = CinematicThemePreset.VillainCrimson;
+            villainLayerCtrl.AllowGlitch = false;
             villainLayerCtrl.EnsureOutlineLayer();
 
             // ─── 5. ROBOT / HERO LIFE ANIMATOR & OUTLINE ───────────────────────
             UIRobotLifeAnimator robotAnim = GetOrAdd<UIRobotLifeAnimator>(hero.gameObject);
             UIBackgroundLayerController robotLayerCtrl = GetOrAdd<UIBackgroundLayerController>(hero.gameObject);
             robotLayerCtrl.Profile = BackgroundLayerProfile.Hero;
+            robotLayerCtrl.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.CyberCyan);
+            robotLayerCtrl.ThemePreset = CinematicThemePreset.CyberCyan;
+            robotLayerCtrl.AllowGlitch = false;
             robotLayerCtrl.EnsureOutlineLayer();
 
-            // ─── 6. SPARK ATMOSPHERE SYSTEM ────────────────────────────────────
+            // ─── 6. SPARK ATMOSPHERE SYSTEM & CONTROLLER ───────────────────────
             UISparkAtmosphereSystem sparkAtmosphere = GetOrAdd<UISparkAtmosphereSystem>(spark.gameObject);
+            UIBackgroundLayerController sparkLayerCtrl = GetOrAdd<UIBackgroundLayerController>(spark.gameObject);
+            sparkLayerCtrl.Profile = BackgroundLayerProfile.Spark;
+            sparkLayerCtrl.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.PlasmaBlue);
+            sparkLayerCtrl.ThemePreset = CinematicThemePreset.PlasmaBlue;
+            sparkLayerCtrl.AllowGlitch = true;
 
             // ─── 7. TITLE SUSPENSION SYSTEM & OUTLINE ──────────────────────────
             UITitleSuspensionSystem titleSuspension = GetOrAdd<UITitleSuspensionSystem>(holderTitle.gameObject);
             titleSuspension.VillainAnimator = villainAnim;
-            titleSuspension.CreateEnergyLinksIfMissing();
+            titleSuspension.CleanupEnergyLinks();
+            RemoveTitleEnergyLinks(false);
 
             Transform titleChild = holderTitle.Find("Title") ?? holderTitle;
             UIBackgroundLayerController titleShader = null;
@@ -149,6 +269,9 @@ namespace MainGame.UI.Editor
             {
                 titleShader = GetOrAdd<UIBackgroundLayerController>(titleChild.gameObject);
                 titleShader.Profile = BackgroundLayerProfile.Title;
+                titleShader.Theme = CinematicThemeAssetGenerator.GetOrCreateThemeAsset(CinematicThemePreset.RetroArcade);
+                titleShader.ThemePreset = CinematicThemePreset.RetroArcade;
+                titleShader.AllowGlitch = false;
                 titleShader.EnsureOutlineLayer();
             }
 
@@ -164,6 +287,7 @@ namespace MainGame.UI.Editor
             director.TitleSuspension = titleSuspension;
             director.RobotAnimator = robotAnim;
             director.SparkAtmosphere = sparkAtmosphere;
+            director.SparkController = sparkLayerCtrl;
             director.ParallaxController = parallax;
             director.VillainOutlineController = villainLayerCtrl;
             director.HeroOutlineController = robotLayerCtrl;
@@ -252,8 +376,8 @@ namespace MainGame.UI.Editor
                 }
 
                 // Check Title
-                Transform panel = screenManager.Find("HomeScreenPanel New") ?? screenManager.Find("HomeScreenPanel_New");
-                Transform titleRoot = (panel != null) ? (panel.Find("Holder Tittle") ?? panel.Find("Holder Title")) : screenManager.Find("Holder Tittle");
+                Transform panel = FindHomeScreenPanel(screenManager);
+                Transform titleRoot = FindHolderTitle(screenManager, panel);
                 if (titleRoot == null)
                 {
                     errors.Add("Missing 'Holder Tittle' GameObject.");
@@ -365,6 +489,55 @@ namespace MainGame.UI.Editor
                 layers.Add(new ParallaxLayerItem { name = "Spark / FX", target = spark.GetComponent<RectTransform>(), maxOffset = 16.0f });
 
             parallax.CaptureRestPositions();
+        }
+
+        private static Transform FindHomeScreenPanel(Transform screenManager)
+        {
+            if (screenManager == null) return null;
+            Transform panel = screenManager.Find("HomeScreenPanel  New") 
+                           ?? screenManager.Find("HomeScreenPanel New") 
+                           ?? screenManager.Find("HomeScreenPanel_New");
+            if (panel != null) return panel;
+
+            foreach (Transform child in screenManager)
+            {
+                if (child.name.StartsWith("HomeScreenPanel"))
+                {
+                    return child;
+                }
+            }
+
+            var obj = GameObject.Find("HomeScreenPanel  New") ?? GameObject.Find("HomeScreenPanel New") ?? GameObject.Find("HomeScreenPanel_New");
+            return obj != null ? obj.transform : null;
+        }
+
+        private static Transform FindHolderTitle(Transform screenManager, Transform panel)
+        {
+            Transform holderTitle = null;
+            if (panel != null)
+            {
+                holderTitle = panel.Find("Holder Tittle") ?? panel.Find("Holder Title") ?? panel.Find("Title/Holder Tittle");
+            }
+            if (holderTitle == null && screenManager != null)
+            {
+                holderTitle = screenManager.Find("Holder Tittle") ?? screenManager.Find("Holder Title");
+            }
+            if (holderTitle == null && screenManager != null)
+            {
+                foreach (var t in screenManager.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "Holder Tittle" || t.name == "Holder Title")
+                    {
+                        return t;
+                    }
+                }
+            }
+            if (holderTitle == null)
+            {
+                var obj = GameObject.Find("Holder Tittle") ?? GameObject.Find("Holder Title");
+                if (obj != null) holderTitle = obj.transform;
+            }
+            return holderTitle;
         }
     }
 }

@@ -35,6 +35,7 @@ namespace MainGame.UI.CinematicEffects
         private CanvasGroup m_CanvasGroup;
         private Image m_Image;
         private RectTransform m_RectTransform;
+        private UIBackgroundLayerController m_LayerController;
         private Coroutine m_BreathingRoutine;
         private Coroutine m_SparkBurstRoutine;
         private Coroutine m_AmbientRoutine;
@@ -49,6 +50,7 @@ namespace MainGame.UI.CinematicEffects
             {
                 m_CanvasGroup = gameObject.AddComponent<CanvasGroup>();
             }
+            m_LayerController = GetComponent<UIBackgroundLayerController>();
         }
 
         private void Start()
@@ -124,6 +126,19 @@ namespace MainGame.UI.CinematicEffects
                     Vector3 worldPos = m_RectTransform.TransformPoint(randomLocal);
                     CinematicUIParticleSystem.Instance.SpawnSparkBurst(worldPos, m_SparkColor, UnityEngine.Random.Range(3, 6), 14f);
                 }
+
+                if (m_LayerController != null)
+                {
+                    m_LayerController.TriggerControlledGlitch(ControlledGlitchType.TypeA_MicroGlitch, 1f);
+                }
+            }
+        }
+
+        public void TriggerSparkGlitch(ControlledGlitchType type = ControlledGlitchType.TypeB_DigitalTear)
+        {
+            if (m_LayerController != null)
+            {
+                m_LayerController.TriggerControlledGlitch(type, 1f);
             }
         }
 

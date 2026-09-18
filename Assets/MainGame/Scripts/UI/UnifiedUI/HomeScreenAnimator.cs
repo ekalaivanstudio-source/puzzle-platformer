@@ -489,37 +489,38 @@ namespace MainGame.UI.Unified
                 CinematicUIParticleSystem.Instance.SpawnSparkBurst(Vector2.zero, m_ScreenPanelRoot, new Color(0.35f, 0.85f, 1f, 0.9f), 4, 28f);
             }
 
-            // ─── PHASE 3: CORE RADIAL ENERGY PULSE FROM RETRY CORE (Bar 0, Beat 3 - 1.195s) ───
+            // ─── PHASE 3: CORE RADIAL ENERGY PULSE FROM RETRY CORE ───
             if (isFromIntro)
             {
                 yield return WaitForTrackTime(1.195f, 1.20f);
             }
             else
             {
-                yield return WaitForNextMusicalBeat();
+                yield return new WaitForSecondsRealtime(0.04f);
             }
 
             if (m_Background != null)
             {
-                TrackCoroutine(StartCoroutine(AnimateScale(m_Background, m_BgRestScale * m_BgStartScale, m_BgRestScale, m_BgZoomDuration, EasingType.EaseOutQuad)));
+                float bgDur = isFromIntro ? m_BgZoomDuration : 0.30f;
+                TrackCoroutine(StartCoroutine(AnimateScale(m_Background, m_BgRestScale * m_BgStartScale, m_BgRestScale, bgDur, EasingType.EaseOutQuad)));
                 CinematicUIEffect bgEffect = m_Background.GetComponent<CinematicUIEffect>() ?? m_Background.gameObject.AddComponent<CinematicUIEffect>();
                 if (bgEffect != null)
                 {
                     // Home Screen Signature: Core radial pulse expanding outward from RETRY logo center
-                    bgEffect.TriggerRadialPulse(0.48f, new Color(0.35f, 0.85f, 1.0f, 0.85f), new Vector2(0.5f, 0.72f), 1.8f, 2.8f, 0.04f);
-                    bgEffect.TriggerBorderPulse(0.35f, new Color(0.35f, 0.85f, 1.0f, 0.9f), 1.8f, UIBorderDirection.PerimeterClockwise);
+                    float pulseRadius = isFromIntro ? 1.8f : 1.4f;
+                    bgEffect.TriggerRadialPulse(0.35f, new Color(0.35f, 0.85f, 1.0f, 0.85f), new Vector2(0.5f, 0.72f), pulseRadius, 2.4f, 0.03f);
+                    bgEffect.TriggerBorderPulse(0.25f, new Color(0.35f, 0.85f, 1.0f, 0.9f), 1.6f, UIBorderDirection.PerimeterClockwise);
                 }
             }
 
-            // ─── PHASE 4: RETRY RECEIVES ENERGY & IMPACT SLAM (Bar 1, Beat 1 - 2.254s Downbeat) ───
-            // DeploySequence takes ~0.18s of anticipation sweep before impact flash & slam
+            // ─── PHASE 4: RETRY RECEIVES ENERGY & IMPACT SLAM ───
             if (isFromIntro)
             {
                 yield return WaitForTrackTime(2.074f, 0.90f); // 2.254s - 0.18s = 2.074s
             }
             else
             {
-                yield return WaitForNextMusicalBeat(0.18f);
+                yield return new WaitForSecondsRealtime(0.04f);
             }
 
             bool logoDone = false;
@@ -533,12 +534,23 @@ namespace MainGame.UI.Unified
                         {
                             CinematicUIParticleSystem.Instance.SpawnSparkBurst(m_Logo.position, new Color(1.0f, 0.92f, 0.35f, 1f), 10, 32f);
                         }
+                        if (MainMenuBackgroundDirector.Instance != null)
+                        {
+                            if (MainMenuBackgroundDirector.Instance.BgRedController != null)
+                            {
+                                MainMenuBackgroundDirector.Instance.BgRedController.TriggerControlledGlitch(ControlledGlitchType.TypeD_MajorImpactGlitch, 0.85f);
+                            }
+                            if (MainMenuBackgroundDirector.Instance.SparkController != null)
+                            {
+                                MainMenuBackgroundDirector.Instance.SparkController.TriggerControlledGlitch(ControlledGlitchType.TypeD_MajorImpactGlitch, 0.85f);
+                            }
+                        }
                         if (m_Background != null)
                         {
                             CinematicUIEffect bgEffect = m_Background.GetComponent<CinematicUIEffect>();
                             if (bgEffect != null)
                             {
-                                bgEffect.TriggerRadialPulse(0.35f, new Color(1.0f, 0.92f, 0.35f, 0.6f), new Vector2(0.5f, 0.72f), 1.2f, 2.0f, 0.03f);
+                                bgEffect.TriggerRadialPulse(0.30f, new Color(1.0f, 0.92f, 0.35f, 0.5f), new Vector2(0.5f, 0.72f), 1.2f, 1.8f, 0.02f);
                             }
                         }
                     });

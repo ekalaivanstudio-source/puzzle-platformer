@@ -189,7 +189,7 @@ namespace MainGame.UI.CinematicEffects
         /// </summary>
         public IEnumerator PerformEnergyCycle()
         {
-            // 1. ENERGY BUILD (0.35s)
+            // 1. ENERGY BUILD - Ramp outline charge smoothly with energy build
             m_CurrentPhase = RobotEnergyPhase.EnergyBuild;
             float buildDur = 0.35f;
             float elapsed = 0f;
@@ -202,6 +202,10 @@ namespace MainGame.UI.CinematicEffects
                 {
                     m_RectTransform.anchoredPosition = m_RestPosition + new Vector2(shake, 0f);
                 }
+                if (m_LayerController != null)
+                {
+                    m_LayerController.SetOutlineCharge(t, m_EnergyColor);
+                }
                 yield return null;
             }
 
@@ -209,8 +213,8 @@ namespace MainGame.UI.CinematicEffects
             m_CurrentPhase = RobotEnergyPhase.Pulse;
             if (m_LayerController != null)
             {
-                m_LayerController.PulseOutline(0.35f, 0.45f, m_EnergyColor);
-                m_LayerController.TriggerPulse(0.22f, 0.35f, m_EnergyColor);
+                m_LayerController.PulseOutlineImmediate(2.2f, 0.02f, 0.06f, 0.25f, m_EnergyColor, "RobotPeak");
+                m_LayerController.TriggerPulse(0.25f, 0.35f, m_EnergyColor);
             }
 
             if (CinematicUIParticleSystem.Instance != null)
@@ -240,7 +244,7 @@ namespace MainGame.UI.CinematicEffects
         {
             if (m_LayerController != null)
             {
-                m_LayerController.PulseOutline(strength * 1.2f, 0.28f, m_EnergyColor);
+                m_LayerController.PulseOutlineImmediate(1.5f + (strength * 2.2f), 0.02f, 0.04f, 0.18f, m_EnergyColor, "RobotSubtlePulse");
                 m_LayerController.TriggerPulse(strength, 0.25f, m_EnergyColor);
             }
 

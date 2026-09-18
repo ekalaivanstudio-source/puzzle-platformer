@@ -251,7 +251,7 @@ namespace MainGame.UI.CinematicEffects
             UIBackgroundLayerController layerCtrl = GetComponent<UIBackgroundLayerController>();
             if (layerCtrl != null)
             {
-                layerCtrl.PulseOutline(0.15f, 0.22f, new Color(1f, 0.95f, 0.8f, 1f));
+                layerCtrl.PulseOutlineImmediate(1.8f, 0.02f, 0.05f, 0.16f, new Color(1f, 0.95f, 0.8f, 1f), "GlassesGlint");
                 layerCtrl.TriggerPulse(0.10f, 0.22f, new Color(1f, 0.95f, 0.8f, 1f));
             }
         }
@@ -261,7 +261,7 @@ namespace MainGame.UI.CinematicEffects
             UIBackgroundLayerController layerCtrl = GetComponent<UIBackgroundLayerController>();
             if (layerCtrl != null)
             {
-                layerCtrl.PulseOutline(strength, 0.30f, new Color(1.0f, 0.165f, 0.28f, 1.0f));
+                layerCtrl.PulseOutlineImmediate(1.5f + (strength * 2.5f), 0.03f, 0.06f, 0.20f, new Color(1.0f, 0.165f, 0.28f, 1.0f), "VillainSurge");
                 layerCtrl.TriggerPulse(strength, 0.35f, new Color(0.95f, 0.2f, 0.2f, 1f));
             }
 

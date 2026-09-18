@@ -602,6 +602,8 @@ GameObject:
   m_Component:
   - component: {fileID: 30895931}
   - component: {fileID: 910000015}
+  - component: {fileID: 910000017}
+  - component: {fileID: 910000016}
   m_Layer: 0
   m_Name: ScreenManager
   m_TagString: Untagged
@@ -796,6 +798,8 @@ GameObject:
   - component: {fileID: 86971533}
   - component: {fileID: 86971535}
   - component: {fileID: 86971534}
+  - component: {fileID: 86971537}
+  - component: {fileID: 86971536}
   m_Layer: 0
   m_Name: Hero
   m_TagString: Untagged
@@ -860,6 +864,104 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 86971532}
   m_CullTransparentMesh: 1
+--- !u!114 &86971536
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 86971532}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 4
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 0
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.03
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.14
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 0.14901961, g: 0.8784314, b: 1, a: 1}
+  m_PulseSpeed: 1.6
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 20
+  m_GlitchRate: 3
+  m_ScanStrength: 0
+  m_ScanWidth: 0.05
+  m_ScanSpeed: 0.35
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 0.14901961, g: 0.8784314, b: 1, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1.45
+  m_OutlinePulseSpeed: 2
+  m_OutlinePulseAmount: 0.25
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.8784314, b: 0.34901962, a: 1}
+  m_InnerRimIntensity: 0.85
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 450053237}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &86971537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 86971532}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abc21f78e5674a919876ef12345678ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIRobotLifeAnimator
+  m_EnableIdle: 1
+  m_BobSpeed: 1.8
+  m_BobAmplitude: 1.2
+  m_ChassisTiltSpeed: 1.1
+  m_ChassisTiltAmplitude: 0.35
+  m_EyeOffset: {x: 0, y: 60}
+  m_EyeColor: {r: 0.35, g: 0.85, b: 1, a: 1}
+  m_EyePulseInterval: 3.5
+  m_EnableEnergyCycle: 1
+  m_MinCycleInterval: 7
+  m_MaxCycleInterval: 13
+  m_EnergyColor: {r: 0.3, g: 0.88, b: 1, a: 1}
 --- !u!1 &88395158
 GameObject:
   m_ObjectHideFlags: 0
@@ -1767,6 +1869,7 @@ GameObject:
   - component: {fileID: 125556294}
   - component: {fileID: 125556296}
   - component: {fileID: 125556295}
+  - component: {fileID: 125556297}
   m_Layer: 0
   m_Name: Title
   m_TagString: Untagged
@@ -1831,6 +1934,80 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 125556293}
   m_CullTransparentMesh: 1
+--- !u!114 &125556297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 125556293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 5
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 9
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.03
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.15
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 0, g: 0.9607843, b: 0.83137256, a: 1}
+  m_PulseSpeed: 1.5
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 16
+  m_GlitchRate: 2
+  m_ScanStrength: 0
+  m_ScanWidth: 0.04
+  m_ScanSpeed: 0.25
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 0, g: 0.9607843, b: 0.83137256, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1.55
+  m_OutlinePulseSpeed: 1.5
+  m_OutlinePulseAmount: 0.18
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 0.99607843, g: 0.89411765, b: 0.2509804, a: 1}
+  m_InnerRimIntensity: 0.9
+  m_InnerRimWidth: 1.8
+  m_EdgeSharpness: 3.2
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 2002333743}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
 --- !u!1 &130857325
 GameObject:
   m_ObjectHideFlags: 0
@@ -6657,6 +6834,184 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 439331607}
   m_CullTransparentMesh: 1
+--- !u!1 &450053236
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 450053242}
+  - component: {fileID: 450053241}
+  - component: {fileID: 450053240}
+  - component: {fileID: 450053239}
+  - component: {fileID: 450053238}
+  - component: {fileID: 450053237}
+  m_Layer: 0
+  m_Name: Hero_Outline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &450053237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 4
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 0
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.03
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.14
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 0.14901961, g: 0.8784314, b: 1, a: 1}
+  m_PulseSpeed: 1.6
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 20
+  m_GlitchRate: 3
+  m_ScanStrength: 0
+  m_ScanWidth: 0.05
+  m_ScanSpeed: 0.35
+  m_IsOutlineLayer: 1
+  m_OutlineColor: {r: 0.14901961, g: 0.8784314, b: 1, a: 1}
+  m_OutlineWidth: 2.6
+  m_OutlineGlow: 1.45
+  m_OutlinePulseSpeed: 2
+  m_OutlinePulseAmount: 0.25
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.8784314, b: 0.34901962, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &450053238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e0611148e955bf449d9812af3967a34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineFollower
+  m_Target: {fileID: 86971533}
+--- !u!114 &450053239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1feaf338d029bdb4caefabcac32c16a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineMeshExpansion
+  m_Padding: 16
+--- !u!114 &450053240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 22807bc828d833340b6316c2871f8de7, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &450053241
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_CullTransparentMesh: 1
+--- !u!224 &450053242
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450053236}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 494089468}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 2052, y: 1154.25}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &451215188
 GameObject:
   m_ObjectHideFlags: 0
@@ -6837,6 +7192,7 @@ GameObject:
   - component: {fileID: 456047790}
   - component: {fileID: 456047792}
   - component: {fileID: 456047791}
+  - component: {fileID: 456047793}
   m_Layer: 0
   m_Name: BG Red
   m_TagString: Untagged
@@ -6901,6 +7257,80 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 456047789}
   m_CullTransparentMesh: 1
+--- !u!114 &456047793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 456047789}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 1
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 10
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.04
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.14
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 512
+  m_DistortionStrength: 0.002
+  m_DistortionSpeed: 0.6
+  m_DistortionFrequency: 5
+  m_NoiseStrength: 0.02
+  m_NoiseScale: 42
+  m_NoiseSpeed: 2.5
+  m_BrightnessPulse: 0.07
+  m_PulseColor: {r: 1, g: 0.3529412, b: 0.21176471, a: 1}
+  m_PulseSpeed: 1
+  m_PulseAdditiveIntensity: 0.04
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 24
+  m_GlitchRate: 6
+  m_ScanStrength: 0
+  m_ScanWidth: 0.07
+  m_ScanSpeed: 0.35
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 1, g: 0.3529412, b: 0.21176471, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1
+  m_OutlinePulseSpeed: 2
+  m_OutlinePulseAmount: 0.25
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.81960785, b: 0.4, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3
+  m_AllowGlitch: 1
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
 --- !u!1 &463925266
 GameObject:
   m_ObjectHideFlags: 0
@@ -7052,6 +7482,8 @@ GameObject:
   - component: {fileID: 477971395}
   - component: {fileID: 477971397}
   - component: {fileID: 477971396}
+  - component: {fileID: 477971399}
+  - component: {fileID: 477971398}
   m_Layer: 0
   m_Name: Villan
   m_TagString: Untagged
@@ -7116,6 +7548,104 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 477971394}
   m_CullTransparentMesh: 1
+--- !u!114 &477971398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 477971394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 3
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 1
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.04
+  m_OutlineHoldTime: 0.06
+  m_OutlineReleaseTime: 0.16
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 1, g: 0.16470589, b: 0.2784314, a: 1}
+  m_PulseSpeed: 1.2
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 24
+  m_GlitchRate: 4
+  m_ScanStrength: 0
+  m_ScanWidth: 0.05
+  m_ScanSpeed: 0.3
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 1, g: 0.16470589, b: 0.2784314, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1.35
+  m_OutlinePulseSpeed: 1.8
+  m_OutlinePulseAmount: 0.18
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.7019608, b: 0.2784314, a: 1}
+  m_InnerRimIntensity: 0.7
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3.5
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 1961740644}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &477971399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 477971394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78b21c45e5674a919876ef12345678bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIVillainAnimator
+  m_LeftHandOffset: {x: -210, y: 90}
+  m_RightHandOffset: {x: 210, y: 90}
+  m_GlassesOffset: {x: -15, y: 280}
+  m_EnableIdle: 1
+  m_BreathingSpeed: 1.35
+  m_BreathingAmplitude: 1.5
+  m_TiltSpeed: 0.85
+  m_TiltAmplitude: 0.4
+  m_HandMotionSpeed: 1.6
+  m_HandMotionAmplitude: 1.8
+  m_MinGlintInterval: 7
+  m_MaxGlintInterval: 14
 --- !u!1 &482006022
 GameObject:
   m_ObjectHideFlags: 0
@@ -7222,8 +7752,10 @@ RectTransform:
   m_Children:
   - {fileID: 456047790}
   - {fileID: 1070031352}
+  - {fileID: 1961740649}
   - {fileID: 477971395}
   - {fileID: 686759883}
+  - {fileID: 450053242}
   - {fileID: 86971533}
   - {fileID: 2123186910}
   m_Father: {fileID: 30895931}
@@ -7557,6 +8089,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -7613,6 +8146,7 @@ MonoBehaviour:
   m_IsExitButton: 1
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 21
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -7903,6 +8437,7 @@ GameObject:
   m_Component:
   - component: {fileID: 530157790}
   - component: {fileID: 910000028}
+  - component: {fileID: 910000030}
   m_Layer: 0
   m_Name: Holder Tittle
   m_TagString: Untagged
@@ -7922,6 +8457,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 2002333748}
   - {fileID: 125556294}
   m_Father: {fileID: 1134092945}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -9528,6 +10064,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -9584,6 +10121,7 @@ MonoBehaviour:
   m_IsExitButton: 0
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 1
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -10795,6 +11333,8 @@ GameObject:
   - component: {fileID: 686759883}
   - component: {fileID: 686759885}
   - component: {fileID: 686759884}
+  - component: {fileID: 686759887}
+  - component: {fileID: 686759886}
   m_Layer: 0
   m_Name: Spark
   m_TagString: Untagged
@@ -10859,6 +11399,103 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 686759882}
   m_CullTransparentMesh: 1
+--- !u!114 &686759886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 686759882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 6
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 3
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.04
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.14
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 384
+  m_DistortionStrength: 0.003
+  m_DistortionSpeed: 1.2
+  m_DistortionFrequency: 10
+  m_NoiseStrength: 0.035
+  m_NoiseScale: 64
+  m_NoiseSpeed: 4
+  m_BrightnessPulse: 0.15
+  m_PulseColor: {r: 0.22745098, g: 0.654902, b: 1, a: 1}
+  m_PulseSpeed: 2
+  m_PulseAdditiveIntensity: 0.08
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 16
+  m_GlitchRate: 12
+  m_ScanStrength: 0
+  m_ScanWidth: 0.05
+  m_ScanSpeed: 0.6
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 0.22745098, g: 0.654902, b: 1, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1
+  m_OutlinePulseSpeed: 2
+  m_OutlinePulseAmount: 0.25
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 0.72156864, g: 0.94509804, b: 1, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3
+  m_AllowGlitch: 1
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &686759887
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 686759882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcd21a89e5674a919876ef12345678fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UISparkAtmosphereSystem
+  m_EnableArtworkBreathing: 1
+  m_BaseAlpha: 0.85
+  m_AlphaPulseSpeed: 2
+  m_AlphaPulseAmplitude: 0.15
+  m_EnableSparkBursts: 1
+  m_MinBurstInterval: 3.5
+  m_MaxBurstInterval: 7
+  m_SparkColor: {r: 1, g: 0.85, b: 0.35, a: 0.95}
+  m_EnableAmbientParticles: 1
+  m_AmbientParticleInterval: 1.8
+  m_AmbientParticleColor: {r: 0.65, g: 0.85, b: 1, a: 0.6}
 --- !u!1 &688543294
 GameObject:
   m_ObjectHideFlags: 0
@@ -13966,7 +14603,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e53b3919a930419eaae7ed4fc4b021d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.HomeScreenAnimator
-  m_Background: {fileID: 477971395}
+  m_Background: {fileID: 1070031352}
   m_BackgroundLayer2: {fileID: 456047790}
   m_BgStartScale: 1.04
   m_BgZoomDuration: 0.9
@@ -14333,6 +14970,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.08
   m_EnableFloating: 1
@@ -14363,6 +15001,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.08
   m_EnableFloating: 1
@@ -14393,6 +15032,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.08
   m_EnableFloating: 1
@@ -14423,6 +15063,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.08
   m_EnableFloating: 1
@@ -14454,6 +15095,114 @@ MonoBehaviour:
   m_DefaultIntensity: 4
   m_DefaultDuration: 0.1
   m_ShakeFrequency: 50
+--- !u!114 &910000016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 30895930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: def21c01e5674a919876ef12345678bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.MainMenuBackgroundDirector
+  m_BgRedController: {fileID: 456047793}
+  m_RedYellowController: {fileID: 1070031355}
+  m_VillainAnimator: {fileID: 477971399}
+  m_TitleSuspension: {fileID: 910000030}
+  m_RobotAnimator: {fileID: 86971537}
+  m_VillainOutlineController: {fileID: 477971398}
+  m_HeroOutlineController: {fileID: 86971536}
+  m_TitleOutlineController: {fileID: 125556297}
+  m_SparkAtmosphere: {fileID: 686759887}
+  m_SparkController: {fileID: 686759886}
+  m_ParallaxController: {fileID: 910000017}
+  m_EnableMusicSync: 1
+  m_BarPulseInterval: 2
+  m_ButtonFocusEnvelope:
+    peakMultiplier: 1.5
+    attack: 0.02
+    hold: 0.03
+    release: 0.1
+  m_StrongBeatEnvelope:
+    peakMultiplier: 1.7
+    attack: 0.03
+    hold: 0.04
+    release: 0.14
+  m_DownbeatEnvelope:
+    peakMultiplier: 1.9
+    attack: 0.03
+    hold: 0.05
+    release: 0.16
+  m_BarEnvelope:
+    peakMultiplier: 2.2
+    attack: 0.04
+    hold: 0.06
+    release: 0.2
+  m_ConfirmEnvelope:
+    peakMultiplier: 2.5
+    attack: 0.02
+    hold: 0.08
+    release: 0.22
+  m_MusicVisualOffset: 0
+  m_EnableButtonReactions: 1
+  m_EnableRandomThemeCycle: 1
+  m_RandomizeOnStart: 1
+  m_ThemeCycleInterval: 7
+  m_ThemeTransitionDuration: 1.2
+  m_HarmonizedPalettes: 1
+  m_EnableIdleDirector: 1
+  m_MinIdleEventInterval: 4
+  m_MaxIdleEventInterval: 8.5
+  m_EnableVisualDebug: 0
+--- !u!114 &910000017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 30895930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cde21b90e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIParallaxController
+  m_Layers:
+  - name: BG Red
+    target: {fileID: 456047790}
+    maxOffset: 2.5
+    restPosition: {x: 0, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  - name: Red & Yellow Layer
+    target: {fileID: 1070031352}
+    maxOffset: 5
+    restPosition: {x: 0, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  - name: Villain
+    target: {fileID: 477971395}
+    maxOffset: 8
+    restPosition: {x: 0, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  - name: Title
+    target: {fileID: 530157790}
+    maxOffset: 11
+    restPosition: {x: 539, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  - name: Robot
+    target: {fileID: 86971533}
+    maxOffset: 13
+    restPosition: {x: 0, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  - name: Spark / FX
+    target: {fileID: 686759883}
+    maxOffset: 16
+    restPosition: {x: 0, y: 0}
+    currentVelocity: {x: 0, y: 0}
+  m_EnableParallax: 1
+  m_SmoothTime: 0.35
+  m_AmbientDriftSpeed: 0.5
+  m_AmbientDriftAmount: 0.35
 --- !u!1 &910000020
 GameObject:
   m_ObjectHideFlags: 0
@@ -14631,6 +15380,30 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
+--- !u!114 &910000030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 530157789}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ab21e67e5674a919876ef12345678de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UITitleSuspensionSystem
+  m_VillainAnimator: {fileID: 477971399}
+  m_LeftEnergyLink: {fileID: 0}
+  m_RightEnergyLink: {fileID: 0}
+  m_LeftAttachmentOffset: {x: -220, y: 120}
+  m_RightAttachmentOffset: {x: 220, y: 120}
+  m_Frequency: 2.8
+  m_DampingRatio: 0.72
+  m_MaxAngularTilt: 1.35
+  m_MaxDisplacement: 12
+  m_EnableReactiveSparks: 1
+  m_SparkVelocityThreshold: 6
+  m_MinSparkInterval: 1.2
 --- !u!1 &918608900
 GameObject:
   m_ObjectHideFlags: 0
@@ -16609,6 +17382,7 @@ GameObject:
   - component: {fileID: 1070031352}
   - component: {fileID: 1070031354}
   - component: {fileID: 1070031353}
+  - component: {fileID: 1070031355}
   m_Layer: 0
   m_Name: Red and yellow layer
   m_TagString: Untagged
@@ -16673,6 +17447,80 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1070031351}
   m_CullTransparentMesh: 1
+--- !u!114 &1070031355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1070031351}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 2
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 5
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.04
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.14
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 1, g: 0.8235294, b: 0.24705882, a: 1}
+  m_PulseSpeed: 1.4
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 20
+  m_GlitchRate: 8
+  m_ScanStrength: 0
+  m_ScanWidth: 0.06
+  m_ScanSpeed: 0.5
+  m_IsOutlineLayer: 0
+  m_OutlineColor: {r: 1, g: 0.8235294, b: 0.24705882, a: 1}
+  m_OutlineWidth: 0
+  m_OutlineGlow: 1
+  m_OutlinePulseSpeed: 2
+  m_OutlinePulseAmount: 0.25
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.95686275, b: 0.6901961, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
 --- !u!1 &1083955859
 GameObject:
   m_ObjectHideFlags: 0
@@ -17121,6 +17969,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -17177,6 +18026,7 @@ MonoBehaviour:
   m_IsExitButton: 0
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 1
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -23598,6 +24448,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -23654,6 +24505,7 @@ MonoBehaviour:
   m_IsExitButton: 0
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 1
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -25113,6 +25965,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -25169,6 +26022,7 @@ MonoBehaviour:
   m_IsExitButton: 0
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 1
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -27029,6 +27883,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.1
   m_FocusOutDuration: 0.02
   m_EnableFloating: 1
@@ -27085,6 +27940,7 @@ MonoBehaviour:
   m_IsExitButton: 0
   m_EntranceImpactSfx: 4
   m_ConfirmSfx: 1
+  m_EnableMicroVibration: 1
   m_EnableFloating: 1
   m_FloatAmplitude: 4
   m_FloatSpeed: 2.2
@@ -27093,6 +27949,184 @@ MonoBehaviour:
   m_ButtonVisual: {fileID: 0}
   m_PointerIcon: {fileID: 0}
   m_CanvasGroup: {fileID: 0}
+--- !u!1 &1961740643
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1961740649}
+  - component: {fileID: 1961740648}
+  - component: {fileID: 1961740647}
+  - component: {fileID: 1961740646}
+  - component: {fileID: 1961740645}
+  - component: {fileID: 1961740644}
+  m_Layer: 0
+  m_Name: Villan_Outline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1961740644
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 3
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 1
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.04
+  m_OutlineHoldTime: 0.06
+  m_OutlineReleaseTime: 0.16
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 1, g: 0.16470589, b: 0.2784314, a: 1}
+  m_PulseSpeed: 1.2
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 24
+  m_GlitchRate: 4
+  m_ScanStrength: 0
+  m_ScanWidth: 0.05
+  m_ScanSpeed: 0.3
+  m_IsOutlineLayer: 1
+  m_OutlineColor: {r: 1, g: 0.16470589, b: 0.2784314, a: 1}
+  m_OutlineWidth: 2.8
+  m_OutlineGlow: 1.35
+  m_OutlinePulseSpeed: 1.8
+  m_OutlinePulseAmount: 0.18
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 1, g: 0.7019608, b: 0.2784314, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.5
+  m_EdgeSharpness: 3.5
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &1961740645
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e0611148e955bf449d9812af3967a34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineFollower
+  m_Target: {fileID: 477971395}
+--- !u!114 &1961740646
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1feaf338d029bdb4caefabcac32c16a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineMeshExpansion
+  m_Padding: 16
+--- !u!114 &1961740647
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: e2a36ce4641dedd499b592382f99dae2, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1961740648
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_CullTransparentMesh: 1
+--- !u!224 &1961740649
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961740643}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 494089468}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 2052, y: 1154.25}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1973009579
 GameObject:
   m_ObjectHideFlags: 0
@@ -27633,6 +28667,184 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1998063919}
   m_CullTransparentMesh: 1
+--- !u!1 &2002333742
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2002333748}
+  - component: {fileID: 2002333747}
+  - component: {fileID: 2002333746}
+  - component: {fileID: 2002333745}
+  - component: {fileID: 2002333744}
+  - component: {fileID: 2002333743}
+  m_Layer: 0
+  m_Name: Title_Outline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2002333743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a21b34e5674a919876ef12345678ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIBackgroundLayerController
+  m_Profile: 5
+  m_Theme: {fileID: 0}
+  m_ThemePreset: 9
+  m_UseTheme: 1
+  m_OverrideOutlineColor: 0
+  m_CustomOutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideInnerRimColor: 0
+  m_CustomInnerRimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideGlowColor: 0
+  m_CustomGlowColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverrideEnergyColor: 0
+  m_CustomEnergyColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OverridePulseColor: 0
+  m_CustomPulseColor: {r: 1, g: 1, b: 1, a: 1}
+  m_OutlineIntensity: 1
+  m_InnerRimMultiplier: 1
+  m_GlowMultiplier: 1
+  m_EnergyMultiplier: 1
+  m_PulseMultiplier: 1
+  m_OutlineResponseDelay: 0
+  m_OutlineAttackTime: 0.03
+  m_OutlineHoldTime: 0.05
+  m_OutlineReleaseTime: 0.15
+  m_OutlineBaseGlow: 1
+  m_OutlinePeakGlow: 2
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
+  m_PulseColor: {r: 0, g: 0.9607843, b: 0.83137256, a: 1}
+  m_PulseSpeed: 1.5
+  m_PulseAdditiveIntensity: 0
+  m_GlitchStrength: 0
+  m_GlitchBlockSize: 16
+  m_GlitchRate: 2
+  m_ScanStrength: 0
+  m_ScanWidth: 0.04
+  m_ScanSpeed: 0.25
+  m_IsOutlineLayer: 1
+  m_OutlineColor: {r: 0, g: 0.9607843, b: 0.83137256, a: 1}
+  m_OutlineWidth: 3.2
+  m_OutlineGlow: 1.55
+  m_OutlinePulseSpeed: 1.5
+  m_OutlinePulseAmount: 0.18
+  m_OutlineFlicker: 0
+  m_InnerRimColor: {r: 0.99607843, g: 0.89411765, b: 0.2509804, a: 1}
+  m_InnerRimIntensity: 0
+  m_InnerRimWidth: 1.8
+  m_EdgeSharpness: 3.2
+  m_AllowGlitch: 0
+  m_LinkedOutlineLayer: {fileID: 0}
+  m_DebugMode: 0
+  m_CurrentPulseState: 0
+  m_LastEvent: None
+  m_LastEventTime: 0
+  m_DebugEffectiveGlow: 1
+  m_DebugEffectiveRim: 0
+  m_HasInitializedDefaults: 1
+--- !u!114 &2002333744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e0611148e955bf449d9812af3967a34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineFollower
+  m_Target: {fileID: 125556294}
+--- !u!114 &2002333745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1feaf338d029bdb4caefabcac32c16a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UIOutlineMeshExpansion
+  m_Padding: 16
+--- !u!114 &2002333746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 6b811ae8aaf8e0c4581aab6784ea9275, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &2002333747
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_CullTransparentMesh: 1
+--- !u!224 &2002333748
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002333742}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 530157790}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 689, y: 302}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2008854123
 GameObject:
   m_ObjectHideFlags: 0
@@ -30262,6 +31474,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.05
   m_EnableFloating: 1
@@ -30325,6 +31538,7 @@ MonoBehaviour:
   m_SelectedOffsetX: 15
   m_SelectedScale: 1.04
   m_SelectedTilt: 1.2
+  m_EnableTilt: 1
   m_FocusInDuration: 0.12
   m_FocusOutDuration: 0.05
   m_EnableFloating: 1

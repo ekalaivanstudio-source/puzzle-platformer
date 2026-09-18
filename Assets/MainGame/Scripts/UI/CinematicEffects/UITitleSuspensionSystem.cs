@@ -38,9 +38,9 @@ namespace MainGame.UI.CinematicEffects
         [Range(0.2f, 1.2f)]
         [SerializeField] private float m_DampingRatio = 0.72f;
 
-        [Tooltip("Maximum allowed angular tilt sway in degrees.")]
-        [Range(0.5f, 4.0f)]
-        [SerializeField] private float m_MaxAngularTilt = 2.2f;
+        [Tooltip("Maximum allowed angular tilt sway in degrees (recommended ±1.0° - 1.5°).")]
+        [Range(0.5f, 2.0f)]
+        [SerializeField] private float m_MaxAngularTilt = 1.35f;
 
         [Tooltip("Maximum allowed vertical/horizontal displacement in pixels.")]
         [Range(2f, 24f)]
@@ -96,20 +96,27 @@ namespace MainGame.UI.CinematicEffects
             m_RectTransform = GetComponent<RectTransform>();
             m_TitleShaderCtrl = GetComponent<UIBackgroundLayerController>() ?? GetComponentInChildren<UIBackgroundLayerController>();
             EnsureRestCaptured();
+            CleanupEnergyLinks();
         }
 
         private void Start()
         {
             EnsureRestCaptured();
             ResolveVillainReference();
-            CreateEnergyLinksIfMissing();
+            CleanupEnergyLinks();
         }
 
         private void OnEnable()
         {
             EnsureRestCaptured();
+            CleanupEnergyLinks();
             m_IsActive = true;
             MusicBeatManager.OnBeat += HandleBeat;
+        }
+
+        private void OnValidate()
+        {
+            CleanupEnergyLinks();
         }
 
         private void OnDisable()
@@ -149,58 +156,45 @@ namespace MainGame.UI.CinematicEffects
             m_VillainAnimator = FindAnyObjectByType<UIVillainAnimator>();
         }
 
+        public void CleanupEnergyLinks()
+        {
+            Transform linkContainer = transform.parent != null ? transform.parent : transform;
+            if (linkContainer != null)
+            {
+                Transform l = linkContainer.Find("TitleEnergyLink_Left");
+                if (l != null)
+                {
+                    if (Application.isPlaying) Destroy(l.gameObject);
+                    else DestroyImmediate(l.gameObject);
+                }
+                Transform r = linkContainer.Find("TitleEnergyLink_Right");
+                if (r != null)
+                {
+                    if (Application.isPlaying) Destroy(r.gameObject);
+                    else DestroyImmediate(r.gameObject);
+                }
+            }
+
+            Transform childL = transform.Find("TitleEnergyLink_Left");
+            if (childL != null)
+            {
+                if (Application.isPlaying) Destroy(childL.gameObject);
+                else DestroyImmediate(childL.gameObject);
+            }
+            Transform childR = transform.Find("TitleEnergyLink_Right");
+            if (childR != null)
+            {
+                if (Application.isPlaying) Destroy(childR.gameObject);
+                else DestroyImmediate(childR.gameObject);
+            }
+
+            m_LeftEnergyLink = null;
+            m_RightEnergyLink = null;
+        }
+
         public void CreateEnergyLinksIfMissing()
         {
-            if (m_LeftEnergyLink != null && m_RightEnergyLink != null) return;
-
-            // Look for existing child objects or create them under this or parent canvas
-            Transform linkContainer = transform.parent != null ? transform.parent : transform;
-
-            if (m_LeftEnergyLink == null)
-            {
-                Transform existingL = linkContainer.Find("TitleEnergyLink_Left");
-                if (existingL != null)
-                {
-                    m_LeftEnergyLink = existingL.GetComponent<UITitleEnergyLink>();
-                }
-                else
-                {
-                    GameObject goL = new GameObject("TitleEnergyLink_Left", typeof(RectTransform), typeof(CanvasRenderer), typeof(UITitleEnergyLink));
-                    goL.transform.SetParent(linkContainer, false);
-                    goL.transform.SetSiblingIndex(Mathf.Max(0, transform.GetSiblingIndex()));
-                    RectTransform rt = goL.GetComponent<RectTransform>();
-                    rt.anchorMin = Vector2.zero;
-                    rt.anchorMax = Vector2.one;
-                    rt.sizeDelta = Vector2.zero;
-                    rt.anchoredPosition = Vector2.zero;
-                    CanvasRenderer cr = goL.GetComponent<CanvasRenderer>();
-                    if (cr != null) cr.cull = false;
-                    m_LeftEnergyLink = goL.GetComponent<UITitleEnergyLink>();
-                }
-            }
-
-            if (m_RightEnergyLink == null)
-            {
-                Transform existingR = linkContainer.Find("TitleEnergyLink_Right");
-                if (existingR != null)
-                {
-                    m_RightEnergyLink = existingR.GetComponent<UITitleEnergyLink>();
-                }
-                else
-                {
-                    GameObject goR = new GameObject("TitleEnergyLink_Right", typeof(RectTransform), typeof(CanvasRenderer), typeof(UITitleEnergyLink));
-                    goR.transform.SetParent(linkContainer, false);
-                    goR.transform.SetSiblingIndex(Mathf.Max(0, transform.GetSiblingIndex()));
-                    RectTransform rt = goR.GetComponent<RectTransform>();
-                    rt.anchorMin = Vector2.zero;
-                    rt.anchorMax = Vector2.one;
-                    rt.sizeDelta = Vector2.zero;
-                    rt.anchoredPosition = Vector2.zero;
-                    CanvasRenderer cr = goR.GetComponent<CanvasRenderer>();
-                    if (cr != null) cr.cull = false;
-                    m_RightEnergyLink = goR.GetComponent<UITitleEnergyLink>();
-                }
-            }
+            CleanupEnergyLinks();
         }
 
         private void HandleBeat(BeatEvent evt)
@@ -217,7 +211,7 @@ namespace MainGame.UI.CinematicEffects
 
             if (m_TitleShaderCtrl != null && isDownbeat)
             {
-                m_TitleShaderCtrl.PulseOutline(0.12f, 0.22f);
+                m_TitleShaderCtrl.PulseOutlineImmediate(1.8f, 0.02f, 0.04f, 0.16f, null, "TitleBeatImpulse");
             }
 
             if (isDownbeat && UnityEngine.Random.value < 0.35f)
@@ -285,10 +279,7 @@ namespace MainGame.UI.CinematicEffects
             m_RectTransform.anchoredPosition = m_RestPosition + m_PosDisplacement;
             m_RectTransform.localEulerAngles = m_RestRotation + new Vector3(0f, 0f, m_AngleDisplacement);
 
-            // ─── 5. UPDATE PROCEDURAL ENERGY STRINGS ───────────────────────────
-            UpdateEnergyStrings();
-
-            // ─── 6. REACTIVE ATTACHMENT SPARKS & ENERGY ────────────────────────
+            // ─── 5. REACTIVE ATTACHMENT SPARKS & ENERGY ────────────────────────
             float kineticSpeed = m_PosVelocity.magnitude + Mathf.Abs(m_AngleVelocity) * 2.0f;
             if (m_EnableReactiveSparks && kineticSpeed > m_SparkVelocityThreshold)
             {
@@ -300,51 +291,11 @@ namespace MainGame.UI.CinematicEffects
             }
         }
 
-        private void UpdateEnergyStrings()
-        {
-            Vector3 handWorldL;
-            Vector3 handWorldR;
-
-            if (m_VillainAnimator != null)
-            {
-                handWorldL = m_VillainAnimator.LeftHandAnchorWorldPosition;
-                handWorldR = m_VillainAnimator.RightHandAnchorWorldPosition;
-            }
-            else
-            {
-                // Procedural upper anchor points directly above the title attachment points
-                handWorldL = LeftAttachmentWorldPosition + new Vector3(0f, 160f, 0f);
-                handWorldR = RightAttachmentWorldPosition + new Vector3(0f, 160f, 0f);
-            }
-
-            Vector3 attachWorldL = LeftAttachmentWorldPosition;
-            Vector3 attachWorldR = RightAttachmentWorldPosition;
-
-            float tensionL = 1.0f + Mathf.Clamp01(m_PosVelocity.magnitude * 0.05f + Mathf.Max(0f, -m_AngleDisplacement * 0.5f));
-            float tensionR = 1.0f + Mathf.Clamp01(m_PosVelocity.magnitude * 0.05f + Mathf.Max(0f, m_AngleDisplacement * 0.5f));
-
-            if (m_LeftEnergyLink != null)
-            {
-                m_LeftEnergyLink.SetEndpoints(handWorldL, attachWorldL, tensionL);
-            }
-            if (m_RightEnergyLink != null)
-            {
-                m_RightEnergyLink.SetEndpoints(handWorldR, attachWorldR, tensionR);
-            }
-        }
-
         public void TriggerAttachmentSparks()
         {
-            if (CinematicUIParticleSystem.Instance != null)
-            {
-                Color sparkCol = new Color(0.4f, 0.9f, 1f, 0.9f);
-                CinematicUIParticleSystem.Instance.SpawnSparkBurst(LeftAttachmentWorldPosition, sparkCol, 3, 10f);
-                CinematicUIParticleSystem.Instance.SpawnSparkBurst(RightAttachmentWorldPosition, sparkCol, 3, 10f);
-            }
-
             if (m_TitleShaderCtrl != null)
             {
-                m_TitleShaderCtrl.PulseOutline(0.18f, 0.25f, new Color(0.22f, 0.88f, 1f, 1f));
+                m_TitleShaderCtrl.PulseOutlineImmediate(1.9f, 0.02f, 0.05f, 0.18f, new Color(0.22f, 0.88f, 1f, 1f), "TitleSparks");
             }
         }
 
@@ -356,9 +307,9 @@ namespace MainGame.UI.CinematicEffects
 
         public void TriggerTitleGlitch(float duration = 0.15f)
         {
-            if (m_TitleShaderCtrl != null)
+            if (MainMenuBackgroundDirector.Instance != null && MainMenuBackgroundDirector.Instance.BgRedController != null)
             {
-                m_TitleShaderCtrl.TriggerGlitch(duration);
+                MainMenuBackgroundDirector.Instance.BgRedController.TriggerGlitch(duration);
             }
         }
 
