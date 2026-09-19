@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,8 +6,10 @@ using UnityEngine.UI;
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Unified Main Menu Screen controller managing the HomeScreenPanel New UI actions.
+    /// Unified Main Menu Screen controller managing the HomeScreenPanel New UI actions,
+    /// button confirmation punches, and physical cinematic transitions.
     /// </summary>
+    [DisallowMultipleComponent]
     public class MainMenuScreen : UIScreen
     {
         [Header("Main Menu Buttons")]
@@ -16,6 +19,13 @@ namespace MainGame.UI.Unified
         [SerializeField] private Button m_OptionsButton;
         [SerializeField] private Button m_CreditsButton;
         [SerializeField] private Button m_ExitButton;
+
+        public Button ContinueButton => m_ContinueButton;
+        public Button NewGameButton => m_NewGameButton;
+        public Button CollectButton => m_CollectButton;
+        public Button OptionsButton => m_OptionsButton;
+        public Button CreditsButton => m_CreditsButton;
+        public Button ExitButton => m_ExitButton;
 
         [Header("Screens Mapping")]
         [SerializeField] private UIScreen m_LevelSelectionScreen;
@@ -31,6 +41,9 @@ namespace MainGame.UI.Unified
         [Header("Scene Loading")]
         [Tooltip("Build index of the first playable level, loaded when starting a new game.")]
         [SerializeField] private int m_FirstLevelBuildIndex = 1;
+
+        [Header("Animator Reference")]
+        [SerializeField] private HomeScreenAnimator m_HomeScreenAnimator;
 
         private UIVerticalNavigationLinker m_NavigationLinker;
 
@@ -58,12 +71,61 @@ namespace MainGame.UI.Unified
             {
                 m_NavigationLinker = GetComponentInChildren<UIVerticalNavigationLinker>(true);
             }
+
+            if (m_HomeScreenAnimator == null)
+            {
+                m_HomeScreenAnimator = GetComponent<HomeScreenAnimator>();
+            }
+            if (m_HomeScreenAnimator == null)
+            {
+                m_HomeScreenAnimator = GetComponentInChildren<HomeScreenAnimator>(true);
+            }
         }
 
         public override void Open()
         {
             base.Open();
             RefreshContinueButtonState();
+        }
+
+        public override void PlayEnterTransition(Action onComplete)
+        {
+            if (m_HomeScreenAnimator != null)
+            {
+                m_HomeScreenAnimator.PrepareEntranceState();
+            }
+
+            Open();
+
+            if (m_HomeScreenAnimator != null)
+            {
+                m_HomeScreenAnimator.PlayEntrance(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        private int m_LastClickedButtonIndex = -1;
+
+        public override void PlayExitTransition(Action onComplete)
+        {
+            if (m_HomeScreenAnimator != null)
+            {
+                int selIdx = m_LastClickedButtonIndex;
+                m_LastClickedButtonIndex = -1;
+                m_HomeScreenAnimator.PlayExitWithSelectedButton(selIdx, () =>
+                {
+                    SetCanvasGroupInteractive(false);
+                    onComplete?.Invoke();
+                });
+            }
+            else
+            {
+                Close();
+                onComplete?.Invoke();
+            }
         }
 
         private void RefreshContinueButtonState()
@@ -74,7 +136,6 @@ namespace MainGame.UI.Unified
             m_ContinueButton.gameObject.SetActive(hasSave);
             m_ContinueButton.interactable = hasSave;
 
-            // Showing/hiding a row changes the vertical chain, so relink it.
             if (m_NavigationLinker != null)
             {
                 m_NavigationLinker.RefreshNavigationLinks();
@@ -85,13 +146,24 @@ namespace MainGame.UI.Unified
         {
             RefreshContinueButtonState();
 
-            // If returning from the pause menu, jump straight back into Level Selection. Deferred by a
-            // frame so this runs after UINavigationManager.Start has pushed the initial screen, otherwise
-            // the main menu would land on top of the level selection screen.
             if (PauseMenuScreen.AutoOpenLevelSelection)
             {
-                PauseMenuScreen.AutoOpenLevelSelection = false; // Reset flag
+                PauseMenuScreen.AutoOpenLevelSelection = false;
                 StartCoroutine(OpenLevelSelectionNextFrame());
+                return;
+            }
+
+            // Self-healing fallback: Ensure MainMenuScreen is pushed and entrance animation plays
+            if (UINavigationManager.Instance != null)
+            {
+                if (UINavigationManager.Instance.CurrentScreen == null)
+                {
+                    UINavigationManager.Instance.PushScreen(this);
+                }
+            }
+            else
+            {
+                PlayEnterTransition(null);
             }
         }
 
@@ -125,58 +197,99 @@ namespace MainGame.UI.Unified
             if (m_ExitButton != null) m_ExitButton.onClick.RemoveListener(HandleExitClicked);
         }
 
+        private void TriggerWithPunch(Button button, Action callback)
+        {
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
+
+            if (button != null)
+            {
+                MainMenuButtonEnergyAnimator energyBtn = button.GetComponent<MainMenuButtonEnergyAnimator>();
+                if (energyBtn != null)
+                {
+                    energyBtn.PlayConfirmPunch(callback);
+                    return;
+                }
+
+                UIAnimatedButton animBtn = button.GetComponent<UIAnimatedButton>();
+                if (animBtn != null)
+                {
+                    animBtn.PlayConfirmPunch(callback);
+                    return;
+                }
+            }
+
+            callback?.Invoke();
+        }
+
         private void HandleContinueClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            // Opens Level Selection screen so players can choose where to continue
-            PushScreen(m_LevelSelectionScreen);
+            m_LastClickedButtonIndex = 0;
+            TriggerWithPunch(m_ContinueButton, () =>
+            {
+                PushScreen(m_LevelSelectionScreen);
+            });
         }
 
         private void HandleNewGameClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            ModernLevelSelection.SaveManager.ResetProgress();
-            Collectables.RobotCollectionService.ResetAll();
-
-            // The intro cutscene loads the level itself once it finishes. It declines when the home
-            // screen has no cutscene built, in which case we go straight in as before.
-            if (!IntroCutsceneScreen.TryPlay(m_FirstLevelBuildIndex))
+            m_LastClickedButtonIndex = 1;
+            TriggerWithPunch(m_NewGameButton, () =>
             {
-                UnityEngine.SceneManagement.SceneManager.LoadScene(m_FirstLevelBuildIndex);
-            }
+                ModernLevelSelection.SaveManager.ResetProgress();
+                Collectables.RobotCollectionService.ResetAll();
+
+                if (!IntroCutsceneScreen.TryPlay(m_FirstLevelBuildIndex))
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene(m_FirstLevelBuildIndex);
+                }
+            });
         }
 
         private void HandleCollectClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            PushScreen(m_CollectionScreen);
+            m_LastClickedButtonIndex = 2;
+            TriggerWithPunch(m_CollectButton, () =>
+            {
+                PushScreen(m_CollectionScreen);
+            });
         }
 
         private void HandleOptionsClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            PushScreen(m_OptionsScreen);
+            m_LastClickedButtonIndex = 3;
+            TriggerWithPunch(m_OptionsButton, () =>
+            {
+                PushScreen(m_OptionsScreen);
+            });
         }
 
         private void HandleCreditsClicked()
         {
-            AudioManager.Instance?.PlayButton();
-            PushScreen(m_CreditsScreen);
+            m_LastClickedButtonIndex = 4;
+            TriggerWithPunch(m_CreditsButton, () =>
+            {
+                PushScreen(m_CreditsScreen);
+            });
         }
 
         private void HandleExitClicked()
         {
-            AudioManager.Instance?.PlayButton();
-
-            if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)
+            m_LastClickedButtonIndex = 5;
+            TriggerWithPunch(m_ExitButton, () =>
             {
-                Debug.LogWarning("[MainMenuScreen] ConfirmationPopupScreen not assigned, quitting application directly.");
-                QuitApplication();
-                return;
-            }
+                if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)
+                {
+                    Debug.LogWarning("[MainMenuScreen] ConfirmationPopupScreen not assigned, quitting application directly.");
+                    QuitApplication();
+                    return;
+                }
 
-            m_ConfirmationPopupScreen.SetupAction(QuitApplication, m_ExitTitleSprite);
-            UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+                m_ConfirmationPopupScreen.SetupAction(QuitApplication, m_ExitTitleSprite);
+                UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+            });
         }
 
         private static void QuitApplication()

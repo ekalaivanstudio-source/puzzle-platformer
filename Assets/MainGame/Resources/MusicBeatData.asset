@@ -1,0 +1,810 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd035d89f0284ae98e519edbdea8ec2e, type: 3}
+  m_Name: MusicBeatData
+  m_EditorClassIdentifier: MainGame.UI.CinematicEffects.BeatSync::MusicBeatData
+  m_Bpm: 113.304
+  m_FirstBeatOffset: 0.136
+  m_BeatsPerBar: 4
+  m_TrackLength: 59.736
+  m_Markers:
+  - Time: 0.1360
+    BeatIndex: 0
+    BarIndex: 0
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 0.6655
+    BeatIndex: 1
+    BarIndex: 0
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 1.1951
+    BeatIndex: 2
+    BarIndex: 0
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 1.7246
+    BeatIndex: 3
+    BarIndex: 0
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 2.2542
+    BeatIndex: 4
+    BarIndex: 1
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 2.7837
+    BeatIndex: 5
+    BarIndex: 1
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 3.3133
+    BeatIndex: 6
+    BarIndex: 1
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 3.8428
+    BeatIndex: 7
+    BarIndex: 1
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 4.3724
+    BeatIndex: 8
+    BarIndex: 2
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 4.9019
+    BeatIndex: 9
+    BarIndex: 2
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 5.4315
+    BeatIndex: 10
+    BarIndex: 2
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 5.9610
+    BeatIndex: 11
+    BarIndex: 2
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 6.4906
+    BeatIndex: 12
+    BarIndex: 3
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 7.0201
+    BeatIndex: 13
+    BarIndex: 3
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 7.5497
+    BeatIndex: 14
+    BarIndex: 3
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 8.0792
+    BeatIndex: 15
+    BarIndex: 3
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 8.6088
+    BeatIndex: 16
+    BarIndex: 4
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 9.1383
+    BeatIndex: 17
+    BarIndex: 4
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 9.6679
+    BeatIndex: 18
+    BarIndex: 4
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 10.1974
+    BeatIndex: 19
+    BarIndex: 4
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 10.7270
+    BeatIndex: 20
+    BarIndex: 5
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 11.2565
+    BeatIndex: 21
+    BarIndex: 5
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 11.7861
+    BeatIndex: 22
+    BarIndex: 5
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 12.3156
+    BeatIndex: 23
+    BarIndex: 5
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 12.8452
+    BeatIndex: 24
+    BarIndex: 6
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 13.3747
+    BeatIndex: 25
+    BarIndex: 6
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 13.9043
+    BeatIndex: 26
+    BarIndex: 6
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 14.4338
+    BeatIndex: 27
+    BarIndex: 6
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 14.9634
+    BeatIndex: 28
+    BarIndex: 7
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 15.4929
+    BeatIndex: 29
+    BarIndex: 7
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 16.0225
+    BeatIndex: 30
+    BarIndex: 7
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 16.5520
+    BeatIndex: 31
+    BarIndex: 7
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 17.0816
+    BeatIndex: 32
+    BarIndex: 8
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 17.6111
+    BeatIndex: 33
+    BarIndex: 8
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 18.1407
+    BeatIndex: 34
+    BarIndex: 8
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 18.6702
+    BeatIndex: 35
+    BarIndex: 8
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 19.1998
+    BeatIndex: 36
+    BarIndex: 9
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 19.7293
+    BeatIndex: 37
+    BarIndex: 9
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 20.2589
+    BeatIndex: 38
+    BarIndex: 9
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 20.7884
+    BeatIndex: 39
+    BarIndex: 9
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 21.3180
+    BeatIndex: 40
+    BarIndex: 10
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 21.8475
+    BeatIndex: 41
+    BarIndex: 10
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 22.3771
+    BeatIndex: 42
+    BarIndex: 10
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 22.9066
+    BeatIndex: 43
+    BarIndex: 10
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 23.4361
+    BeatIndex: 44
+    BarIndex: 11
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 23.9657
+    BeatIndex: 45
+    BarIndex: 11
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 24.4952
+    BeatIndex: 46
+    BarIndex: 11
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 25.0248
+    BeatIndex: 47
+    BarIndex: 11
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 25.5543
+    BeatIndex: 48
+    BarIndex: 12
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 26.0839
+    BeatIndex: 49
+    BarIndex: 12
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 26.6134
+    BeatIndex: 50
+    BarIndex: 12
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 27.1430
+    BeatIndex: 51
+    BarIndex: 12
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 27.6725
+    BeatIndex: 52
+    BarIndex: 13
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 28.2021
+    BeatIndex: 53
+    BarIndex: 13
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 28.7316
+    BeatIndex: 54
+    BarIndex: 13
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 29.2612
+    BeatIndex: 55
+    BarIndex: 13
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 29.7907
+    BeatIndex: 56
+    BarIndex: 14
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 30.3203
+    BeatIndex: 57
+    BarIndex: 14
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 30.8498
+    BeatIndex: 58
+    BarIndex: 14
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 31.3794
+    BeatIndex: 59
+    BarIndex: 14
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 31.9089
+    BeatIndex: 60
+    BarIndex: 15
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 32.4385
+    BeatIndex: 61
+    BarIndex: 15
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 32.9680
+    BeatIndex: 62
+    BarIndex: 15
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 33.4976
+    BeatIndex: 63
+    BarIndex: 15
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 34.0271
+    BeatIndex: 64
+    BarIndex: 16
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 34.5567
+    BeatIndex: 65
+    BarIndex: 16
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 35.0862
+    BeatIndex: 66
+    BarIndex: 16
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 35.6158
+    BeatIndex: 67
+    BarIndex: 16
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 36.1453
+    BeatIndex: 68
+    BarIndex: 17
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 36.6749
+    BeatIndex: 69
+    BarIndex: 17
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 37.2044
+    BeatIndex: 70
+    BarIndex: 17
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 37.7340
+    BeatIndex: 71
+    BarIndex: 17
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 38.2635
+    BeatIndex: 72
+    BarIndex: 18
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 38.7931
+    BeatIndex: 73
+    BarIndex: 18
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 39.3226
+    BeatIndex: 74
+    BarIndex: 18
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 39.8522
+    BeatIndex: 75
+    BarIndex: 18
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 40.3817
+    BeatIndex: 76
+    BarIndex: 19
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 40.9113
+    BeatIndex: 77
+    BarIndex: 19
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 41.4408
+    BeatIndex: 78
+    BarIndex: 19
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 41.9704
+    BeatIndex: 79
+    BarIndex: 19
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 42.4999
+    BeatIndex: 80
+    BarIndex: 20
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 43.0295
+    BeatIndex: 81
+    BarIndex: 20
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 43.5590
+    BeatIndex: 82
+    BarIndex: 20
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 44.0886
+    BeatIndex: 83
+    BarIndex: 20
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 44.6181
+    BeatIndex: 84
+    BarIndex: 21
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 45.1477
+    BeatIndex: 85
+    BarIndex: 21
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 45.6772
+    BeatIndex: 86
+    BarIndex: 21
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 46.2067
+    BeatIndex: 87
+    BarIndex: 21
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 46.7363
+    BeatIndex: 88
+    BarIndex: 22
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 47.2658
+    BeatIndex: 89
+    BarIndex: 22
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 47.7954
+    BeatIndex: 90
+    BarIndex: 22
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 48.3249
+    BeatIndex: 91
+    BarIndex: 22
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 48.8545
+    BeatIndex: 92
+    BarIndex: 23
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 49.3840
+    BeatIndex: 93
+    BarIndex: 23
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 49.9136
+    BeatIndex: 94
+    BarIndex: 23
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 50.4431
+    BeatIndex: 95
+    BarIndex: 23
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 50.9727
+    BeatIndex: 96
+    BarIndex: 24
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 51.5022
+    BeatIndex: 97
+    BarIndex: 24
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 52.0318
+    BeatIndex: 98
+    BarIndex: 24
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 52.5613
+    BeatIndex: 99
+    BarIndex: 24
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 53.0909
+    BeatIndex: 100
+    BarIndex: 25
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 53.6204
+    BeatIndex: 101
+    BarIndex: 25
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 54.1500
+    BeatIndex: 102
+    BarIndex: 25
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 54.6795
+    BeatIndex: 103
+    BarIndex: 25
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 55.2091
+    BeatIndex: 104
+    BarIndex: 26
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 55.7386
+    BeatIndex: 105
+    BarIndex: 26
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 56.2682
+    BeatIndex: 106
+    BarIndex: 26
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 56.7977
+    BeatIndex: 107
+    BarIndex: 26
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 57.3273
+    BeatIndex: 108
+    BarIndex: 27
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1
+  - Time: 57.8568
+    BeatIndex: 109
+    BarIndex: 27
+    BeatInBar: 1
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 58.3864
+    BeatIndex: 110
+    BarIndex: 27
+    BeatInBar: 2
+    Strength: 0.75
+    IsDownbeat: 0
+    IsStrongBeat: 1
+  - Time: 58.9159
+    BeatIndex: 111
+    BarIndex: 27
+    BeatInBar: 3
+    Strength: 0.5
+    IsDownbeat: 0
+    IsStrongBeat: 0
+  - Time: 59.4455
+    BeatIndex: 112
+    BarIndex: 28
+    BeatInBar: 0
+    Strength: 1.0
+    IsDownbeat: 1
+    IsStrongBeat: 1

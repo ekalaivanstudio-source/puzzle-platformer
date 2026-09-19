@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 
 namespace MainGame.UI.Unified
 {
@@ -13,6 +14,13 @@ namespace MainGame.UI.Unified
     /// </summary>
     public class PauseMenuScreen : UIScreen
     {
+        public static PauseMenuScreen Instance { get; private set; }
+
+        public static bool IsPaused =>
+            (PauseMenu.PauseMenuController.Instance != null && PauseMenu.PauseMenuController.IsPaused) ||
+            (Instance != null && Instance.gameObject.activeInHierarchy &&
+            Instance.CanvasGroup != null && Instance.CanvasGroup.interactable && Instance.CanvasGroup.alpha > 0.05f);
+
         [Header("Menu Buttons")]
         [SerializeField] private Button m_ResetButton;
         [SerializeField] private Button m_LevelsButton;
@@ -36,8 +44,166 @@ namespace MainGame.UI.Unified
         [Tooltip("UnityEvent invoked when the player confirms level reset.")]
         [SerializeField] private UnityEvent m_OnResetConfirmed;
 
+        [Header("Animator Reference")]
+        [SerializeField] private PauseMenuAnimator m_Animator;
+
         // Static flag used to tell the HomeScreen scene to auto-open the Level Selection screen on load
         public static bool AutoOpenLevelSelection { get; set; } = false;
+
+        public static PauseMenuScreen FindOrCreateInstance()
+        {
+            if (Instance != null) return Instance;
+            PauseMenuScreen found = FindAnyObjectByType<PauseMenuScreen>(FindObjectsInactive.Include);
+            if (found != null)
+            {
+                Instance = found;
+                return found;
+            }
+            return null;
+        }
+
+        public static void Toggle()
+        {
+            if (PauseMenu.PauseMenuController.Instance != null)
+            {
+                PauseMenu.PauseMenuController.Toggle();
+                return;
+            }
+
+            PauseMenuScreen pm = FindOrCreateInstance();
+            if (pm == null) return;
+
+            if (IsPaused)
+            {
+                pm.ResumeGame();
+            }
+            else
+            {
+                pm.OpenPauseMenu();
+            }
+        }
+
+        protected override void Awake()
+        {
+            base.Awake();
+            Instance = this;
+
+            if (m_Animator == null) m_Animator = GetComponent<PauseMenuAnimator>();
+            if (m_Animator == null) m_Animator = GetComponentInChildren<PauseMenuAnimator>(true);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
+        /// <summary>
+        /// Opens the Pause Menu, freezes gameplay timeScale, and disables in-game character actions.
+        /// </summary>
+        public void OpenPauseMenu()
+        {
+            if (PauseMenu.PauseMenuController.Instance != null)
+            {
+                PauseMenu.PauseMenuController.Instance.OpenPauseMenu();
+                return;
+            }
+
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
+
+            Time.timeScale = 0f;
+            DeviceInputProvider.Instance?.SetEnabled(false);
+
+            InputActionAsset asset = DeviceInputProvider.Instance != null ? DeviceInputProvider.Instance.InputActionAsset : null;
+            UINavigationManager nav = UINavigationManager.EnsureInstance(asset);
+
+            if (nav != null)
+            {
+                nav.PushScreen(this);
+            }
+            else
+            {
+                PlayEnterTransition(null);
+            }
+        }
+
+        /// <summary>
+        /// Closes the Pause Menu (or any active confirmation popup), unfreezes time, and resumes gameplay input.
+        /// </summary>
+        public void ResumeGame()
+        {
+            if (PauseMenu.PauseMenuController.Instance != null)
+            {
+                PauseMenu.PauseMenuController.Instance.ResumeGameplay();
+                return;
+            }
+
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
+
+            if (m_ConfirmationPopupScreen != null && m_ConfirmationPopupScreen.gameObject.activeInHierarchy)
+            {
+                if (UINavigationManager.Instance != null)
+                {
+                    UINavigationManager.Instance.PopScreen();
+                    return;
+                }
+            }
+
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.CurrentScreen == this)
+            {
+                UINavigationManager.Instance.PopScreen();
+            }
+            else
+            {
+                PlayExitTransition(() =>
+                {
+                    Time.timeScale = 1f;
+                    DeviceInputProvider.Instance?.SetEnabled(true);
+                });
+            }
+        }
+
+        public override void PlayEnterTransition(Action onComplete)
+        {
+            Open();
+            if (m_Animator != null)
+            {
+                m_Animator.PlayEntrance(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        public override void PlayExitTransition(Action onComplete)
+        {
+            if (m_Animator != null)
+            {
+                m_Animator.PlayExit(() =>
+                {
+                    Close();
+                    Time.timeScale = 1f;
+                    DeviceInputProvider.Instance?.SetEnabled(true);
+                    onComplete?.Invoke();
+                });
+            }
+            else
+            {
+                Close();
+                Time.timeScale = 1f;
+                DeviceInputProvider.Instance?.SetEnabled(true);
+                onComplete?.Invoke();
+            }
+        }
 
         private void OnEnable()
         {
@@ -57,8 +223,18 @@ namespace MainGame.UI.Unified
         {
             RequestConfirmation(m_ResetTitleSprite, () =>
             {
-                Debug.Log("[PauseMenuScreen] Reset confirmed. Invoking event...");
-                m_OnResetConfirmed?.Invoke();
+                Debug.Log("[PauseMenuScreen] Reset confirmed. Invoking reset flow...");
+                Time.timeScale = 1f;
+                DeviceInputProvider.Instance?.SetEnabled(true);
+
+                if (m_OnResetConfirmed != null && m_OnResetConfirmed.GetPersistentEventCount() > 0)
+                {
+                    m_OnResetConfirmed.Invoke();
+                }
+                else
+                {
+                    GameManager.Instance?.RestartLevel();
+                }
             });
         }
 
@@ -67,6 +243,8 @@ namespace MainGame.UI.Unified
             RequestConfirmation(m_LevelsTitleSprite, () =>
             {
                 Debug.Log("[PauseMenuScreen] Levels confirmed. Redirecting to Level Selection screen...");
+                Time.timeScale = 1f;
+                DeviceInputProvider.Instance?.SetEnabled(true);
                 LoadLevelsScene(autoOpenLevelSelection: true);
             });
         }
@@ -76,6 +254,8 @@ namespace MainGame.UI.Unified
             RequestConfirmation(m_ExitTitleSprite, () =>
             {
                 Debug.Log("[PauseMenuScreen] Exit confirmed. Loading main menu...");
+                Time.timeScale = 1f;
+                DeviceInputProvider.Instance?.SetEnabled(true);
                 LoadLevelsScene(autoOpenLevelSelection: false);
             });
         }
@@ -89,14 +269,17 @@ namespace MainGame.UI.Unified
         {
             AudioManager.Instance?.PlayButton();
 
-            if (m_ConfirmationPopupScreen == null || UINavigationManager.Instance == null)
+            InputActionAsset asset = DeviceInputProvider.Instance != null ? DeviceInputProvider.Instance.InputActionAsset : null;
+            UINavigationManager nav = UINavigationManager.EnsureInstance(asset);
+
+            if (m_ConfirmationPopupScreen == null || nav == null)
             {
                 onConfirmed?.Invoke();
                 return;
             }
 
             m_ConfirmationPopupScreen.SetupAction(onConfirmed, titleSprite);
-            UINavigationManager.Instance.PushScreen(m_ConfirmationPopupScreen);
+            nav.PushScreen(m_ConfirmationPopupScreen);
         }
 
         private void LoadLevelsScene(bool autoOpenLevelSelection)
