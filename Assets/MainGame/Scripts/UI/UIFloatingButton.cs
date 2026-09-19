@@ -220,6 +220,7 @@ namespace MainGame.UI
                 m_RestScale = m_Target.localScale;
                 m_RestRotation = m_Target.localEulerAngles;
                 m_HasCapturedRestState = true;
+                m_HasAppliedTransform = false;
             }
 
             if (m_AutoPhase)
@@ -241,23 +242,66 @@ namespace MainGame.UI
             m_Target.localEulerAngles = m_RestRotation;
             m_CurrentLift = 0f;
             m_CurrentScaleMultiplier = 1f;
+            m_HasAppliedTransform = false;
         }
+
+        // Last values actually pushed to the transform. Every write here marks the RectTransform
+        // dirty and forces the Canvas to re-batch this button, and localEulerAngles additionally
+        // pays a euler-to-quaternion conversion. Once the easing has converged -- at rest, or while
+        // suppressed and already settled -- the computed values stop changing, and re-writing the
+        // identical value each frame keeps the canvas permanently dirty for no visible difference.
+        private Vector2 m_LastAppliedPosition;
+        private Vector3 m_LastAppliedScale;
+        private Vector3 m_LastAppliedEuler;
+        private bool m_HasAppliedTransform;
+
+        private const float ApplyEpsilonSqr = 1e-8f;
 
         private void ApplyTransform(float xOffset, float yOffset, float tiltOffset)
         {
             if (m_Target == null) return;
 
-            m_Target.anchoredPosition = new Vector2(m_RestPosition.x + xOffset, m_RestPosition.y + yOffset);
-            m_Target.localScale = new Vector3(
+            Vector2 position = new Vector2(m_RestPosition.x + xOffset, m_RestPosition.y + yOffset);
+            Vector3 scale = new Vector3(
                 m_RestScale.x * m_CurrentScaleMultiplier,
                 m_RestScale.y * m_CurrentScaleMultiplier,
                 m_RestScale.z
             );
-            m_Target.localEulerAngles = new Vector3(
+            Vector3 euler = new Vector3(
                 m_RestRotation.x,
                 m_RestRotation.y,
                 m_RestRotation.z + tiltOffset
             );
+
+            if (!m_HasAppliedTransform)
+            {
+                m_Target.anchoredPosition = position;
+                m_Target.localScale = scale;
+                m_Target.localEulerAngles = euler;
+                m_LastAppliedPosition = position;
+                m_LastAppliedScale = scale;
+                m_LastAppliedEuler = euler;
+                m_HasAppliedTransform = true;
+                return;
+            }
+
+            if ((position - m_LastAppliedPosition).sqrMagnitude > ApplyEpsilonSqr)
+            {
+                m_Target.anchoredPosition = position;
+                m_LastAppliedPosition = position;
+            }
+
+            if ((scale - m_LastAppliedScale).sqrMagnitude > ApplyEpsilonSqr)
+            {
+                m_Target.localScale = scale;
+                m_LastAppliedScale = scale;
+            }
+
+            if ((euler - m_LastAppliedEuler).sqrMagnitude > ApplyEpsilonSqr)
+            {
+                m_Target.localEulerAngles = euler;
+                m_LastAppliedEuler = euler;
+            }
         }
 
         /// <summary>

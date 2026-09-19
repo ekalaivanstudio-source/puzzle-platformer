@@ -181,7 +181,7 @@ namespace MainGame.UI.Feedback
 
         private void SpawnParticles(RectTransform target, UIFeedbackPreset preset)
         {
-            RoboticPixelFXPool pool = FindAnyObjectByType<RoboticPixelFXPool>();
+            RoboticPixelFXPool pool = RoboticPixelFXPool.Instance;
             if (pool != null)
             {
                 Vector2 center = target.anchoredPosition;

@@ -753,7 +753,7 @@ namespace MainGame.UI.Unified
             }
 
             UIFeedbackAudio.PlaySfx(UISfxType.RobotBoot, 0.75f, 0.02f);
-            RoboticPixelFXPool pool = FindAnyObjectByType<RoboticPixelFXPool>();
+            RoboticPixelFXPool pool = RoboticPixelFXPool.Instance;
             if (pool != null && m_RobotArtwork != null)
             {
                 pool.SpawnSparkBurst(new Vector2(0f, 40f), m_RobotArtwork, new Color(0.35f, 0.95f, 0.70f, 1f), 4, 14f);

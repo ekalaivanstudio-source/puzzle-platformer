@@ -213,6 +213,21 @@ namespace MainGame.UI.PauseMenu
 
         #region Public Interface
 
+        // One pause transition per frame. Escape/Start is bound identically on both the Player
+        // and the UI action map, so PauseInputController subscribes the same handler twice and a
+        // single press arrives twice; GameManager.Update polls the same keys and routes here as
+        // well. The Opening/Closing states hide that today only because the entrance animation
+        // takes time — with no animator assigned, or one that completes synchronously, the second
+        // call lands on MainPause and immediately resumes, so the menu never opens.
+        private int m_LastTransitionFrame = -1;
+
+        private bool ConsumeTransitionForThisFrame()
+        {
+            if (m_LastTransitionFrame == Time.frameCount) return false;
+            m_LastTransitionFrame = Time.frameCount;
+            return true;
+        }
+
         public static void Toggle()
         {
             if (Instance == null)
@@ -238,6 +253,7 @@ namespace MainGame.UI.PauseMenu
         public void OpenPauseMenu()
         {
             if (m_CurrentState != PauseState.Gameplay) return;
+            if (!ConsumeTransitionForThisFrame()) return;
 
             m_CurrentState = PauseState.Opening;
 
@@ -277,6 +293,7 @@ namespace MainGame.UI.PauseMenu
         public void ResumeGameplay()
         {
             if (m_CurrentState != PauseState.MainPause) return;
+            if (!ConsumeTransitionForThisFrame()) return;
 
             m_CurrentState = PauseState.Closing;
             m_Navigation?.ClearSelection();
