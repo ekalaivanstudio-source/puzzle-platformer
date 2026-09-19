@@ -150,12 +150,33 @@ public class PlayerController : MonoBehaviour
              "Auto-fetched if left empty.")]
     [SerializeField] private SpriteRenderer m_SpriteRenderer;
 
+    [Header("Walk VFX")]
+    [Tooltip("Dust effect prefab puffed out at the player's feet on every cell of a walk, " +
+             "at the cell being LEFT rather than the one being entered, so the puff trails " +
+             "behind the body instead of appearing under it. Optional. Should carry a " +
+             "OneShotEffect. Mirrored to face the way the player is walking.")]
+    [SerializeField] private GameObject m_WalkDust;
+
     [Header("Jump VFX")]
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump takes off. Optional. Should carry a OneShotEffect.")]
     [SerializeField] private GameObject m_JumpStartDust;
 
     [Tooltip("Dust effect prefab spawned at the player's feet when a jump lands. Optional. Should carry a OneShotEffect.")]
     [SerializeField] private GameObject m_JumpEndDust;
+
+    [Header("Cannon Flight")]
+    [Tooltip("Full turns the body tumbles through over a cannon flight. The spin is what " +
+             "sells the shot as a launch rather than a glide: a body that keeps its feet " +
+             "under it the whole way across reads as being carried. Always a whole number " +
+             "of turns over the flight, so the player is upright again on landing however " +
+             "long the shot was. 0 disables the tumble.")]
+    [SerializeField] private float m_CannonSpinTurns = 2f;
+
+    [Tooltip("Streak drawn behind the body for the length of a cannon flight, and only " +
+             "then — it is switched on as the shot leaves the barrel and stops emitting on " +
+             "landing, so it never smears behind an ordinary walk. Built and wired by " +
+             "Tools ▸ Cannon ▸ Build Everything; leave empty for no trail.")]
+    [SerializeField] private TrailRenderer m_CannonTrail;
 
     [Header("Feel")]
 
@@ -274,9 +295,39 @@ public class PlayerController : MonoBehaviour
     /// other fall that has run past <c>m_GroundPoundDropDistance</c>.</summary>
     public bool IsGroundPounding => m_IsGroundPounding;
 
+    /// <summary>
+    /// True while a command sequence is being executed. Read by level objects that are only
+    /// allowed to act on a player who is part-way through an attempt — a
+    /// <see cref="CannonLauncher"/> must not swallow a player who is merely standing on its
+    /// cell between turns.
+    /// </summary>
+    public bool IsExecuting => m_IsGamePlaying;
+
+    // True from the moment a cannon catches the player to the moment the flight puts them
+    // back down. A second cannon cannot already reach a rider — the collider is off for the
+    // length of the ride, so nothing overlaps it — but the flag says so outright rather than
+    // resting on that, and it keeps a cannon from re-entering its own routine.
+    private bool m_IsRidingCannon;
+
+    /// <summary>True from a cannon catching the player until the flight lands them.</summary>
+    public bool IsRidingCannon => m_IsRidingCannon;
+
     // True while a command/transport routine is driving the body. Blocks the passive
     // settle in FixedUpdate so the two never issue MovePosition in the same step.
     private bool m_IsScriptedMotion;
+
+    // True while something outside the player owns the body and is writing its position
+    // every physics step — a Lift carrying it between floors. Distinct from
+    // m_IsScriptedMotion, which any of the player's own routines also set: this one says
+    // the body is not the player's to move, so a second owner can be turned away.
+    private bool m_IsRidden;
+
+    // Whether a turn was actually in flight when the current ride began. A ride that
+    // interrupted a run owes it the rest of its commands; a ride that picked the player up
+    // while input was being re-entered — parked on a platform by a checkpoint lever — owes
+    // it nothing, and starting an execution loop there would run a sequence the player is
+    // still typing.
+    private bool m_RideInterruptedTurn;
 
     // Set the moment the player touches the open door and never cleared — the level is on
     // its way out. Guards against a second win starting while the portal is still drawing
@@ -535,6 +586,12 @@ public class PlayerController : MonoBehaviour
         m_MaxTimeIndex = SequenceManager.Instance.SequenceLength;
         m_IsGamePlaying = true;
         m_IsHazardable = true;
+
+        // Cleared here rather than only at the end of a flight, so a ride cut short by a
+        // level reset cannot leave the flag latched and every cannon in the level dead for
+        // the rest of the session.
+        m_IsRidingCannon = false;
+
         m_ExecutionCoroutine = StartCoroutine(ExecutionLoop());
     }
 
@@ -608,7 +665,15 @@ public class PlayerController : MonoBehaviour
         m_IsHazardable = true;
         m_IsScriptedMotion = false;
 
-        // Resume remaining commands; if none are left, end the turn normally
+        ResumeSequenceOrEndTurn();
+    }
+
+    // Hands the turn back after something else has owned the body for a while — a waypoint
+    // transport, a lift ride. The commands the player queued behind the one that was
+    // interrupted still belong to this turn, so they run on from wherever the ride left the
+    // body; a ride that consumed the last command ends the turn instead.
+    private void ResumeSequenceOrEndTurn()
+    {
         int resumeIndex = m_CurrentCommandIndex + 1;
         if (resumeIndex < m_MaxTimeIndex)
         {
@@ -665,6 +730,341 @@ public class PlayerController : MonoBehaviour
 
         // End the turn — player resets to start position, just like wrong inputs.
         EndTurn();
+    }
+
+    // ─── External Ride ───────────────────────────────────────────────────────────
+    //
+    // The waypoint transports above walk the player along a path the player itself owns.
+    // A ride is the other arrangement: the body is handed over, and something in the world
+    // — a <see cref="Lift"/> — writes its position every physics step for as long as it
+    // holds it. The player has no idea where it is being taken, which is what lets the lift
+    // carry it along a path the lift is itself still travelling.
+
+    /// <summary>
+    /// True while an external system owns the body. Anything that wants to take the player
+    /// has to check this first — two owners writing MovePosition in the same step fight,
+    /// and the loser's path is the one that shows.
+    /// </summary>
+    public bool IsRidden => m_IsRidden;
+
+    /// <summary>
+    /// Hands the body to an external system: the command in flight is abandoned, the
+    /// collider comes off and hazards go quiet for the duration, exactly as a waypoint
+    /// transport does. Returns false — and takes nothing — when the player is in no state
+    /// to be carried: mid-death, on its way out through the door, spinning through a portal,
+    /// or already being ridden by someone else. The caller MUST respect a false and not
+    /// start moving the player anyway.
+    /// </summary>
+    public bool BeginExternalRide()
+    {
+        // m_IsRidingCannon is in the list because a cannon flight is the other thing in this
+        // class that owns the body outright. A lift catching a player mid-arc would be two
+        // owners writing MovePosition in the same step, and the shot would land somewhere
+        // neither of them authored.
+        if (m_IsRidden || m_IsRidingCannon || m_IsDead || m_IsWinning || m_IsPortalAnimating)
+            return false;
+
+        // Read before AbortExecution clears it — it decides whether the release below owes
+        // this turn the rest of its commands.
+        m_RideInterruptedTurn = m_IsGamePlaying;
+
+        AbortExecution();
+
+        m_IsRidden = true;
+        m_IsScriptedMotion = true;
+        // Quiet for the ride: the collider is off below, so a hazard's hit test would be
+        // measuring a disabled collider's bounds.
+        m_IsHazardable = false;
+        if (m_Collider != null) m_Collider.enabled = false;
+        m_IsWalking = false;
+        m_IsPushing = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Places the ridden body at <paramref name="position"/>. Call once per FixedUpdate from
+    /// the system holding the ride — MovePosition is a physics-step instruction, and calling
+    /// it from Update either loses moves or doubles them up depending on the frame rate.
+    /// Silently does nothing when nobody holds the ride, so a routine that outlives its
+    /// release can't drag the player around.
+    /// </summary>
+    public void RideTo(Vector2 position)
+    {
+        if (!m_IsRidden) return;
+        m_Rigidbody.MovePosition(position);
+    }
+
+    /// <summary>
+    /// Turns the sprite to face <paramref name="worldX"/>. Used by rides to point the player
+    /// at wherever it is about to be pulled, so it doesn't travel backwards. A target the
+    /// player is already level with leaves the current facing alone rather than snapping it
+    /// to the right.
+    /// </summary>
+    public void FaceTowards(float worldX)
+    {
+        float delta = worldX - transform.position.x;
+        if (Mathf.Abs(delta) < 0.01f) return;
+        transform.localScale = new Vector3(delta > 0f ? 1f : -1f, 1f, 1f);
+    }
+
+    /// <summary>
+    /// Gives the body back. The player is snapped onto the nearest cell centre — a ride ends
+    /// wherever its authored exit point happens to sit, and a player left on a fractional
+    /// position straddles two grid rows, which every later support and blocking query then
+    /// reads wrongly (see <see cref="GridWorld"/>).
+    ///
+    /// <paramref name="resumeSequence"/> is the normal case: the turn picks up at the
+    /// command after the one the ride interrupted, or ends if that was the last. Pass false
+    /// when the release is itself part of a reset — the reset is already deciding what
+    /// happens to the turn, and a resumed execution loop would run commands over the top of it.
+    /// </summary>
+    public void EndExternalRide(bool resumeSequence = true)
+    {
+        if (!m_IsRidden) return;
+
+        m_IsRidden = false;
+        m_IsScriptedMotion = false;
+        if (m_Collider != null) m_Collider.enabled = true;
+
+        // Not re-armed mid-death: DeathRoutine turns hazards off for the length of the
+        // explosion and back on itself when the body is back at spawn. Re-arming here would
+        // let the hazard that is still sitting where the player died kill it a second time.
+        if (!m_IsDead) m_IsHazardable = true;
+
+        m_Rigidbody.position = GridWorld.SnapToCell(m_Rigidbody.position);
+        // The ride carried the body; whatever it was falling at before is long stale, and
+        // left set it would be applied as a jolt on the first frame back under gravity.
+        m_PassiveFallSpeed = 0f;
+        m_PassiveFallDistance = 0f;
+
+        if (resumeSequence && m_RideInterruptedTurn) ResumeSequenceOrEndTurn();
+        m_RideInterruptedTurn = false;
+    }
+
+    // ─── Cannon ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Hands the player to <paramref name="cannon"/>: the turn is interrupted, the body is
+    /// drawn into the barrel, fired along the cannon's authored arc, and put down on its
+    /// landing cell — after which the REMAINING commands of the sequence carry on running
+    /// from there.
+    ///
+    /// That resume is the whole reason a cannon is worth having. A shot is not an ending;
+    /// it is a way to spend one beat crossing a gap no Jump command could, and the rest of
+    /// the sequence the player typed still has to work when it comes down. The flight
+    /// therefore costs exactly the beat it interrupted, exactly as
+    /// <see cref="StartWaypointTransport"/> does, so a solution can be planned around it.
+    ///
+    /// Called by <see cref="CannonLauncher"/> the frame its catch radius finds the player.
+    /// </summary>
+    public void StartCannonLaunch(CannonLauncher cannon)
+    {
+        // m_IsRidden is in the list for the same reason BeginExternalRide refuses a player
+        // who is mid-flight: a lift and a cannon both own the body outright, and two owners
+        // writing MovePosition in the same step would land the shot somewhere neither of
+        // them authored.
+        if (cannon == null || m_IsDead || m_IsWinning || m_IsRidingCannon || m_IsRidden) return;
+
+        // Claimed BEFORE the abort, so nothing that runs on the way down can start a second
+        // flight. Each cannon latches itself for the turn, but two cannons whose catch radii
+        // overlap have no knowledge of each other and would otherwise both fire on the same
+        // frame, the second one stopping the first one's routine mid-air.
+        m_IsRidingCannon = true;
+
+        AbortExecution();
+        StartCoroutine(CannonLaunchRoutine(cannon));
+    }
+
+    // The ride: load, wind up, fire, fly, land, resume.
+    //
+    // The body is off the physics grid for all of it — collider disabled, hazards quiet,
+    // m_IsScriptedMotion holding off the passive settle — for the same reason the waypoint
+    // routes are: the arc is EVALUATED, and a solver depenetrating the body mid-flight would
+    // land it somewhere other than the cell the designer authored.
+    private IEnumerator CannonLaunchRoutine(CannonLauncher cannon)
+    {
+        m_IsScriptedMotion = true;
+        m_IsHazardable = false;
+        if (m_Collider != null) m_Collider.enabled = false;
+
+        // A step that was part-way through when the cannon caught the player is over; the
+        // brick it may have been shoving is not this routine's business either.
+        m_IsWalking = false;
+        m_IsPushing = false;
+        m_IsGroundPounding = false;
+
+        // Held for the whole ride, load included. It is what the animator reads to keep the
+        // jump pose on, and it has to be set explicitly rather than left to the ground probe
+        // because a DISABLED collider reports empty bounds — CheckIsGrounded would then be
+        // asking about the world origin instead of about the player.
+        m_IsAirborne = true;
+        AudioManager.Instance?.SetWalking(false);
+
+        // ── Load ────────────────────────────────────────────────────────────────
+        // Read once, up front: the barrel re-aims itself every frame, and sampling the
+        // muzzle again after the wind-up would fire from a slightly different place than
+        // the one the body was drawn to.
+        Vector2 muzzle = cannon.MuzzlePoint;
+        yield return LoadIntoCannonRoutine(muzzle, cannon.LoadDuration);
+
+        // Out of sight while the cannon winds up — the player is INSIDE it. Nothing else
+        // hides the sprite at this point in a turn, so it is simply switched back on below
+        // rather than being saved and restored.
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = false;
+        cannon.OnPlayerLoaded();
+
+        if (cannon.WindUpDuration > 0f)
+            yield return new WaitForSeconds(cannon.WindUpDuration);
+
+        // ── Fire ────────────────────────────────────────────────────────────────
+        // The shot goes off: the barrel plays its recoil animation and the fire feel kicks.
+        // The player is still inside it and still hidden — the body does not leave on the
+        // frame the cannon goes off, it leaves part way through the blast.
+        cannon.OnPlayerFired();
+
+        // Held on the REAL clock, because the barrel animation this is timed against runs
+        // unscaled and the fire feel above has just put a hit stop on the scaled one. Waiting
+        // this out on scaled time would keep the player in the barrel for most of a second
+        // and let the whole shot animation finish without them.
+        if (cannon.LaunchDelay > 0f)
+            yield return new WaitForSecondsRealtime(cannon.LaunchDelay);
+
+        // ── Launch ──────────────────────────────────────────────────────────────
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
+
+        // Facing is taken from the shot, not from the way the player walked in: fired left
+        // to right they come out facing right, right to left facing left. A player who
+        // walked left into a cannon that throws them right turns round inside it.
+        float facing = cannon.LaunchFacingSign;
+        transform.localScale = new Vector3(facing, 1f, 1f);
+
+        // The streak starts empty at the muzzle. Without the clear it would draw a line
+        // from wherever the player last flew — the trail keeps its points across a turn
+        // reset, and the reset teleports the body back to spawn.
+        //
+        // Started here rather than at the shot, so the delay above does not leave the trail
+        // pooling on the muzzle while the body has not moved yet.
+        if (m_CannonTrail != null)
+        {
+            m_CannonTrail.enabled = true;   // enabled before clearing, so the buffer it drops is a live one
+            m_CannonTrail.Clear();
+            m_CannonTrail.emitting = true;
+        }
+
+        // The cannon's muzzle puff goes off here rather than inside OnPlayerFired, so it is
+        // tied to the frame the body actually leaves on instead of to a clock of its own.
+        cannon.OnPlayerLaunched();
+        m_JumpFeel.Play(muzzle, transform, Vector2.up);
+        SpawnParticleEffect(m_JumpStartDust, muzzle, 1f);
+
+        // ── Flight ──────────────────────────────────────────────────────────────
+        // Driven by ACCUMULATED TIME, re-reading fixedDeltaTime every step, rather than by a
+        // step count worked out up front.
+        //
+        // That is not a stylistic choice. The fire feel above opens with a hit stop, and
+        // FeelService implements one by scaling BOTH Time.timeScale and Time.fixedDeltaTime
+        // down to a hundredth for its duration. A step count divided out of fixedDeltaTime on
+        // this exact frame therefore came back a hundred times too large — a 0.4s shot
+        // measured ~1900 steps — and once the hit stop ended and the step returned to its
+        // normal length, those steps played out over the best part of a minute. That was the
+        // whole of "the cannon shoots very slowly": the flight was never timed in seconds at
+        // all. Accumulating real steps cannot drift that way, whatever anything else does to
+        // the clock — and a hit stop now does what it is meant to, briefly slowing the arc.
+        float duration = Mathf.Max(0.0001f, cannon.FlightDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            // Clamped, so the final step lands on u = 1 exactly — the authored cell — instead
+            // of overshooting past it.
+            elapsed = Mathf.Min(duration, elapsed + Time.fixedDeltaTime);
+            float u = elapsed / duration;
+
+            // Sampled by normalised time rather than integrated, so where the player is only
+            // ever depends on how far through the flight they are.
+            m_Rigidbody.MovePosition(cannon.ArcPointAt(u));
+
+            // Tumbling the way the shot is going: fired right the body rolls clockwise
+            // (negative Z), fired left it rolls the other way, so the spin always reads as
+            // the direction of travel rather than against it. Driven off u rather than a
+            // per-frame increment, so the turns are spent evenly across the arc and the
+            // last step lands exactly on a whole number of them.
+            if (!Mathf.Approximately(m_CannonSpinTurns, 0f))
+                transform.rotation = Quaternion.Euler(0f, 0f, -facing * m_CannonSpinTurns * 360f * u);
+
+            yield return new WaitForFixedUpdate();
+        }
+
+        // ── Land ────────────────────────────────────────────────────────────────
+        // Upright again. The loop's last step already lands on a whole number of turns, but
+        // an arc cut short by anything at all would leave the body lying on its side for
+        // the rest of the level, so the pose is put back rather than assumed.
+        transform.rotation = Quaternion.identity;
+
+        // Stops emitting rather than being cleared outright: the points already laid down
+        // fade over the trail's own time, so the streak catches up with the landing instead
+        // of vanishing on the frame the feet touch down.
+        if (m_CannonTrail != null) m_CannonTrail.emitting = false;
+
+        m_IsAirborne = false;
+        if (m_Collider != null) m_Collider.enabled = true;
+        m_IsHazardable = true;
+        m_PassiveFallSpeed = 0f;
+        m_PassiveFallDistance = 0f;
+
+        SnapToGrid();
+        SpawnGridEffect(m_JumpEndDust);
+        m_LandFeel.Play(transform.position, transform, Vector2.down);
+
+        // The landing cell is authored, but nothing forces a designer to put it on a floor.
+        // Dropping to the first surface below covers a handle left hanging over a gap, and
+        // costs nothing when the cell does have ground under it — FallToGround returns
+        // immediately for a player who is already standing on something.
+        yield return FallToGround();
+
+        m_IsScriptedMotion = false;
+        m_IsRidingCannon = false;
+        cannon.OnPlayerLanded(GridWorld.SnapToCell(m_Rigidbody.position));
+
+        // ── Resume ──────────────────────────────────────────────────────────────
+        // The interrupted command is spent on the flight, so the turn picks up at the one
+        // after it — through the same helper the waypoint routes and the lift release use,
+        // so every way of taking the player away from their turn hands it back on identical
+        // terms and a level can mix them in one sequence.
+        ResumeSequenceOrEndTurn();
+    }
+
+    // Draws the player from wherever they were caught onto the muzzle.
+    //
+    // Eased in (t*t) rather than linear so the pull visibly accelerates: the player is being
+    // sucked into the barrel, not walking up to it. Ends exactly on the muzzle, because the
+    // arc that follows starts there and a body left short of it would fly a shorter shot.
+    private IEnumerator LoadIntoCannonRoutine(Vector2 muzzle, float duration)
+    {
+        Vector2 from = m_Rigidbody.position;
+
+        // Turn to look at the cannon on the way in. Overwritten by the launch facing once
+        // it fires, which is the direction that actually matters.
+        float dx = muzzle.x - from.x;
+        if (!Mathf.Approximately(dx, 0f))
+            transform.localScale = new Vector3(Mathf.Sign(dx), 1f, 1f);
+
+        if (duration <= 0f || Vector2.Distance(from, muzzle) < 0.01f)
+        {
+            m_Rigidbody.position = muzzle;
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.fixedDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            m_Rigidbody.MovePosition(Vector2.Lerp(from, muzzle, t * t));
+            yield return new WaitForFixedUpdate();
+        }
+
+        m_Rigidbody.position = muzzle;
     }
 
     // ─── Execution Loop ─────────────────────────────────────────────────────────
@@ -837,6 +1237,19 @@ public class PlayerController : MonoBehaviour
             // a small hop across that same one-cell distance rather than a flat slide into
             // thin air, then let the fall below carry the player the rest of the way down.
             bool stepsOffLedge = m_LedgeHopHeight > 0f && !IsGroundedAfterOffset(stepOffset);
+
+            // One puff per cell, kicked up BEFORE the step moves the body — the rigidbody is
+            // still exactly on the cell it is leaving, so the dust is left standing there as
+            // the player walks out of it. Spawning after the step would plant it under the
+            // feet at the destination instead, which reads as the dust following the player
+            // rather than being left behind them.
+            //
+            // Deliberately below the push and blocked checks: both break out of the loop
+            // before reaching here, so a step that never happens — walking into a wall, or
+            // shoving a brick instead of stepping — kicks up nothing. Only a step that
+            // actually travels a cell puffs. The ledge hop does puff: the foot still pushes
+            // off this cell's ground on the way out over the edge.
+            SpawnGridEffect(m_WalkDust, sign);
 
             m_IsWalking = true;
             if (stepsOffLedge)
@@ -1179,14 +1592,29 @@ public class PlayerController : MonoBehaviour
     // Instantiates a one-shot effect prefab at the centre of the cell the player occupies
     // (the same grid SnapToGrid settles them onto). No-op when the prefab is unassigned.
     // The prefab's OneShotEffect destroys itself when done.
-    private void SpawnGridEffect(GameObject prefab)
+    //
+    // `facing` mirrors the instance on X, matching the convention the body itself uses
+    // (MoveHorizontal writes the same +/-1 onto its localScale). It matters for any effect
+    // whose art is drawn blowing one way — the walk dust drifts backwards across its frames,
+    // so an unmirrored puff would trail the wrong side of a player walking left. The dust is
+    // NOT parented to the player, deliberately: it is left standing in the cell it was kicked
+    // up from while the body walks on, which is what makes it read as a trail rather than an
+    // attachment. Effects with symmetric art pass nothing and are unaffected.
+    private void SpawnGridEffect(GameObject prefab, float facing = 1f)
     {
         if (prefab == null) return;
 
         Vector2 gp = m_Rigidbody != null ? m_Rigidbody.position : (Vector2)transform.position;
         Vector2 cell = GridWorld.SnapToCell(gp);
 
-        Instantiate(prefab, new Vector3(cell.x, cell.y, transform.position.z), Quaternion.identity);
+        GameObject instance = Instantiate(
+            prefab, new Vector3(cell.x, cell.y, transform.position.z), Quaternion.identity);
+
+        if (facing < 0f)
+        {
+            Vector3 scale = instance.transform.localScale;
+            instance.transform.localScale = new Vector3(-scale.x, scale.y, scale.z);
+        }
     }
 
     // Instantiates a particle effect prefab at `position`, at the player's own depth so it
@@ -1777,6 +2205,28 @@ public class PlayerController : MonoBehaviour
         m_IsGroundPounding = false;
         m_PassiveFallSpeed = 0f;
         m_PassiveFallDistance = 0f;
+
+        // Same reasoning for the cannon flight's two presentation effects. A shot killed
+        // part-way — a death, a checkpoint, a win triggered mid-air — never reaches the
+        // lines that put the body upright and stop the streak, and a player left lying on
+        // their side trailing a ribbon stays that way for the rest of the level.
+        //
+        // The portal spin is the one thing that legitimately owns the rotation, so it is
+        // left alone: it sets the pose every frame and finishes upright by itself.
+        if (!m_IsPortalAnimating) transform.rotation = Quaternion.identity;
+
+        if (m_CannonTrail != null)
+        {
+            m_CannonTrail.emitting = false;
+            m_CannonTrail.Clear();
+        }
+
+        // And the third: the body is HIDDEN from the moment it is loaded into a barrel
+        // until the shot animation reaches its launch frame, so a shot killed anywhere in
+        // that window leaves an invisible player standing around for the rest of the level.
+        // The death routine has a re-enable of its own further down, but nothing covers a
+        // checkpoint or a win landing inside the wind-up.
+        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
     }
 
     // Short delay before resetting position and unlocking UI
@@ -1970,6 +2420,12 @@ public class PlayerController : MonoBehaviour
         // Doctor reacts (sad) — wait for the full reaction before leaving the level.
         if (EvilDoctorAnimationController.Instance != null)
             yield return EvilDoctorAnimationController.Instance.PlayLevelCompletedRoutine();
+
+        // Any memory-shard story the player has earned but not seen plays here — after the level
+        // has finished taking itself apart, before the fade. Shards are picked up mid-level but
+        // their cutscenes are queued to this point so a puzzle is never interrupted mid-solve.
+        // Completes in a single frame when nothing is pending, so this costs a normal win nothing.
+        yield return Collectables.MemoryStoryPresenter.PlayPendingRoutine();
 
         yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)

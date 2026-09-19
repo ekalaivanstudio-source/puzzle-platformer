@@ -15,8 +15,11 @@ MonoBehaviour:
   levelNumber: 5
   robotPart:
     placePart: 1
-    robot: 0
+    robot: 3
     partNumber: 5
+  memoryShard:
+    placeShard: 1
+    shardVariant: 0
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1
@@ -31,7 +34,7 @@ MonoBehaviour:
   sequence:
     maxSequenceLength: 6
     requireFullSequence: 0
-    autoPlaySequence: 01000000010000000100000000000000
+    autoPlaySequence: 01000000010000000100000000000000i
   tutorial:
     showTutorial: 0
     introHints: 

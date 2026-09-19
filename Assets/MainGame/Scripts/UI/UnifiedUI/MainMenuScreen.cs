@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -137,6 +137,7 @@ namespace MainGame.UI.Unified
             AudioManager.Instance?.PlayButton();
             ModernLevelSelection.SaveManager.ResetProgress();
             Collectables.RobotCollectionService.ResetAll();
+            Collectables.MemoryShardService.ResetAll();
 
             // The intro cutscene loads the level itself once it finishes. It declines when the home
             // screen has no cutscene built, in which case we go straight in as before.

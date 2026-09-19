@@ -8,8 +8,10 @@ namespace Collectables
     /// component that subscribes to <see cref="RobotCollectionService"/>, so slots stay dumb
     /// and the same view works in both places it is used:
     ///
-    ///   • the level HUD, pinned to the right of the screen, showing all four robots;
-    ///   • the home screen's Collection tab, showing the same four larger.
+    ///   • the level HUD, pinned to the right of the screen;
+    ///   • the home screen's Collection tab, showing the same robots larger.
+    ///
+    /// Both show one slot per robot in <see cref="RobotIds.All"/> — currently PIXEL alone.
     ///
     /// Put it on the parent of the slots and leave <see cref="m_Slots"/> empty to pick up
     /// every child slot automatically.

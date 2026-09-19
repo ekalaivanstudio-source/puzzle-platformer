@@ -34,6 +34,13 @@ namespace Collectables.EditorTools
 
         /// <summary>The artist's original drops (ECHO/, NOVA/, …), used for the world pickups.</summary>
         private const string SourceSpriteRoot = "Assets/MainGame/Sprites";
+
+        /// <summary>
+        /// Frames of the animated outline the gameplay HUD draws where the grey chassis used to
+        /// be. Same 72x72 canvas as the part layers, so the dashes trace the robot exactly.
+        /// </summary>
+        private const string ProgressionOutlineFolder = "Assets/MainGame/Sprites/UI/pixel_character_progression_ui";
+        private static readonly string[] ProgressionOutlineFrames = { "1.png", "2.png", "3.png" };
         private const string DefinitionFolder = "Assets/MainGame/HomeUIData/RobotCollection";
         private const string ResourcesFolder = "Assets/Resources";
         private const string DatabasePath = ResourcesFolder + "/RobotCollectionDatabase.asset";
@@ -76,12 +83,19 @@ namespace Collectables.EditorTools
             "RobotPart",
         };
 
-        /// <summary>Display names and accent colours, in the order the UI lays robots out.</summary>
+        /// <summary>
+        /// Display names and accent colours, in the order the UI lays robots out. Must stay in
+        /// step with <see cref="RobotIds.All"/> — that array decides which robots get parts, this
+        /// one decides how they are drawn, and a robot missing from either simply isn't in the game.
+        ///
+        /// ECHO, NOVA and PATCH are parked here rather than deleted; uncomment a line and re-run
+        /// Run Full Setup to bring one back (add it to <see cref="RobotIds.All"/> too).
+        /// </summary>
         private static readonly (RobotId robot, string display, Color accent)[] RobotAuthoring =
         {
-            (RobotId.Echo,  "ECHO",  new Color(0.29f, 0.78f, 0.95f)),
-            (RobotId.Nova,  "NOVA",  new Color(0.90f, 0.92f, 0.96f)),
-            (RobotId.Patch, "PATCH", new Color(0.96f, 0.78f, 0.35f)),
+            // (RobotId.Echo,  "ECHO",  new Color(0.29f, 0.78f, 0.95f)),
+            // (RobotId.Nova,  "NOVA",  new Color(0.90f, 0.92f, 0.96f)),
+            // (RobotId.Patch, "PATCH", new Color(0.96f, 0.78f, 0.35f)),
             (RobotId.Pixel, "PIXEL", new Color(0.93f, 0.49f, 0.24f)),
         };
 
@@ -582,7 +596,7 @@ namespace Collectables.EditorTools
 
         /// <summary>
         /// Builds the level HUD: its own screen-space canvas holding a right-aligned column of
-        /// four robot slots. Level scenes have no shared canvas, so the HUD carries its own.
+        /// one slot per live robot. Level scenes have no shared canvas, so the HUD carries its own.
         /// </summary>
         private static void BuildHudPrefab()
         {
@@ -630,10 +644,14 @@ namespace Collectables.EditorTools
             var view = column.AddComponent<RobotCollectionView>();
             var slots = new List<RobotCollectionSlot>();
 
+            // Gameplay only: in-level the empty slot is an animated outline, while the home
+            // screen's Collection tab keeps the solid chassis behind its larger portraits.
+            var outline = LoadProgressionOutline();
+
             foreach (var (robot, display, accent) in RobotAuthoring)
             {
                 slots.Add(BuildSlot(column.transform, robot, display, accent,
-                    portrait: 84f, showName: false, showCount: true));
+                    portrait: 84f, showName: false, showCount: true, silhouetteFrames: outline));
             }
 
             SetPrivateField(view, "m_Slots", slots.ToArray());
@@ -649,8 +667,13 @@ namespace Collectables.EditorTools
         /// Builds one robot entry: silhouette, five part layers stacked on it, and a count
         /// label. Shared by the level HUD and the home-screen collection grid.
         /// </summary>
+        /// <param name="silhouetteFrames">
+        /// Optional looping frames drawn in place of the static silhouette. Null (the default)
+        /// keeps the robot's own grey chassis.
+        /// </param>
         private static RobotCollectionSlot BuildSlot(Transform parent, RobotId robot, string display,
-            Color accent, float portrait, bool showName, bool showCount)
+            Color accent, float portrait, bool showName, bool showCount,
+            Sprite[] silhouetteFrames = null)
         {
             string name = robot.ToString();
             var definition = AssetDatabase.LoadAssetAtPath<RobotDefinition>($"{DefinitionFolder}/{name}.asset");
@@ -688,7 +711,12 @@ namespace Collectables.EditorTools
             var silhouette = silhouetteGo.AddComponent<Image>();
             silhouette.raycastTarget = false;
             silhouette.preserveAspect = true;
-            if (definition != null) silhouette.sprite = definition.silhouette;
+
+            bool animated = silhouetteFrames != null && silhouetteFrames.Length > 0;
+            // Seed frame 0 so the slot looks right in the prefab preview and on the first frame,
+            // before RobotCollectionSlot's loop takes over in OnEnable.
+            if (animated) silhouette.sprite = silhouetteFrames[0];
+            else if (definition != null) silhouette.sprite = definition.silhouette;
 
             var layers = new Image[RobotIds.PartsPerRobot];
             for (int i = 0; i < RobotIds.PartsPerRobot; i++)
@@ -717,6 +745,7 @@ namespace Collectables.EditorTools
             }
 
             SetPrivateField(slot, "m_Silhouette", silhouette);
+            SetPrivateField(slot, "m_SilhouetteFrames", silhouetteFrames ?? new Sprite[0]);
             SetPrivateField(slot, "m_PartLayers", layers);
             SetPrivateField(slot, "m_NameLabel", nameLabel);
             SetPrivateField(slot, "m_CountLabel", countLabel);
@@ -765,7 +794,12 @@ namespace Collectables.EditorTools
             collider.isTrigger = true;
             collider.radius = 0.45f;
 
-            root.AddComponent<RobotPartPickup>();
+            var pickup = root.AddComponent<RobotPartPickup>();
+
+            // The idle twinkle drawn over the part. Built here as well as by its own menu item
+            // so a from-scratch rebuild of this prefab does not quietly drop it.
+            var shine = RobotPartShineBuilder.Build(root.transform);
+            if (shine != null) SetPrivateField(pickup, "m_ShineEffect", shine);
 
             EnsureFolder(PrefabFolder);
             PrefabUtility.SaveAsPrefabAsset(root, PickupPrefabPath);
@@ -838,7 +872,7 @@ namespace Collectables.EditorTools
 
             var view = grid.AddComponent<RobotCollectionView>();
 
-            var totalLabel = BuildLabel(grid.transform, "Total", "0/20", 40f,
+            var totalLabel = BuildLabel(grid.transform, "Total", $"0/{RobotIds.TotalParts}", 40f,
                 new Color(0.95f, 0.96f, 1f), 54f, 600f);
 
             var row = NewUiObject("Robots", grid.transform);
@@ -894,6 +928,32 @@ namespace Collectables.EditorTools
         }
 
         private static Sprite LoadSprite(string path) => AssetDatabase.LoadAssetAtPath<Sprite>(path);
+
+        /// <summary>
+        /// The animated-outline frames for the gameplay HUD, in play order. Returns null — which
+        /// falls the slot back to the static silhouette — when any frame is missing or is still
+        /// imported as a plain texture rather than a Sprite.
+        /// </summary>
+        private static Sprite[] LoadProgressionOutline()
+        {
+            var frames = new Sprite[ProgressionOutlineFrames.Length];
+
+            for (int i = 0; i < ProgressionOutlineFrames.Length; i++)
+            {
+                string path = $"{ProgressionOutlineFolder}/{ProgressionOutlineFrames[i]}";
+                frames[i] = LoadSprite(path);
+
+                if (frames[i] == null)
+                {
+                    Debug.LogWarning($"[RobotCollection] Progression outline frame missing at {path} " +
+                                     "(or not imported as a Sprite) — the HUD falls back to the " +
+                                     "static silhouette.");
+                    return null;
+                }
+            }
+
+            return frames;
+        }
 
         /// <summary>
         /// Writes a [SerializeField] private field. The setup tool authors these components

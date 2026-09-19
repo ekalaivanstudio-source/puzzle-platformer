@@ -14,9 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
   levelNumber: 20
   robotPart:
-    placePart: 1
+    placePart: 0
     robot: 3
     partNumber: 5
+  memoryShard:
+    placeShard: 1
+    shardVariant: 0
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1

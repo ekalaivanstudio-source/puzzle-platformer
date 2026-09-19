@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61fd8cb4b42973443964bf9966541fc5, type: 3}
+  m_Name: MemoryShardDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::Collectables.MemoryShardDatabase
+  shardSprites:
+  - {fileID: 21300000, guid: 6beafba4490627945ae49c6d4cfd8252, type: 3}
+  - {fileID: 21300000, guid: b85aad6d61152ae409f3b45640d48bdc, type: 3}
+  - {fileID: 21300000, guid: 6f98f6d13541ccf4a88fd181224fa9aa, type: 3}
+  - {fileID: 21300000, guid: b2130ffeb910e4b4291df10653157810, type: 3}
+  - {fileID: 21300000, guid: 6a62ebb3520825d4c94d73737a1619d6, type: 3}
+  stories:
+  - id: memory_01
+    requiredShards: 5
+    title: Memory I
+    clip: {fileID: 0}
+  - id: memory_02
+    requiredShards: 10
+    title: Memory II
+    clip: {fileID: 0}
+  - id: memory_03
+    requiredShards: 15
+    title: Memory III
+    clip: {fileID: 0}
+  - id: memory_04
+    requiredShards: 20
+    title: Memory IV
+    clip: {fileID: 0}
