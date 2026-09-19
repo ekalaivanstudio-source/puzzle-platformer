@@ -77,6 +77,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Pause",
+                    "type": "Button",
+                    "id": "7a35e4d2-f12b-4567-89ab-123456789abc",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -255,6 +264,39 @@
                     "action": "Restart",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1b35e4d2-f12b-4567-89ab-123456789abd",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2b35e4d2-f12b-4567-89ab-123456789abe",
+                    "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3b35e4d2-f12b-4567-89ab-123456789abf",
+                    "path": "<XInputController>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },
@@ -329,6 +371,15 @@
                     "name": "PageRight",
                     "type": "Button",
                     "id": "bf79fa2c-db18-4235-866d-1bf867be663e",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Pause",
+                    "type": "Button",
+                    "id": "8a35e4d2-f12b-4567-89ab-123456789ac0",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -602,6 +653,17 @@
                 },
                 {
                     "name": "",
+                    "id": "3bc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<Keyboard>/numpadEnter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Submit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "4ac9f783-a261-419b-ab05-be1dbfa5d012",
                     "path": "<Keyboard>/space",
                     "interactions": "",
@@ -624,8 +686,30 @@
                 },
                 {
                     "name": "",
+                    "id": "5bc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<XInputController>/buttonSouth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Submit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "6ac9f783-a261-419b-ab05-be1dbfa5d012",
-                    "path": "<Keyboard>/escape",
+                    "path": "<Keyboard>/backspace",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Cancel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6bc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<Keyboard>/b",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -641,6 +725,50 @@
                     "processors": "",
                     "groups": "",
                     "action": "Cancel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "7bc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<XInputController>/buttonEast",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Cancel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8bc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8cc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8dc9f783-a261-419b-ab05-be1dbfa5d012",
+                    "path": "<XInputController>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

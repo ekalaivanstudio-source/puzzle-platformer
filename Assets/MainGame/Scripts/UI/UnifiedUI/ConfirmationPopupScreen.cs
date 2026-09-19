@@ -5,9 +5,10 @@ using System;
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Unified Confirmation / Action Popup controller.
-    /// Supports executing a dynamic callback action when confirmed.
+    /// Unified Confirmation / Action Popup controller with physical pop entrance,
+    /// opposing button slides, safe focus, and dynamic callback action.
     /// </summary>
+    [DisallowMultipleComponent]
     public class ConfirmationPopupScreen : UIScreen
     {
         [Header("Controls")]
@@ -17,6 +18,9 @@ namespace MainGame.UI.Unified
         [Header("Header Visuals")]
         [Tooltip("The Image component that displays the action title (e.g., 'EXIT?', 'RESET?', 'LEVELS?').")]
         [SerializeField] private Image m_TitleImage;
+
+        [Header("Animator Reference")]
+        [SerializeField] private ConfirmationPopupAnimator m_Animator;
 
         private Action m_OnConfirmCallback;
 
@@ -30,6 +34,46 @@ namespace MainGame.UI.Unified
         {
             base.Awake();
             BuildHorizontalLoopNavigation();
+
+            if (m_Animator == null)
+            {
+                m_Animator = GetComponent<ConfirmationPopupAnimator>();
+            }
+            if (m_Animator == null)
+            {
+                m_Animator = GetComponentInChildren<ConfirmationPopupAnimator>(true);
+            }
+        }
+
+        public override void PlayEnterTransition(Action onComplete)
+        {
+            Open();
+
+            if (m_Animator != null)
+            {
+                m_Animator.PlayEntrance(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        public override void PlayExitTransition(Action onComplete)
+        {
+            if (m_Animator != null)
+            {
+                m_Animator.PlayExit(() =>
+                {
+                    Close();
+                    onComplete?.Invoke();
+                });
+            }
+            else
+            {
+                Close();
+                onComplete?.Invoke();
+            }
         }
 
         private void OnEnable()
@@ -53,7 +97,6 @@ namespace MainGame.UI.Unified
         public override void Close()
         {
             base.Close();
-            // Whoever closed us (including the global Cancel action popping the stack) cancels the pending action.
             m_OnConfirmCallback = null;
         }
 
@@ -96,24 +139,65 @@ namespace MainGame.UI.Unified
 
         private void HandleConfirmClicked()
         {
-            AudioManager.Instance?.PlayButton();
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
 
-            // Capture before popping: Close() clears the pending callback.
             Action confirmed = m_OnConfirmCallback;
+            m_OnConfirmCallback = null;
 
+            if (m_ConfirmButton != null)
+            {
+                UIAnimatedButton animBtn = m_ConfirmButton.GetComponent<UIAnimatedButton>();
+                if (animBtn != null)
+                {
+                    animBtn.PlayConfirmPunch(() =>
+                    {
+                        if (UINavigationManager.Instance != null)
+                        {
+                            UINavigationManager.Instance.PopScreen();
+                        }
+                        confirmed?.Invoke();
+                    });
+                    return;
+                }
+            }
+
+            AudioManager.Instance?.PlayButton();
             if (UINavigationManager.Instance != null)
             {
                 UINavigationManager.Instance.PopScreen();
             }
-
             confirmed?.Invoke();
         }
 
         private void HandleCancelClicked()
         {
-            AudioManager.Instance?.PlayButton();
+            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            {
+                return;
+            }
+
             m_OnConfirmCallback = null;
 
+            if (m_CancelButton != null)
+            {
+                UIAnimatedButton animBtn = m_CancelButton.GetComponent<UIAnimatedButton>();
+                if (animBtn != null)
+                {
+                    animBtn.PlayConfirmPunch(() =>
+                    {
+                        if (UINavigationManager.Instance != null)
+                        {
+                            UINavigationManager.Instance.PopScreen();
+                        }
+                    });
+                    return;
+                }
+            }
+
+            AudioManager.Instance?.PlayButton();
             if (UINavigationManager.Instance != null)
             {
                 UINavigationManager.Instance.PopScreen();

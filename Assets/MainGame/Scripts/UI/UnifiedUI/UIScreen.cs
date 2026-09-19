@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Base class for all unified UI screens. Handles default selection and active status.
+    /// Base class for all unified UI screens. Handles default selection, active status,
+    /// and cinematic entrance/exit transition hooks.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
     public abstract class UIScreen : MonoBehaviour
@@ -13,11 +15,26 @@ namespace MainGame.UI.Unified
         [SerializeField] protected GameObject m_DefaultSelectedObject;
 
         private CanvasGroup m_CanvasGroup;
+        protected bool m_IsTransitioning;
 
         /// <summary>
         /// Gets the default selectable GameObject for this screen.
         /// </summary>
         public virtual GameObject DefaultSelectedObject => m_DefaultSelectedObject;
+
+        /// <summary>
+        /// True while the screen is currently executing an enter or exit animation.
+        /// </summary>
+        public bool IsTransitioning => m_IsTransitioning;
+
+        public CanvasGroup CanvasGroup
+        {
+            get
+            {
+                if (m_CanvasGroup == null) m_CanvasGroup = GetComponent<CanvasGroup>();
+                return m_CanvasGroup;
+            }
+        }
 
         protected virtual void Awake()
         {
@@ -42,13 +59,33 @@ namespace MainGame.UI.Unified
             gameObject.SetActive(false);
         }
 
-        private void SetCanvasGroupInteractive(bool active)
+        /// <summary>
+        /// Plays the physical entrance transition sequence.
+        /// Derived classes or attached animators override this to run multi-layered animations.
+        /// </summary>
+        public virtual void PlayEnterTransition(Action onComplete)
         {
-            if (m_CanvasGroup != null)
+            Open();
+            onComplete?.Invoke();
+        }
+
+        /// <summary>
+        /// Plays the physical exit transition sequence.
+        /// Derived classes or attached animators override this to run multi-layered animations.
+        /// </summary>
+        public virtual void PlayExitTransition(Action onComplete)
+        {
+            Close();
+            onComplete?.Invoke();
+        }
+
+        public void SetCanvasGroupInteractive(bool active)
+        {
+            if (CanvasGroup != null)
             {
-                m_CanvasGroup.alpha = active ? 1f : 0f;
-                m_CanvasGroup.interactable = active;
-                m_CanvasGroup.blocksRaycasts = active;
+                CanvasGroup.alpha = active ? 1f : 0f;
+                CanvasGroup.interactable = active;
+                CanvasGroup.blocksRaycasts = active;
             }
         }
     }
