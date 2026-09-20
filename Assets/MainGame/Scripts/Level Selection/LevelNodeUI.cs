@@ -24,6 +24,14 @@ namespace LevelSelection
         [SerializeField] private Image unlockedImage;            // Image on unlocked state to tint yellow if completed
         [SerializeField] private GameObject selectionArrow;      // Arrow for active level
 
+        [Tooltip("Collectable icons for this level. Resolved from the children when left empty; a " +
+                 "node without one simply shows no collectables.")]
+        [SerializeField] private LevelNodeCollectables collectables;
+
+        [Tooltip("Level number drawn inside the marker. Shown on unlocked levels only — a locked " +
+                 "one draws the padlock in the same 50-unit circle and the two cannot share it.")]
+        [SerializeField] private TMPro.TMP_Text levelNumberLabel;
+
         [Header("Arrow Pulse")]
         [Tooltip("Oscillations per second of the selection arrow pulse.")]
         [SerializeField] private float arrowPulseSpeed = 6f;
@@ -41,6 +49,12 @@ namespace LevelSelection
 
         public RectTransform RectTransform => (RectTransform)transform;
         public bool IsUnlocked => m_IsUnlocked;
+
+        /// <summary>
+        /// This node's collectable icons, for the generator to park on the adjacent path segment.
+        /// Null on a node prefab that was never set up.
+        /// </summary>
+        public LevelNodeCollectables Collectables => collectables;
         public bool HasMarker
         {
             get
@@ -91,6 +105,16 @@ namespace LevelSelection
                 m_ArrowRestScale = selectionArrow.transform.localScale;
                 m_ArrowRestLocalPos = selectionArrow.transform.localPosition;
                 selectionArrow.SetActive(false);
+            }
+
+            if (collectables == null)
+            {
+                collectables = GetComponentInChildren<LevelNodeCollectables>(true);
+            }
+
+            if (levelNumberLabel == null)
+            {
+                levelNumberLabel = GetComponentInChildren<TMPro.TMP_Text>(true);
             }
 
             CaptureBaseTransform();
@@ -445,6 +469,19 @@ namespace LevelSelection
             if (unlockedStateObject != null)
             {
                 unlockedStateObject.SetActive(isUnlocked);
+            }
+
+            if (levelNumberLabel != null)
+            {
+                levelNumberLabel.text = levelNumber.ToString();
+                levelNumberLabel.gameObject.SetActive(isUnlocked);
+            }
+
+            // Before the unlocked-only work below: a locked level still shows what it hides,
+            // unlit, so the map reads as something to come back for.
+            if (collectables != null)
+            {
+                collectables.Bind(levelNumber);
             }
 
             if (!isUnlocked) return;

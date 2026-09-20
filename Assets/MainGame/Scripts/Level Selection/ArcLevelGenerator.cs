@@ -176,6 +176,11 @@ namespace LevelSelection
                 spawnedNodes.Add(nodeScript);
             }
 
+            // 2b. Park each node's collectable icons on the path segment leaving it. Only this
+            // loop knows where the neighbouring node landed, and the icons belong on the empty
+            // stretch of line rather than on top of a level marker.
+            AnchorCollectablesToPath();
+
             // 3. Generate Paths between sequential nodes
             for (int i = 0; i < spawnedNodes.Count - 1; i++)
             {
@@ -213,6 +218,41 @@ namespace LevelSelection
 
             // 7. Fire generation completion callback
             OnGenerationCompleted?.Invoke(spawnedNodes, generatedSegments);
+        }
+
+        /// <summary>
+        /// Moves every node's collectable icons onto the middle of the path segment that leaves
+        /// it, which is the empty stretch between two level markers.
+        ///
+        /// "Leaves it" means the step towards the next level, so each segment carries the icons of
+        /// exactly one level and no two nodes fight over the same stretch of line. The last node
+        /// has no next, so it borrows the segment it arrived on.
+        /// </summary>
+        private void AnchorCollectablesToPath()
+        {
+            int total = spawnedNodes.Count;
+            if (total == 0) return;
+
+            for (int i = 0; i < total; i++)
+            {
+                LevelNodeCollectables icons = spawnedNodes[i].Collectables;
+                if (icons == null) continue;
+
+                var self = spawnedNodes[i].GetComponent<RectTransform>();
+                if (self == null) continue;
+
+                int neighbourIndex = (i < total - 1) ? i + 1 : i - 1;
+                if (neighbourIndex < 0)
+                {
+                    // A single-node arc has no segment to sit on; leave the prefab's own offset.
+                    continue;
+                }
+
+                var neighbour = spawnedNodes[neighbourIndex].GetComponent<RectTransform>();
+                if (neighbour == null) continue;
+
+                icons.SetLineAnchor((neighbour.anchoredPosition - self.anchoredPosition) * 0.5f);
+            }
         }
 
         /// <summary>

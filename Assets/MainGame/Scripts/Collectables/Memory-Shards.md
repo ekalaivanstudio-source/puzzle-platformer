@@ -214,3 +214,8 @@ MemoryShardService.OnStoryUnlocked  += ShowToast;  // one-shot unlock feedback
 
 These are **static** events — unsubscribe in `OnDisable`/`OnDestroy` or a destroyed object
 keeps being called for the rest of the session.
+
+For UI that draws a *level* rather than the running total — the level selection map, which
+needs "does level 3 hide a shard, and is it found?" — go through `LevelCollectableService`
+instead. It joins this to the robot parts and to the level configs, which a shard on its own
+cannot answer. See [Level-Select-Collectables.md](Level-Select-Collectables.md).

@@ -2203,6 +2203,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: BrightnessPanel
       objectReference: {fileID: 0}
+    - target: {fileID: 5506711688510748364, guid: f2fc199dfde970a4b8d69e5d1a7aa3fc, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2404,11 +2408,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.104360275
+      value: -0.09913922
       objectReference: {fileID: 0}
     - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.99453956
+      value: 0.9950736
       objectReference: {fileID: 0}
     - target: {fileID: 1388192836148678433, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_Name
@@ -2469,6 +2473,14 @@ PrefabInstance:
     - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LandingOffset.y
       value: -3.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_BarrelPivotOffset.x
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_BarrelPivotOffset.y
+      value: 0.15
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2559,6 +2571,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Managers
       objectReference: {fileID: 0}
+    - target: {fileID: 4577944256262588169, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7178919839492170681, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: config
       value: 
@@ -2578,16 +2594,40 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.15
+      objectReference: {fileID: 0}
+    - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.99016213
+      value: 0.9898537
       objectReference: {fileID: 0}
     - target: {fileID: 202406610994713954, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.13992468
+      value: 0.14209063
+      objectReference: {fileID: 0}
+    - target: {fileID: 241923623408832840, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_SortingOrder
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 1388192836148678433, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_Name
       value: Cannon A (fires right)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1783161923784559642, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_SortingOrder
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2452173782890466424, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2452173782890466424, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6334771283524493364, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2640,6 +2680,18 @@ PrefabInstance:
     - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
       propertyPath: m_LandingOffset.y
       value: 4.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_BarrelPivotOffset.x
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6542845337571925012, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_BarrelPivotOffset.y
+      value: 0.15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7551941536952530493, guid: d049aa6d3cf6d584d938a51eb6ebc377, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
