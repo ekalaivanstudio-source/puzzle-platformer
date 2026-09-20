@@ -166,6 +166,23 @@ namespace MainGame.UI.CinematicEffects
             }
         }
 
+        /// <summary>
+        /// <see cref="MonoBehaviour.StartCoroutine"/> that tolerates this effect sitting on an
+        /// inactive GameObject. Unity refuses to start a coroutine there and logs an error, and
+        /// UI sequences legitimately fire effects at layers an artist has switched off. Skip the
+        /// visual quietly, but still report completion so a chained sequence never stalls.
+        /// </summary>
+        private Coroutine PlayRoutine(IEnumerator routine, Action onComplete)
+        {
+            if (!gameObject.activeInHierarchy)
+            {
+                onComplete?.Invoke();
+                return null;
+            }
+
+            return StartCoroutine(routine);
+        }
+
         private void EnsureMaterialInstance()
         {
             if (m_Graphic == null) m_Graphic = GetComponent<Graphic>();
@@ -239,7 +256,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_ReconstructRoutine != null) StopCoroutine(m_ReconstructRoutine);
-            m_ReconstructRoutine = StartCoroutine(PixelReconstructionRoutine(duration, edgeColor ?? new Color(0.35f, 0.9f, 1f, 1f), blockiness, onComplete));
+            m_ReconstructRoutine = PlayRoutine(PixelReconstructionRoutine(duration, edgeColor ?? new Color(0.35f, 0.9f, 1f, 1f), blockiness, onComplete), onComplete);
         }
 
         private IEnumerator PixelReconstructionRoutine(float duration, Color edgeColor, float blockiness, Action onComplete)
@@ -275,7 +292,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_DissolveRoutine != null) StopCoroutine(m_DissolveRoutine);
-            m_DissolveRoutine = StartCoroutine(PixelDissolveRoutine(duration, edgeColor ?? new Color(0.35f, 0.9f, 1f, 1f), blockiness, onComplete));
+            m_DissolveRoutine = PlayRoutine(PixelDissolveRoutine(duration, edgeColor ?? new Color(0.35f, 0.9f, 1f, 1f), blockiness, onComplete), onComplete);
         }
 
         private IEnumerator PixelDissolveRoutine(float duration, Color edgeColor, float blockiness, Action onComplete)
@@ -321,7 +338,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_NoiseRevealRoutine != null) StopCoroutine(m_NoiseRevealRoutine);
-            m_NoiseRevealRoutine = StartCoroutine(NoiseRevealRoutine(duration, edgeColor ?? new Color(0.35f, 0.85f, 1f, 1f), scale, onComplete));
+            m_NoiseRevealRoutine = PlayRoutine(NoiseRevealRoutine(duration, edgeColor ?? new Color(0.35f, 0.85f, 1f, 1f), scale, onComplete), onComplete);
         }
 
         private IEnumerator NoiseRevealRoutine(float duration, Color edgeColor, float scale, Action onComplete)
@@ -357,7 +374,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_NoiseRevealRoutine != null) StopCoroutine(m_NoiseRevealRoutine);
-            m_NoiseRevealRoutine = StartCoroutine(NoiseDissolveRoutine(duration, edgeColor ?? new Color(0.35f, 0.85f, 1f, 1f), scale, onComplete));
+            m_NoiseRevealRoutine = PlayRoutine(NoiseDissolveRoutine(duration, edgeColor ?? new Color(0.35f, 0.85f, 1f, 1f), scale, onComplete), onComplete);
         }
 
         private IEnumerator NoiseDissolveRoutine(float duration, Color edgeColor, float scale, Action onComplete)
@@ -393,7 +410,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_SweepRoutine != null) StopCoroutine(m_SweepRoutine);
-            m_SweepRoutine = StartCoroutine(SweepRoutine(duration, color ?? new Color(0.85f, 0.96f, 1f, 1f), angle, onComplete));
+            m_SweepRoutine = PlayRoutine(SweepRoutine(duration, color ?? new Color(0.85f, 0.96f, 1f, 1f), angle, onComplete), onComplete);
         }
 
         /// <summary>
@@ -405,7 +422,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_RadialRoutine != null) StopCoroutine(m_RadialRoutine);
-            m_RadialRoutine = StartCoroutine(RadialPulseRoutine(duration, color ?? new Color(0.4f, 0.9f, 1f, 1f), centerUV ?? new Vector2(0.5f, 0.5f), maxRadius, intensity, distortion, onComplete));
+            m_RadialRoutine = PlayRoutine(RadialPulseRoutine(duration, color ?? new Color(0.4f, 0.9f, 1f, 1f), centerUV ?? new Vector2(0.5f, 0.5f), maxRadius, intensity, distortion, onComplete), onComplete);
         }
 
         private IEnumerator RadialPulseRoutine(float duration, Color pulseColor, Vector2 center, float maxRadius, float intensity, float distortion, Action onComplete)
@@ -448,7 +465,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_ShockwaveRoutine != null) StopCoroutine(m_ShockwaveRoutine);
-            m_ShockwaveRoutine = StartCoroutine(ShockwaveRoutine(duration, originUV ?? new Vector2(0.5f, 0.5f), strength, thickness, onComplete));
+            m_ShockwaveRoutine = PlayRoutine(ShockwaveRoutine(duration, originUV ?? new Vector2(0.5f, 0.5f), strength, thickness, onComplete), onComplete);
         }
 
         private IEnumerator ShockwaveRoutine(float duration, Vector2 origin, float strength, float thickness, Action onComplete)
@@ -484,7 +501,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onCore?.Invoke(); onComplete?.Invoke(); return; }
 
             if (m_ScanRoutine != null) StopCoroutine(m_ScanRoutine);
-            m_ScanRoutine = StartCoroutine(ScanDistortRoutine(duration, intensity, onCore, onComplete));
+            m_ScanRoutine = PlayRoutine(ScanDistortRoutine(duration, intensity, onCore, onComplete), onComplete);
         }
 
         private IEnumerator ScanDistortRoutine(float duration, float intensity, Action onCore, Action onComplete)
@@ -530,7 +547,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_DataStreamRoutine != null) StopCoroutine(m_DataStreamRoutine);
-            m_DataStreamRoutine = StartCoroutine(DataStreamRoutine(duration, intensity, color ?? new Color(0.4f, 0.85f, 1f, 1f), speed, density, onComplete));
+            m_DataStreamRoutine = PlayRoutine(DataStreamRoutine(duration, intensity, color ?? new Color(0.4f, 0.85f, 1f, 1f), speed, density, onComplete), onComplete);
         }
 
         private IEnumerator DataStreamRoutine(float duration, float intensity, Color streamColor, float speed, float density, Action onComplete)
@@ -566,7 +583,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_SegmentFlowRoutine != null) StopCoroutine(m_SegmentFlowRoutine);
-            m_SegmentFlowRoutine = StartCoroutine(SegmentFlowRoutine(stepProgress, duration, color ?? new Color(0.35f, 0.85f, 1f, 1f), segmentCount, onComplete));
+            m_SegmentFlowRoutine = PlayRoutine(SegmentFlowRoutine(stepProgress, duration, color ?? new Color(0.35f, 0.85f, 1f, 1f), segmentCount, onComplete), onComplete);
         }
 
         private IEnumerator SegmentFlowRoutine(float targetStep, float duration, Color color, float count, Action onComplete)
@@ -602,7 +619,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_PulseRoutine != null) StopCoroutine(m_PulseRoutine);
-            m_PulseRoutine = StartCoroutine(BorderPulseRoutine(duration, color ?? new Color(0.35f, 0.85f, 1f, 1f), peakIntensity, direction, onComplete));
+            m_PulseRoutine = PlayRoutine(BorderPulseRoutine(duration, color ?? new Color(0.35f, 0.85f, 1f, 1f), peakIntensity, direction, onComplete), onComplete);
         }
 
         private IEnumerator BorderPulseRoutine(float duration, Color pulseColor, float peakIntensity, UIBorderDirection direction, Action onComplete)
@@ -666,7 +683,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) { onComplete?.Invoke(); return; }
 
             if (m_SweepRoutine != null) StopCoroutine(m_SweepRoutine);
-            m_SweepRoutine = StartCoroutine(SweepRoutine(duration, color ?? new Color(0.85f, 0.96f, 1f, 1f), angle, onComplete));
+            m_SweepRoutine = PlayRoutine(SweepRoutine(duration, color ?? new Color(0.85f, 0.96f, 1f, 1f), angle, onComplete), onComplete);
         }
 
         private IEnumerator SweepRoutine(float duration, Color sweepColor, float angle, Action onComplete)
@@ -708,7 +725,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) return;
 
             if (m_GlitchRoutine != null) StopCoroutine(m_GlitchRoutine);
-            m_GlitchRoutine = StartCoroutine(GlitchRoutine(duration, intensity, rgbOffset));
+            m_GlitchRoutine = PlayRoutine(GlitchRoutine(duration, intensity, rgbOffset), null);
         }
 
         private IEnumerator GlitchRoutine(float duration, float intensity, float rgbOffset)
@@ -742,7 +759,7 @@ namespace MainGame.UI.CinematicEffects
             if (m_MaterialInstance == null) return;
 
             if (m_FlashRoutine != null) StopCoroutine(m_FlashRoutine);
-            m_FlashRoutine = StartCoroutine(ImpactFlashRoutine(duration, intensity, color ?? Color.white));
+            m_FlashRoutine = PlayRoutine(ImpactFlashRoutine(duration, intensity, color ?? Color.white), null);
         }
 
         private IEnumerator ImpactFlashRoutine(float duration, float intensity, Color flashColor)
@@ -794,7 +811,7 @@ namespace MainGame.UI.CinematicEffects
                 EnsureMaterialInstance();
                 if (m_MaterialInstance != null)
                 {
-                    m_IdleRoutine = StartCoroutine(IdleBreathingRoutine(speed, maxIntensity));
+                    m_IdleRoutine = PlayRoutine(IdleBreathingRoutine(speed, maxIntensity), null);
                 }
             }
             else if (m_MaterialInstance != null)

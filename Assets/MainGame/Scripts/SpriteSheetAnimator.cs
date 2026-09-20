@@ -70,6 +70,28 @@ public class SpriteSheetAnimator : MonoBehaviour
 
     // ─── Public API ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Replaces the frames and restarts from frame 0. For callers whose art comes from data
+    /// rather than the prefab — the memory shard's spin lives in its database, so the pickup
+    /// hands it over at load instead of every prefab carrying its own copy.
+    ///
+    /// A null or empty array is ignored, leaving whatever was authored: art that failed to
+    /// load should not blank a pickup that was visible a moment ago.
+    /// </summary>
+    /// <param name="frames">The frames, in play order.</param>
+    /// <param name="framesPerSecond">Playback rate; 0 or less keeps the current one.</param>
+    public void SetFrames(Sprite[] frames, float framesPerSecond = 0f)
+    {
+        if (frames == null || frames.Length == 0) return;
+
+        // A copy, because the caller's array is usually owned by something shared — the memory
+        // shard's frames are a field on a ScriptableObject in Resources, and every pickup in
+        // the game would otherwise be holding the same live array.
+        m_Frames = (Sprite[])frames.Clone();
+        if (framesPerSecond > 0f) m_FramesPerSecond = framesPerSecond;
+        Restart();
+    }
+
     /// <summary>Restarts the animation from frame 0.</summary>
     public void Restart()
     {

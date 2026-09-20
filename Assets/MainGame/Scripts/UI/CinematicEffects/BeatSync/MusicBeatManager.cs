@@ -43,9 +43,11 @@ namespace MainGame.UI.CinematicEffects.BeatSync
         [Tooltip("SFX playback lead time in seconds to account for audio engine buffering.")]
         [SerializeField] private float m_SfxLeadTime = 0.02f;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         [Header("Development Debug")]
         [Tooltip("Display real-time beat timeline and telemetry overlay in Editor/Dev builds.")]
         [SerializeField] private bool m_ShowDebugTimeline = false;
+#endif
 
         // Public lifecycle events
         public static event Action<BeatEvent> OnBeat;
@@ -296,9 +298,14 @@ namespace MainGame.UI.CinematicEffects.BeatSync
             }
         }
 
+        // Compiled out of release players entirely. Merely declaring OnGUI opts this behaviour
+        // into Unity's IMGUI event loop, which then runs Layout and Repaint passes against it
+        // every frame -- allocating an Event each time -- even though the body returns on the
+        // first line. This is a calibration HUD, so it has no business costing anything in a
+        // shipped build.
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         private void OnGUI()
         {
-            if (!m_ShowDebugTimeline && !Debug.isDebugBuild) return;
             if (!m_ShowDebugTimeline) return;
 
             // Sleek developer HUD for beat synchronization calibration
@@ -325,13 +332,22 @@ namespace MainGame.UI.CinematicEffects.BeatSync
             GUILayout.EndArea();
         }
 
+        // Cached per size: OnGUI runs at least twice a frame, and a fresh GUIStyle per label
+        // is pure garbage.
+        private readonly Dictionary<int, GUIStyle> m_RichTextStyles = new Dictionary<int, GUIStyle>();
+
         private GUIStyle GetRichTextStyle(int fontSize)
         {
-            GUIStyle style = new GUIStyle(GUI.skin.label);
-            style.richText = true;
-            style.fontSize = fontSize;
+            if (m_RichTextStyles.TryGetValue(fontSize, out GUIStyle cached) && cached != null)
+            {
+                return cached;
+            }
+
+            GUIStyle style = new GUIStyle(GUI.skin.label) { richText = true, fontSize = fontSize };
+            m_RichTextStyles[fontSize] = style;
             return style;
         }
+#endif
 
         private void OnDestroy()
         {

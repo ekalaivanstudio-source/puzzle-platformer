@@ -24,16 +24,21 @@ namespace Collectables
         /// <summary>Every robot ships with the same number of parts.</summary>
         public const int PartsPerRobot = 5;
 
-        /// <summary>All robots, in display order. Also the order the UI lays them out.</summary>
+        /// <summary>
+        /// The robots that are live in the game, in display order — also the order the UI lays
+        /// them out and the order <c>Assign Parts To Levels</c> walks.
+        ///
+        /// Only PIXEL ships for now. ECHO, NOVA and PATCH are <b>parked, not deleted</b>: their
+        /// <see cref="RobotId"/> values, art and <c>RobotDefinition</c> assets all survive, so
+        /// bringing one back is a one-line edit here plus a re-run of
+        /// Tools ▸ Robot Collection ▸ Run Full Setup.
+        /// </summary>
         public static readonly RobotId[] All =
         {
-            RobotId.Echo,
-            RobotId.Nova,
-            RobotId.Patch,
             RobotId.Pixel,
         };
 
-        /// <summary>Total parts in the whole game (4 robots x 5 parts = 20).</summary>
+        /// <summary>Total parts in the whole game (live robots x 5 parts).</summary>
         public static int TotalParts => All.Length * PartsPerRobot;
 
         /// <summary>Stable string id for a robot, e.g. "echo".</summary>

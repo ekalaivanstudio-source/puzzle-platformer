@@ -6,9 +6,12 @@ using UnityEngine.UI;
 namespace Collectables
 {
     /// <summary>
-    /// One robot's entry in the collection UI: a dark silhouette with one image layer per
-    /// part stacked on top. A collected part's layer is shown, an uncollected one hidden, so
-    /// the robot visibly fills in piece by piece as parts are found.
+    /// One robot's entry in the collection UI: a silhouette with one image layer per part
+    /// stacked on top. A collected part's layer is shown, an uncollected one hidden, so the
+    /// robot visibly fills in piece by piece as parts are found.
+    ///
+    /// The silhouette underneath is either the robot's own dark chassis (home screen) or a
+    /// looping animation (gameplay HUD) when <see cref="m_SilhouetteFrames"/> is authored.
     ///
     /// All the sprites share a canvas size and each part sprite holds only that part's
     /// pixels, so the layers line up exactly (see <see cref="RobotDefinition"/>).
@@ -25,6 +28,16 @@ namespace Collectables
         [Tooltip("One image per part, in the same order as RobotDefinition.partSprites. " +
                  "Later entries draw in front.")]
         [SerializeField] private Image[] m_PartLayers = new Image[RobotIds.PartsPerRobot];
+
+        [Header("Silhouette animation (optional)")]
+        [Tooltip("Frames of a looping placeholder drawn instead of the robot's static silhouette — " +
+                 "the gameplay HUD uses a marching-dash outline so an empty slot reads as " +
+                 "'still to build' rather than a grey blob. Leave empty to show " +
+                 "RobotDefinition.silhouette unchanged.")]
+        [SerializeField] private Sprite[] m_SilhouetteFrames;
+
+        [Tooltip("Playback speed of the silhouette frames.")]
+        [SerializeField, Min(1f)] private float m_SilhouetteFps = 8f;
 
         [Header("Labels (optional)")]
         [SerializeField] private TMP_Text m_NameLabel;
@@ -45,9 +58,13 @@ namespace Collectables
 
         private RobotDefinition m_Definition;
         private Coroutine m_PopRoutine;
+        private Coroutine m_SilhouetteRoutine;
 
         /// <summary>The robot this slot draws, or null before <see cref="Bind"/>.</summary>
         public RobotDefinition Definition => m_Definition;
+
+        /// <summary>True when this slot animates its silhouette instead of drawing a static one.</summary>
+        private bool HasSilhouetteAnimation => m_SilhouetteFrames != null && m_SilhouetteFrames.Length > 0;
 
         /// <summary>
         /// Points the slot at a robot and writes its art into the layers. Safe to call again
@@ -65,7 +82,10 @@ namespace Collectables
 
             gameObject.SetActive(true);
 
-            if (m_Silhouette != null) m_Silhouette.sprite = definition.silhouette;
+            // An animated slot owns its own sprite — writing the definition's static silhouette
+            // here would be overwritten a frame later anyway, and flashes the grey chassis.
+            if (m_Silhouette != null && !HasSilhouetteAnimation)
+                m_Silhouette.sprite = definition.silhouette;
 
             if (m_PartLayers != null)
             {
@@ -154,8 +174,47 @@ namespace Collectables
             m_PopRoutine = null;
         }
 
+        private void OnEnable()
+        {
+            StartSilhouetteAnimation();
+        }
+
+        /// <summary>
+        /// Loops <see cref="m_SilhouetteFrames"/> on the silhouette image. No-op for a slot that
+        /// was authored with a static silhouette.
+        /// </summary>
+        private void StartSilhouetteAnimation()
+        {
+            if (!HasSilhouetteAnimation || m_Silhouette == null) return;
+            if (m_SilhouetteRoutine != null) StopCoroutine(m_SilhouetteRoutine);
+            m_SilhouetteRoutine = StartCoroutine(SilhouetteRoutine());
+        }
+
+        private IEnumerator SilhouetteRoutine()
+        {
+            // Realtime: the placeholder has to keep ticking behind the pause menu and the
+            // level-complete flow, both of which zero timeScale.
+            var wait = new WaitForSecondsRealtime(1f / Mathf.Max(1f, m_SilhouetteFps));
+            int frame = 0;
+
+            while (true)
+            {
+                var sprite = m_SilhouetteFrames[frame];
+                if (sprite != null) m_Silhouette.sprite = sprite;
+
+                frame = (frame + 1) % m_SilhouetteFrames.Length;
+                yield return wait;
+            }
+        }
+
         private void OnDisable()
         {
+            if (m_SilhouetteRoutine != null)
+            {
+                StopCoroutine(m_SilhouetteRoutine);
+                m_SilhouetteRoutine = null;
+            }
+
             // Leave no half-finished punch behind when the HUD is hidden mid-animation.
             if (m_PopRoutine != null)
             {

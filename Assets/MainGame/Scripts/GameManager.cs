@@ -38,10 +38,31 @@ public class GameManager : MonoBehaviour
     // Prevents duplicate GameWin/GameOver calls within the same execution turn.
     private bool m_IsGameOver;
 
+    // Cached so Update never touches Scene.name, which allocates a fresh managed string on
+    // every call. Refreshed on scene load so the flag stays correct even if this manager is
+    // ever made to survive a scene change.
+    private bool m_IsHomeScene;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        m_IsHomeScene = SceneManager.GetActiveScene().name == HomeSceneName;
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        m_IsHomeScene = scene.name == HomeSceneName;
     }
 
     // ─── Turn Flow ────────────────────────────────────────────────────────────
@@ -165,7 +186,7 @@ public class GameManager : MonoBehaviour
     private void Update()
     {
         // Escape only enables the pause menu in game levels, never in the home screen
-        if (SceneManager.GetActiveScene().name == HomeSceneName)
+        if (m_IsHomeScene)
         {
             return;
         }

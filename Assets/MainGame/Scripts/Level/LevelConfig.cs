@@ -71,6 +71,11 @@ public class LevelConfig : ScriptableObject
              "the RobotPartPickup in the scene reads its identity from here.")]
     public Collectables.RobotPartAssignment robotPart = new Collectables.RobotPartAssignment();
 
+    [Tooltip("Whether this level hides a memory shard. Shards unlock story cutscenes by running " +
+             "total (5 collected, 10 collected, …) — the thresholds live on the " +
+             "MemoryShardDatabase, so no level ever names a story.")]
+    public Collectables.MemoryShardAssignment memoryShard = new Collectables.MemoryShardAssignment();
+
     [Header("Camera Follow Dead Zone")]
     public CameraDeadZoneSettings cameraDeadZone = new CameraDeadZoneSettings();
 

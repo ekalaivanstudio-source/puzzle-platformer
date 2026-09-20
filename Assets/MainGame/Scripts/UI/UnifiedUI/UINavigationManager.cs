@@ -247,7 +247,10 @@ namespace MainGame.UI.Unified
                 if (currentSel != m_LastValidSelection)
                 {
                     m_LastValidSelection = currentSel;
-                    Log($"Selection changed to: {currentSel.name}");
+                    // Guarded at the call site: the interpolation -- and GameObject.name, which
+                    // allocates a fresh string every read -- would otherwise run on every
+                    // selection change even with verbose logging switched off.
+                    if (m_VerboseLogging) Log($"Selection changed to: {currentSel.name}");
 
                     // Selection sound hook
                     if (!m_IsTransitioning)

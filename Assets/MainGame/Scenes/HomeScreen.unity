@@ -2800,6 +2800,8 @@ MonoBehaviour:
   - {fileID: 1155841694}
   - {fileID: 298758845}
   - {fileID: 139490710}
+  m_SilhouetteFrames: []
+  m_SilhouetteFps: 8
   m_NameLabel: {fileID: 592326408}
   m_CountLabel: {fileID: 1370524146}
   m_CountFormat: '{0}/{1}'
@@ -7000,7 +7002,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 450053236}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -8297,6 +8299,8 @@ MonoBehaviour:
   - {fileID: 147000733}
   - {fileID: 273503959}
   - {fileID: 632372701}
+  m_SilhouetteFrames: []
+  m_SilhouetteFps: 8
   m_NameLabel: {fileID: 104495354}
   m_CountLabel: {fileID: 1290440587}
   m_CountFormat: '{0}/{1}'
@@ -9223,7 +9227,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.18, b: 0.28, a: 0.65}
+  m_Color: {r: 1, g: 0.6, b: 0.2, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -11436,17 +11440,17 @@ MonoBehaviour:
   m_OutlineReleaseTime: 0.14
   m_OutlineBaseGlow: 1
   m_OutlinePeakGlow: 2
-  m_PixelGridStep: 384
-  m_DistortionStrength: 0.003
-  m_DistortionSpeed: 1.2
-  m_DistortionFrequency: 10
-  m_NoiseStrength: 0.035
-  m_NoiseScale: 64
-  m_NoiseSpeed: 4
-  m_BrightnessPulse: 0.15
+  m_PixelGridStep: 0
+  m_DistortionStrength: 0
+  m_DistortionSpeed: 0
+  m_DistortionFrequency: 0
+  m_NoiseStrength: 0
+  m_NoiseScale: 0
+  m_NoiseSpeed: 0
+  m_BrightnessPulse: 0
   m_PulseColor: {r: 0.22745098, g: 0.654902, b: 1, a: 1}
   m_PulseSpeed: 2
-  m_PulseAdditiveIntensity: 0.08
+  m_PulseAdditiveIntensity: 0
   m_GlitchStrength: 0
   m_GlitchBlockSize: 16
   m_GlitchRate: 12
@@ -11485,6 +11489,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bcd21a89e5674a919876ef12345678fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.CinematicEffects.UISparkAtmosphereSystem
+  m_EnableColorCycling: 1
+  m_ColorCycleSpeed: 0.18
+  m_ColorSaturation: 0.88
+  m_ColorValue: 1
+  m_BaseSparkColor: {r: 0.35, g: 0.85, b: 1, a: 1}
+  m_EnableFlyingSparks: 1
+  m_FlyingSparkInterval: 0.12
+  m_FlightSpeedY: 180
+  m_WindDriftX: 40
+  m_SparkLifetime: 3
+  m_SparkPixelSize: 5
+  m_WobbleAmplitude: 22
+  m_EnableArtworkFloating: 1
+  m_FloatingAmplitude: 7
+  m_FloatingSpeed: 1.2
   m_EnableArtworkBreathing: 1
   m_BaseAlpha: 0.85
   m_AlphaPulseSpeed: 2
@@ -11492,10 +11511,6 @@ MonoBehaviour:
   m_EnableSparkBursts: 1
   m_MinBurstInterval: 3.5
   m_MaxBurstInterval: 7
-  m_SparkColor: {r: 1, g: 0.85, b: 0.35, a: 0.95}
-  m_EnableAmbientParticles: 1
-  m_AmbientParticleInterval: 1.8
-  m_AmbientParticleColor: {r: 0.65, g: 0.85, b: 1, a: 0.6}
 --- !u!1 &688543294
 GameObject:
   m_ObjectHideFlags: 0
@@ -14603,7 +14618,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e53b3919a930419eaae7ed4fc4b021d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.Unified.HomeScreenAnimator
-  m_Background: {fileID: 1070031352}
+  m_Background: {fileID: 2123186910}
   m_BackgroundLayer2: {fileID: 456047790}
   m_BgStartScale: 1.04
   m_BgZoomDuration: 0.9
@@ -21909,7 +21924,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.12, g: 0.18, b: 0.28, a: 0.65}
+  m_Color: {r: 0.35, g: 0.78, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -28115,7 +28130,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1961740643}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -28833,7 +28848,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2002333742}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -29302,6 +29317,8 @@ MonoBehaviour:
   - {fileID: 839863460}
   - {fileID: 1523391562}
   - {fileID: 1309432949}
+  m_SilhouetteFrames: []
+  m_SilhouetteFps: 8
   m_NameLabel: {fileID: 1048036780}
   m_CountLabel: {fileID: 1336209877}
   m_CountFormat: '{0}/{1}'
@@ -30496,6 +30513,8 @@ MonoBehaviour:
   - {fileID: 2081205628}
   - {fileID: 1353447756}
   - {fileID: 1094038964}
+  m_SilhouetteFrames: []
+  m_SilhouetteFps: 8
   m_NameLabel: {fileID: 396525993}
   m_CountLabel: {fileID: 715183475}
   m_CountFormat: '{0}/{1}'

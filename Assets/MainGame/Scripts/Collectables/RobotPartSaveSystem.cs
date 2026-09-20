@@ -103,13 +103,22 @@ namespace Collectables
             return count;
         }
 
-        /// <summary>How many parts have been picked up across every robot.</summary>
+        /// <summary>
+        /// How many parts have been picked up across the robots that are live in the game.
+        ///
+        /// Counts <see cref="RobotIds.All"/> rather than the raw file. A retired robot's parts
+        /// stay on disk — so putting it back in <see cref="RobotIds.All"/> restores its progress
+        /// — but they must not inflate a total that is shown against
+        /// <see cref="RobotIds.TotalParts"/>, which would read "7/5".
+        /// </summary>
         public static int TotalCollected
         {
             get
             {
                 EnsureLoaded();
-                return _collected.Count;
+                int count = 0;
+                foreach (var robot in RobotIds.All) count += CountCollected(robot);
+                return count;
             }
         }
 

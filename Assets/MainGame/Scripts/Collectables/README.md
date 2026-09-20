@@ -1,14 +1,32 @@
 # Robot Part Collectables
 
-Four collectable robots — **ECHO, NOVA, PATCH, PIXEL** — each broken into **5 parts**
-scattered one per level. Collecting a part is permanent progress: it is written to disk
-immediately and the pickup never comes back, on level reset or on a new session.
+Collectable robots, each broken into **5 parts** scattered one per level. Collecting a
+part is permanent progress: it is written to disk immediately and the pickup never comes
+back, on level reset or on a new session.
 
-The collection UI draws each robot as a dark silhouette that **fills in piece by piece**
-as its parts are found. The same UI appears in two places: pinned to the right of the
-screen during a level, and on the home screen's **Collection** tab.
+**Only PIXEL ships right now.** ECHO, NOVA and PATCH are *parked, not deleted* — their
+`RobotId` values, art and `RobotDefinition` assets all survive, and their save entries are
+kept on disk. Bringing one back is two edits (`RobotIds.All` and `RobotCollectionSetup
+.RobotAuthoring`) plus a re-run of **Run Full Setup**. `RobotIds.All` is the single source
+of truth for which robots are live; nothing else should hard-code the roster or its size.
 
-This replaces the old Robot Part / Memory Shard system entirely.
+The collection UI draws each robot as a silhouette that **fills in piece by piece** as its
+parts are found. The same UI appears in two places, and they differ in one respect:
+
+- **level HUD**, pinned to the right of the screen — the silhouette is a looping animated
+  outline (`Sprites/UI/pixel_character_progression_ui/1..3.png`, 8 fps) so an empty slot
+  reads as *still to build*;
+- **home screen Collection tab** — the silhouette is the robot's own dark chassis.
+
+Both are the same `RobotCollectionSlot`; the HUD simply gets `m_SilhouetteFrames` filled in
+and a slot with frames ignores `RobotDefinition.silhouette` entirely.
+
+This replaces the old Robot Part / Memory Shard collectables entirely.
+
+> **Memory shards are a separate, current system** — see [Memory-Shards.md](Memory-Shards.md).
+> They share this folder and the same architecture but answer a different question: robot
+> parts are about *which* piece you found, shards are only about *how many*. Nothing is
+> shared between the two beyond the conventions.
 
 ## Identity
 
@@ -24,7 +42,7 @@ enum values are written into saves.
 | `RobotId.cs` | The `RobotId` enum plus `RobotIds`: parts-per-robot, robot order, and the id string format. |
 | `RobotDefinition.cs` | **ScriptableObject, one per robot.** Display name, accent colour, silhouette, the 5 UI layer sprites (array order = draw order), the 5 world pickup sprites. |
 | `RobotCollectionDatabase.cs` | **ScriptableObject listing all 4 robots.** Lives in `Resources/` so the service can load it with no scene reference. |
-| `RobotPartSaveSystem.cs` | JSON save at `persistentDataPath/robotparts.json`. Stores collected part ids; provides counts; `ResetAll()`. |
+| `RobotPartSaveSystem.cs` | JSON save at `persistentDataPath/robotparts.json`. Stores collected part ids; provides counts; `ResetAll()`. `TotalCollected` counts only robots in `RobotIds.All`, so a parked robot's leftover entries stay on disk without making the total read "7/5". |
 | `RobotCollectionService.cs` | **The single access point.** Database lookup, `IsCollected` / `Collect` / counts, `OnPartCollected` + `OnProgressChanged` events, `ResetAll`. Static, so it works on the home screen too. |
 | `RobotPartAssignment.cs` | Which part a level hides. Serialized into `LevelConfig.robotPart`. |
 | `RobotPartPickup.cs` | The pickup in the level. Trigger-collect, permanent, self-hides if already collected. Reads its identity from the level's config. |
@@ -36,7 +54,8 @@ enum values are written into saves.
 
 Every sprite for a robot is the same 72x72 canvas:
 
-- `<Robot>_Silhouette.png` — the whole robot dimmed, always visible.
+- `<Robot>_Silhouette.png` — the whole robot dimmed, always visible (home screen only;
+  the level HUD draws the animated outline in its place, on the same 72x72 canvas).
 - `<Robot>_Part1..5.png` — **only that part's pixels**, transparent everywhere else.
 
 Because the layers share a canvas and hold disjoint pixels, stacking them lines up exactly:
@@ -74,17 +93,18 @@ for test scenes; normal levels leave it off.
 `Tools ▸ Robot Collection ▸ Run Full Setup` does everything and is **idempotent** — re-run
 it any time. Individual steps are on the same menu:
 
-1. **Build Database And Definitions** — writes the 4 `RobotDefinition` assets from the
-   sprite folders and the database into `Resources/`.
+1. **Build Database And Definitions** — writes one `RobotDefinition` asset per live robot
+   from the sprite folders, and the database into `Resources/`.
 2. **Assign Parts To Levels** — walks the `LevelConfig` assets in `levelNumber` order and
-   assigns 5 levels per robot (ECHO first). Levels past the 20th get none.
+   assigns 5 levels per live robot. With PIXEL alone that is Tutorial1-4 and Level1;
+   every level after gets none, and its pickup hides itself at runtime.
 3. **Build Prefabs** — `RobotCollectionHUD.prefab` (own canvas, right-aligned column) and
    `RobotPartPickup.prefab`.
 4. **Setup All Level Scenes** — per scene: strips the old collectable objects, then adds
    the HUD and the pickup. The **HUD is replaced** each run so prefab changes reach every
    level; the **pickup is only added when missing**, so hand-placed positions survive.
 5. **Setup Home Screen Tab** — fills the home screen's Collection panel with the same
-   four robots, drawn larger and with names.
+   robots, drawn larger, with names and a static silhouette.
 
 Three more entries help while working:
 

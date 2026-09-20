@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using ModernLevelSelection;
@@ -113,6 +113,7 @@ public class MenuManager : MonoBehaviour
 
         // Wipe collectable progress (Robot Parts / Memory Shards) for a fresh start.
         Collectables.RobotCollectionService.ResetAll();
+        Collectables.MemoryShardService.ResetAll();
 
         // Make sure Level 1 is unlocked.
         SaveManager.SetHighestUnlocked(1);
