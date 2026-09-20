@@ -32,6 +32,10 @@ namespace MainGame.UI.Unified
         private Vector3 m_RootRestAngles = Vector3.zero;
 
         private Coroutine m_ActiveRoutine;
+
+        // Completion callback owned by whichever routine m_ActiveRoutine currently holds, so
+        // that stopping the routine can still release the caller waiting on it.
+        private Action m_PendingCompletion;
         private bool m_IsConfigured = false;
         private bool m_HasCapturedRest = false;
 
@@ -162,6 +166,7 @@ namespace MainGame.UI.Unified
 
         public void KillMotion()
         {
+            bool interrupted = m_ActiveRoutine != null;
             if (m_ActiveRoutine != null)
             {
                 StopCoroutine(m_ActiveRoutine);
@@ -172,6 +177,25 @@ namespace MainGame.UI.Unified
             {
                 CinematicUI.ResetToIdle();
             }
+
+            // A stopped coroutine never reaches its own completion line, and
+            // HomeScreenAnimator blocks its entrance and exit sequences on this callback
+            // (logoDone / logoBreakdownDone). Release it here so an interruption cannot
+            // strand the whole screen transition.
+            if (interrupted)
+            {
+                CompletePending();
+            }
+        }
+
+        /// <summary>
+        /// Hands the current routine's completion callback to its waiter exactly once.
+        /// </summary>
+        private void CompletePending()
+        {
+            Action pending = m_PendingCompletion;
+            m_PendingCompletion = null;
+            pending?.Invoke();
         }
 
         /// <summary>
@@ -181,10 +205,18 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             SetupAssembly();
-            m_ActiveRoutine = StartCoroutine(CinematicDeployRoutine(onComplete, onImpact));
+            // Unity refuses StartCoroutine on an inactive GameObject, which would drop the
+            // callback and hang the entrance sequence waiting on it.
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(CinematicDeployRoutine(onImpact));
         }
 
-        private IEnumerator CinematicDeployRoutine(Action onComplete, Action onImpact)
+        private IEnumerator CinematicDeployRoutine(Action onImpact)
         {
             if (m_OriginalTitleImage != null)
             {
@@ -239,7 +271,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompletePending();
         }
 
         /// <summary>
@@ -249,7 +281,13 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             SetupAssembly();
-            m_ActiveRoutine = StartCoroutine(CinematicRetractRoutine(onComplete));
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(CinematicRetractRoutine());
         }
 
         /// <summary>
@@ -260,7 +298,7 @@ namespace MainGame.UI.Unified
             RetractSequence(onComplete);
         }
 
-        private IEnumerator CinematicRetractRoutine(Action onComplete)
+        private IEnumerator CinematicRetractRoutine()
         {
             UIFeedbackAudio.PlaySfx(UISfxType.Retract, 0.65f, 0.02f);
 
@@ -296,7 +334,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompletePending();
         }
     }
 }

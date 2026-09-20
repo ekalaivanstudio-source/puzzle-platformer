@@ -124,6 +124,11 @@ namespace MainGame.UI.Unified
         private Coroutine m_FloatingRoutine;
         private bool m_IsFocused = false;
 
+        // Completion callback owned by whichever routine m_ActiveRoutine currently holds.
+        // Held in a field rather than only on the coroutine's stack so that stopping the
+        // routine can still release whoever is waiting on it.
+        private Action m_PendingCompletion;
+
         // Cached CinematicUIEffect
         private CinematicUIEffect m_CinematicUI;
 
@@ -247,19 +252,7 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             CaptureRestState();
-
-            if (m_ButtonVisual != null)
-            {
-                m_ButtonVisual.pivot = m_RestPivot;
-                m_ButtonVisual.anchoredPosition = m_RestAnchoredPos;
-                m_ButtonVisual.localScale = m_RestLocalScale;
-                m_ButtonVisual.localEulerAngles = m_RestEulerAngles;
-            }
-
-            if (m_CanvasGroup != null)
-            {
-                m_CanvasGroup.alpha = 1f;
-            }
+            ApplyRestTransform();
 
             if (m_PointerIcon != null)
             {
@@ -277,8 +270,41 @@ namespace MainGame.UI.Unified
             }
         }
 
+        /// <summary>
+        /// Snaps the visual back to its captured rest pose. Split out of ResetToRestState so
+        /// KillMotion can settle an interrupted animation without recursing back through it.
+        /// </summary>
+        private void ApplyRestTransform()
+        {
+            if (m_ButtonVisual != null)
+            {
+                m_ButtonVisual.pivot = m_RestPivot;
+                m_ButtonVisual.anchoredPosition = m_RestAnchoredPos;
+                m_ButtonVisual.localScale = m_RestLocalScale;
+                m_ButtonVisual.localEulerAngles = m_RestEulerAngles;
+            }
+
+            if (m_CanvasGroup != null)
+            {
+                m_CanvasGroup.alpha = 1f;
+            }
+        }
+
+        /// <summary>
+        /// Hands the current routine's completion callback to its waiter exactly once.
+        /// Cleared before invoking so a callback that starts another animation on this
+        /// button cannot re-enter and fire itself twice.
+        /// </summary>
+        private void CompletePending()
+        {
+            Action pending = m_PendingCompletion;
+            m_PendingCompletion = null;
+            pending?.Invoke();
+        }
+
         public void KillMotion()
         {
+            bool interrupted = m_ActiveRoutine != null;
             if (m_ActiveRoutine != null)
             {
                 StopCoroutine(m_ActiveRoutine);
@@ -290,6 +316,19 @@ namespace MainGame.UI.Unified
             if (CinematicUI != null)
             {
                 CinematicUI.ResetToIdle();
+            }
+
+            // A stopped coroutine never reaches its own completion line. Without this the
+            // callback is lost, and everything waiting on it waits forever: HomeScreenAnimator
+            // counts this button in buttonsPending/pendingRetracts, its entrance and exit
+            // sequences block on those counters, and UINavigationManager.IsTransitioning then
+            // latches true -- which makes every menu button stop responding. Hover or select
+            // during the entrance stagger reaches here via SetFocusState, so this is a normal
+            // path, not an edge case.
+            if (interrupted)
+            {
+                ApplyRestTransform();
+                CompletePending();
             }
         }
 
@@ -383,10 +422,18 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(SnapEntranceRoutine(staggerDelay, onComplete));
+            // Unity refuses StartCoroutine on an inactive GameObject, so the callback would
+            // never fire and the caller's pending counter would never drain.
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(SnapEntranceRoutine(staggerDelay));
         }
 
-        private IEnumerator SnapEntranceRoutine(float staggerDelay, Action onComplete)
+        private IEnumerator SnapEntranceRoutine(float staggerDelay)
         {
             if (staggerDelay > 0f)
             {
@@ -492,7 +539,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompletePending();
 
             if (m_EnableFloating && isActiveAndEnabled)
             {
@@ -654,10 +701,16 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(ConfirmPunchRoutine(onComplete));
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(ConfirmPunchRoutine());
         }
 
-        private IEnumerator ConfirmPunchRoutine(Action onComplete)
+        private IEnumerator ConfirmPunchRoutine()
         {
             Color energyColor = GetEnergyColor();
             Vector3 restScale = m_RestLocalScale;
@@ -737,7 +790,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompletePending();
 
             if (m_EnableFloating && isActiveAndEnabled)
             {
@@ -756,10 +809,16 @@ namespace MainGame.UI.Unified
         {
             KillMotion();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(RetractRoutine(onComplete));
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(RetractRoutine());
         }
 
-        private IEnumerator RetractRoutine(Action onComplete)
+        private IEnumerator RetractRoutine()
         {
             Vector2 startPos = m_ButtonVisual != null ? m_ButtonVisual.anchoredPosition : m_RestAnchoredPos;
             Vector2 targetPos = m_RestAnchoredPos + m_StartOffset;
@@ -805,7 +864,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompletePending();
         }
     }
 }
