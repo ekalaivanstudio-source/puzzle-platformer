@@ -54,6 +54,13 @@ namespace MainGame.UI.Unified
         private bool m_IsTransitioning;
         private Coroutine m_TransitionCoroutine;
 
+        // Hard ceiling on a single screen transition. Every screen blocks its transition on
+        // animator callbacks, and a dropped callback used to leave m_IsTransitioning true for
+        // the rest of the session -- which silently swallows every button click and leaves
+        // EventSystem.sendNavigationEvents off, so the menu looks alive but responds to
+        // nothing. Transitions run on unscaled time, so this is a wall-clock budget.
+        private const float k_MaxTransitionDuration = 8f;
+
         public bool IsTransitioning => m_IsTransitioning;
 
         public static UINavigationManager EnsureInstance(InputActionAsset inputAsset = null)
@@ -432,9 +439,15 @@ namespace MainGame.UI.Unified
             bool newEnterFinished = false;
             newScreen.PlayEnterTransition(() => newEnterFinished = true);
 
-            while (!newEnterFinished || !oldExitFinished)
+            float waited = 0f;
+            while ((!newEnterFinished || !oldExitFinished) && waited < k_MaxTransitionDuration)
             {
+                waited += Time.unscaledDeltaTime;
                 yield return null;
+            }
+            if (!newEnterFinished || !oldExitFinished)
+            {
+                Debug.LogWarning($"[UINavigationManager] Push to '{newScreen.name}' timed out after {k_MaxTransitionDuration}s (enter={newEnterFinished}, exit={oldExitFinished}). Forcing the transition complete so input stays responsive.");
             }
 
             if (CinematicUIFXManager.Instance != null)
@@ -513,9 +526,15 @@ namespace MainGame.UI.Unified
                 enterFinished = true;
             }
 
-            while (!enterFinished || !exitFinished)
+            float waited = 0f;
+            while ((!enterFinished || !exitFinished) && waited < k_MaxTransitionDuration)
             {
+                waited += Time.unscaledDeltaTime;
                 yield return null;
+            }
+            if (!enterFinished || !exitFinished)
+            {
+                Debug.LogWarning($"[UINavigationManager] Pop to '{(targetScreen != null ? targetScreen.name : "None")}' timed out after {k_MaxTransitionDuration}s (enter={enterFinished}, exit={exitFinished}). Forcing the transition complete so input stays responsive.");
             }
 
             if (CinematicUIFXManager.Instance != null)

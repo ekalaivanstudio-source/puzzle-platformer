@@ -70,6 +70,15 @@ namespace MainGame.UI.Unified
 
         private Coroutine m_ActiveRoutine;
         private Coroutine m_AmbientRoutine;
+
+        // Completion callback for the master sequence in m_ActiveRoutine. UINavigationManager
+        // blocks its whole transition on this, so it must survive the routine being stopped.
+        private Action m_PendingSequenceCompletion;
+
+        // Backstop for the sub-animation handshakes below. They are guaranteed to report in,
+        // but a future animator wired into this screen might not be, and an unbounded wait
+        // here latches UINavigationManager.IsTransitioning and kills every menu button.
+        private const float k_SubAnimationTimeout = 5f;
         private readonly List<Coroutine> m_ChildCoroutines = new List<Coroutine>(16);
         private bool m_HasCapturedRest = false;
 
@@ -372,7 +381,13 @@ namespace MainGame.UI.Unified
         {
             StopActiveAnimation();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(MasterMachineAssemblySequence(onComplete));
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingSequenceCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(MasterMachineAssemblySequence());
         }
 
         public void PlayExit(Action onComplete)
@@ -389,11 +404,18 @@ namespace MainGame.UI.Unified
         {
             StopActiveAnimation();
             CaptureRestState();
-            m_ActiveRoutine = StartCoroutine(MasterMachineReconfigurationSequence(selectedButtonIndex, onComplete));
+            if (!isActiveAndEnabled)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+            m_PendingSequenceCompletion = onComplete;
+            m_ActiveRoutine = StartCoroutine(MasterMachineReconfigurationSequence(selectedButtonIndex));
         }
 
         public void StopActiveAnimation()
         {
+            bool interrupted = m_ActiveRoutine != null;
             if (m_ActiveRoutine != null)
             {
                 StopCoroutine(m_ActiveRoutine);
@@ -435,6 +457,23 @@ namespace MainGame.UI.Unified
                     }
                 }
             }
+
+            // The master sequence was stopped before it could report in. Abandoning the
+            // animation is fine; leaving UINavigationManager waiting on it is not.
+            if (interrupted)
+            {
+                CompleteSequence();
+            }
+        }
+
+        /// <summary>
+        /// Hands the master sequence's completion callback to UINavigationManager exactly once.
+        /// </summary>
+        private void CompleteSequence()
+        {
+            Action pending = m_PendingSequenceCompletion;
+            m_PendingSequenceCompletion = null;
+            pending?.Invoke();
         }
 
         private void TrackCoroutine(Coroutine c)
@@ -475,7 +514,7 @@ namespace MainGame.UI.Unified
         // MASTER MACHINE ASSEMBLY SEQUENCE (ENTRANCE — MUSIC BEAT SYNCHRONIZED)
         // ═════════════════════════════════════════════════════════════════════════════
 
-        private IEnumerator MasterMachineAssemblySequence(Action onComplete)
+        private IEnumerator MasterMachineAssemblySequence()
         {
             // ─── PHASE 1: DORMANT DARK STATE ───────────────────────────────────
             // Background, logo, and signboards prepared in dormant coordinates
@@ -589,9 +628,15 @@ namespace MainGame.UI.Unified
             }
 
             // Wait for logo and all buttons to complete their snap & impact settle
-            while (!logoDone || buttonsPending > 0)
+            float settleWait = 0f;
+            while ((!logoDone || buttonsPending > 0) && settleWait < k_SubAnimationTimeout)
             {
+                settleWait += Time.unscaledDeltaTime;
                 yield return null;
+            }
+            if (!logoDone || buttonsPending > 0)
+            {
+                Debug.LogWarning($"[HomeScreenAnimator] Entrance timed out waiting on sub-animations (logoDone={logoDone}, buttonsPending={buttonsPending}). Completing anyway so the menu stays usable.");
             }
 
             ResetToRestState();
@@ -605,22 +650,24 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompleteSequence();
         }
 
         // ═════════════════════════════════════════════════════════════════════════════
         // MASTER MACHINE RECONFIGURATION SEQUENCE (EXIT TO NEXT SCREEN)
         // ═════════════════════════════════════════════════════════════════════════════
 
-        private IEnumerator MasterMachineReconfigurationSequence(int selectedIndex, Action onComplete)
+        private IEnumerator MasterMachineReconfigurationSequence(int selectedIndex)
         {
             // ─── STEP 1: SELECTED BUTTON CONFIRM PUNCH ──────────────────────────
             if (selectedIndex >= 0 && m_ButtonAnimators != null && selectedIndex < m_ButtonAnimators.Length && m_ButtonAnimators[selectedIndex] != null)
             {
                 bool lockDone = false;
                 m_ButtonAnimators[selectedIndex].PlayConfirmPunch(() => lockDone = true);
-                while (!lockDone)
+                float lockWait = 0f;
+                while (!lockDone && lockWait < k_SubAnimationTimeout)
                 {
+                    lockWait += Time.unscaledDeltaTime;
                     yield return null;
                 }
             }
@@ -693,9 +740,15 @@ namespace MainGame.UI.Unified
                 }
             }
 
-            while (pendingRetracts > 0 || !logoBreakdownDone)
+            float retractWait = 0f;
+            while ((pendingRetracts > 0 || !logoBreakdownDone) && retractWait < k_SubAnimationTimeout)
             {
+                retractWait += Time.unscaledDeltaTime;
                 yield return null;
+            }
+            if (pendingRetracts > 0 || !logoBreakdownDone)
+            {
+                Debug.LogWarning($"[HomeScreenAnimator] Exit timed out waiting on sub-animations (pendingRetracts={pendingRetracts}, logoBreakdownDone={logoBreakdownDone}). Completing anyway so navigation is not stuck.");
             }
 
             if (MainMenuBackgroundDirector.Instance != null)
@@ -704,7 +757,7 @@ namespace MainGame.UI.Unified
             }
 
             m_ActiveRoutine = null;
-            onComplete?.Invoke();
+            CompleteSequence();
         }
 
         private bool GetButtonValid(int index)
