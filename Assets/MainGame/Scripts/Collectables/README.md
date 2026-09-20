@@ -28,6 +28,11 @@ This replaces the old Robot Part / Memory Shard collectables entirely.
 > parts are about *which* piece you found, shards are only about *how many*. Nothing is
 > shared between the two beyond the conventions.
 
+> **Both show up on the level selection map** — see
+> [Level-Select-Collectables.md](Level-Select-Collectables.md). The route line leaving each
+> level carries icons for what it hides, lit once found. That is the one place the two systems
+> are read together, through `LevelCollectableService`.
+
 ## Identity
 
 A robot's id is its lower-case name (`echo`); a part's id is that plus its 1-based number
