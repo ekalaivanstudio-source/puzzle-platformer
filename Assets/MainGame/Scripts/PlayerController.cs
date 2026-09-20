@@ -1311,7 +1311,22 @@ public class PlayerController : MonoBehaviour
     private IEnumerator HopOverTime(Vector2 target, float height)
     {
         Vector2 start = m_Rigidbody.position;
-        float dt = Time.fixedDeltaTime;
+
+        // The REAL seconds between physics steps, not the game-time step. Those are the same
+        // number in normal play and differ only during a hit stop, which scales both
+        // Time.timeScale and Time.fixedDeltaTime down together (see FeelService.HitStop) —
+        // fixedUnscaledDeltaTime is what stays put through it.
+        //
+        // This matters because the loop below spends a fixed COUNT of physics frames rather
+        // than watching a clock. Sampling the scaled step meant a hop that began during a hit
+        // stop measured 0.001 instead of 0.02 and queued twenty times as many frames; the hit
+        // stop then expired a tenth of a second later and the remaining ~490 frames each ran
+        // at full length. A half-second hop off a ledge took ten seconds. Every other motion
+        // here (PerformJump, FallToGround, MoveOverTime) accumulates elapsed time from
+        // Time.fixedDeltaTime and re-reads it every step, so each one self-corrects when the
+        // clock changes underneath it; this one, converting to a frame count up front, could
+        // not. Quantising against the unscaled step makes the count the same either way.
+        float dt = Time.fixedUnscaledDeltaTime;
 
         // Quantised to a WHOLE number of physics steps, then g and v0 are re-derived to hit
         // `height` in exactly that many. Letting the natural duration run and clamping the
