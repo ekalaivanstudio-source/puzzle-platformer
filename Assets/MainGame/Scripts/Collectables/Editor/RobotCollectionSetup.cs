@@ -88,15 +88,15 @@ namespace Collectables.EditorTools
         /// step with <see cref="RobotIds.All"/> — that array decides which robots get parts, this
         /// one decides how they are drawn, and a robot missing from either simply isn't in the game.
         ///
-        /// ECHO, NOVA and PATCH are parked here rather than deleted; uncomment a line and re-run
+        /// NOVA, PATCH and PIXEL are parked here rather than deleted; uncomment a line and re-run
         /// Run Full Setup to bring one back (add it to <see cref="RobotIds.All"/> too).
         /// </summary>
         private static readonly (RobotId robot, string display, Color accent)[] RobotAuthoring =
         {
-            // (RobotId.Echo,  "ECHO",  new Color(0.29f, 0.78f, 0.95f)),
             // (RobotId.Nova,  "NOVA",  new Color(0.90f, 0.92f, 0.96f)),
             // (RobotId.Patch, "PATCH", new Color(0.96f, 0.78f, 0.35f)),
-            (RobotId.Pixel, "PIXEL", new Color(0.93f, 0.49f, 0.24f)),
+            // (RobotId.Pixel, "PIXEL", new Color(0.93f, 0.49f, 0.24f)),
+            (RobotId.Echo,  "ECHO",  new Color(0.29f, 0.78f, 0.95f)),
         };
 
         // ─── Menu entries ─────────────────────────────────────────────────────────

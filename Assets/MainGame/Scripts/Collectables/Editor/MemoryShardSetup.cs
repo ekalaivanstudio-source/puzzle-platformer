@@ -34,12 +34,12 @@ namespace Collectables.EditorTools
         private const string ShardSpriteFolder = "Assets/MainGame/Sprites/Collectibles/memory shards";
         private const string CollectEffectSpriteFolder = "Assets/MainGame/Sprites/Effects/item_collection_effect";
         private const string ResourcesFolder = "Assets/Resources";
-        private const string DatabasePath = ResourcesFolder + "/MemoryShardDatabase.asset";
+        internal const string DatabasePath = ResourcesFolder + "/MemoryShardDatabase.asset";
         private const string PrefabFolder = "Assets/MainGame/Prefabs/Collectables";
         private const string PickupPrefabPath = PrefabFolder + "/MemoryShardPickup.prefab";
         private const string CollectEffectPrefabPath = PrefabFolder + "/MemoryShardCollectEffect.prefab";
         private const string HudPrefabPath = PrefabFolder + "/MemoryShardHUD.prefab";
-        private const string PresenterPrefabPath = PrefabFolder + "/MemoryStoryPresenter.prefab";
+        internal const string PresenterPrefabPath = PrefabFolder + "/MemoryStoryPresenter.prefab";
         private const string LevelConfigFolder = "Assets/MainGame/ScriptableObjects/LevelConfigs";
 
         private const string PickupObjectName = "MemoryShardPickup";
@@ -47,16 +47,15 @@ namespace Collectables.EditorTools
         private const string PresenterObjectName = "MemoryStoryPresenter";
 
         /// <summary>
-        /// The placeholder thresholds written when the database has no stories yet — the
-        /// "5, then 10, …" shape the design asked for, with the numbers still to be decided.
-        /// Only ever used to seed an empty list; re-running never overwrites authored entries.
+        /// The thresholds written when the database has no stories yet — one story every
+        /// 9 shards, matching the three Memory clips. Only ever used to seed an empty list;
+        /// re-running never overwrites authored entries.
         /// </summary>
         private static readonly (string id, int shards, string title)[] SeedStories =
         {
-            ("memory_01", 5,  "Memory I"),
-            ("memory_02", 10, "Memory II"),
-            ("memory_03", 15, "Memory III"),
-            ("memory_04", 20, "Memory IV"),
+            ("memory_01", 9,  "Memory I"),
+            ("memory_02", 18, "Memory II"),
+            ("memory_03", 27, "Memory III"),
         };
 
         // ─── Menu entries ─────────────────────────────────────────────────────────
@@ -110,7 +109,7 @@ namespace Collectables.EditorTools
                     .ToArray();
 
                 Debug.Log($"[MemoryShards] Seeded {database.stories.Length} placeholder stories " +
-                          "(5/10/15/20 shards, no clips). Re-tune them on the database asset.");
+                          "(9/18/27 shards, no clips). Re-tune them on the database asset.");
             }
 
             EditorUtility.SetDirty(database);
@@ -267,7 +266,7 @@ namespace Collectables.EditorTools
 
         // ─── Scene wiring ─────────────────────────────────────────────────────────
 
-        private static List<string> FindLevelScenes()
+        internal static List<string> FindLevelScenes()
         {
             var paths = new List<string>();
 
@@ -499,8 +498,16 @@ namespace Collectables.EditorTools
         {
             // Above every other canvas in a level — it is a full-screen cutscene.
             var root = NewCanvasRoot(PresenterObjectName, sortingOrder: 500);
-            root.AddComponent<CanvasGroup>();
+            var group = root.AddComponent<CanvasGroup>();
             var presenter = root.AddComponent<MemoryStoryPresenter>();
+
+            // Saved already hidden — the state Awake puts it in anyway. Left visible, its black
+            // backdrop covers the whole Game view in edit mode, and the obvious fix from a level
+            // designer's chair is to switch the object off. That disables the presenter itself,
+            // and every story then silently fails to play (Awake never runs, Instance stays null).
+            root.GetComponent<Canvas>().enabled = false;
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
 
             // Opaque backdrop, so a letterboxed clip sits on black rather than on the level.
             var backdrop = NewUiObject("Backdrop", root.transform);

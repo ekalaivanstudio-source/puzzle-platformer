@@ -86,6 +86,7 @@ namespace Collectables
         // down from inside its own callback.
         private bool m_ClipFinished;
         private bool m_Aborted;
+        private string m_LastError;
 
         private bool m_IsPlaying;
 
@@ -104,8 +105,88 @@ namespace Collectables
         /// </summary>
         public static IEnumerator PlayPendingRoutine()
         {
-            if (Instance == null) yield break;
+            if (Instance == null)
+            {
+                // Silent here is how a story went missing: a presenter switched off in the scene
+                // never runs Awake, so Instance stays null and the level simply moves on.
+                if (MemoryShardService.HasPendingStory())
+                    Debug.LogWarning("[MemoryStoryPresenter] A story is waiting to play but this level has no " +
+                                     "active presenter — is the MemoryStoryPresenter object switched off in " +
+                                     "the scene? The story stays queued for the next level.");
+                yield break;
+            }
             yield return Instance.PlayPending();
+        }
+
+        /// <summary>
+        /// What happened to one clip, measured on the real playback path. Filled by every play,
+        /// and handed back by <see cref="PreviewRoutine"/> so the Memory Story Video Checker can
+        /// judge whether the video actually played rather than trusting that it was asked to.
+        /// </summary>
+        public class PlaybackReport
+        {
+            public string StoryId;
+            public string ClipName;
+            public double ClipLength;
+            public ulong FrameCount;
+
+            /// <summary>The decoder buffered the clip within the prepare timeout.</summary>
+            public bool Prepared;
+            /// <summary>It reached the screen — the same test that decides whether a story counts as seen.</summary>
+            public bool Presented;
+            /// <summary>The player raised its own end-of-clip signal.</summary>
+            public bool Finished;
+            public bool Skipped;
+            /// <summary>Ran out its duration backstop without reporting an end — the frozen-frame symptom.</summary>
+            public bool HitBackstop;
+            /// <summary>The on-screen surface was drawing the player's live texture at some point.</summary>
+            public bool SurfaceBound;
+
+            /// <summary>Highest frame the decoder reached. Stuck near 0 means the video froze.</summary>
+            public long HighestFrame = -1;
+            /// <summary>Real seconds from Play() to the end of the clip.</summary>
+            public float PlaySeconds;
+            /// <summary>Real seconds Prepare() took.</summary>
+            public float PrepareSeconds;
+            public string Error;
+
+            /// <summary>How far through the clip the decoder got, 0–1.</summary>
+            public float Progress => FrameCount > 0 ? Mathf.Clamp01((HighestFrame + 1) / (float)FrameCount) : 0f;
+        }
+
+        /// <summary>
+        /// Plays one story through exactly the same path as the end of a level — same player
+        /// setup, same prepare, same end detection — but does <b>not</b> mark it as seen, so it
+        /// can be run any number of times without touching the save. For testing only; the game
+        /// itself only ever calls <see cref="PlayPendingRoutine"/>.
+        /// </summary>
+        public static IEnumerator PreviewRoutine(MemoryStoryEntry story, System.Action<PlaybackReport> onDone)
+        {
+            var report = new PlaybackReport { StoryId = story != null ? story.SafeId : "(none)" };
+
+            if (Instance == null)
+            {
+                report.Error = "No active MemoryStoryPresenter in this scene.";
+            }
+            else if (Instance.m_IsPlaying)
+            {
+                report.Error = "A story is already playing.";
+            }
+            else if (story == null || !story.HasClip)
+            {
+                report.Error = "This story has no clip assigned.";
+            }
+            else if (Instance.m_Player == null || Instance.m_Surface == null)
+            {
+                report.Error = "The presenter's VideoPlayer or Surface reference is missing.";
+            }
+            else
+            {
+                var single = new List<MemoryStoryEntry> { story };
+                yield return Instance.PlaySequence(single, markShown: false, r => report = r);
+            }
+
+            onDone?.Invoke(report);
         }
 
         // ─── Lifecycle ───────────────────────────────────────────────────────────
@@ -181,6 +262,16 @@ namespace Collectables
                 yield break;
             }
 
+            yield return PlaySequence(playable, markShown: true, onEach: null);
+        }
+
+        /// <summary>
+        /// Fades up, plays each story in turn and fades out. <paramref name="markShown"/> is
+        /// what separates the real thing from a preview: only a real play consumes the story.
+        /// </summary>
+        private IEnumerator PlaySequence(List<MemoryStoryEntry> playable, bool markShown,
+                                         System.Action<PlaybackReport> onEach)
+        {
             m_IsPlaying = true;
 
             if (m_StopMusicDuringStory) AudioManager.Instance?.StopMusic();
@@ -198,15 +289,17 @@ namespace Collectables
                 // The flag is only meaningful once something actually reached the screen — a
                 // story that failed to buffer never faded anything up, so the next one still has
                 // to.
-                bool presented = false;
-                yield return PlayOne(story, fadeUp: !fadedUp, result => presented = result);
-                fadedUp |= presented;
+                var report = new PlaybackReport();
+                yield return PlayOne(story, fadeUp: !fadedUp, report);
+                fadedUp |= report.Presented;
 
                 // Marked only when it reached the player: finished, skipped, or ran to its
                 // backstop. A clip that failed to buffer or errored is left pending and retried
                 // at the end of the next level, so a transient failure cannot silently eat story
                 // content — the error is logged loudly instead.
-                if (presented) MemoryShardService.MarkStoryShown(story);
+                if (markShown && report.Presented) MemoryShardService.MarkStoryShown(story);
+
+                onEach?.Invoke(report);
             }
 
             yield return FadeTo(0f, m_FadeOutDuration);
@@ -216,37 +309,48 @@ namespace Collectables
         }
 
         /// <summary>
-        /// Plays one story. <paramref name="onPresented"/> reports whether it actually reached
-        /// the screen — false when the clip never buffered or the player errored, which is what
-        /// keeps a failed story in the queue instead of consuming it.
+        /// Plays one story and records what happened in <paramref name="report"/>.
+        /// <see cref="PlaybackReport.Presented"/> is false when the clip never buffered or the
+        /// player errored, which is what keeps a failed story in the queue instead of consuming it.
         /// </summary>
-        private IEnumerator PlayOne(MemoryStoryEntry story, bool fadeUp, System.Action<bool> onPresented)
+        private IEnumerator PlayOne(MemoryStoryEntry story, bool fadeUp, PlaybackReport report)
         {
             m_ClipFinished = false;
             m_Aborted = false;
+            m_LastError = null;
 
             VideoClip clip = story.clip;
+            report.StoryId = story.SafeId;
+            report.ClipName = clip != null ? clip.name : null;
+            report.ClipLength = clip != null ? clip.length : 0d;
+            report.FrameCount = clip != null ? clip.frameCount : 0;
+
             Log($"playing '{story.SafeId}' ({story.title}) at {story.requiredShards} shards");
 
             SetPlayerActive(true);
             ConfigurePlayer(clip);
             m_Player.loopPointReached += HandleClipFinished;
 
+            float prepareStart = Time.unscaledTime;
             m_Player.Prepare();
             yield return WaitForPrepare();
+            report.PrepareSeconds = Time.unscaledTime - prepareStart;
 
             if (m_Aborted)
             {
                 Debug.LogWarning($"[MemoryStoryPresenter] '{story.SafeId}' could not be played and stays " +
                                  "queued for the end of the next level.", this);
+                report.Error = m_LastError ?? $"The clip did not buffer within {m_PrepareTimeout}s.";
                 StopPlayer();
-                onPresented(false);
                 yield break;
             }
+
+            report.Prepared = true;
 
             ShowSurfaceFor(clip);
             ApplyAudioSettings(clip);
             m_Player.Play();
+            float playStart = Time.unscaledTime;
 
             if (fadeUp) yield return FadeTo(1f, m_FadeInDuration);
 
@@ -261,9 +365,17 @@ namespace Collectables
 
             while (!m_ClipFinished && !m_Aborted && Time.unscaledTime < deadline)
             {
+                SampleProgress(report);
                 if (m_AllowSkip && WasSkipPressed()) { skipped = true; break; }
                 yield return null;
             }
+
+            SampleProgress(report);
+            report.PlaySeconds = Time.unscaledTime - playStart;
+            report.Finished = m_ClipFinished;
+            report.Skipped = skipped;
+            report.HitBackstop = !m_ClipFinished && !m_Aborted && !skipped;
+            if (m_Aborted) report.Error = m_LastError ?? "The player reported an error mid-playback.";
 
             if (m_SkipPrompt != null) m_SkipPrompt.SetActive(false);
 
@@ -277,7 +389,22 @@ namespace Collectables
 
             // It was on screen either way — an error raised mid-playback still showed the player
             // most of the story, and replaying it from the top at the next level would be worse.
-            onPresented(true);
+            report.Presented = true;
+        }
+
+        /// <summary>
+        /// Records how far the decoder has got and whether the surface is really drawing it —
+        /// the two things that tell a playing video from one frozen on its first frame.
+        /// </summary>
+        private void SampleProgress(PlaybackReport report)
+        {
+            if (m_Player == null) return;
+
+            if (m_Player.frame > report.HighestFrame) report.HighestFrame = m_Player.frame;
+
+            if (m_Surface != null && m_Surface.enabled && m_Surface.texture != null &&
+                m_Surface.texture == m_Player.texture)
+                report.SurfaceBound = true;
         }
 
         /// <summary>
@@ -439,6 +566,7 @@ namespace Collectables
 
         private void HandleVideoError(VideoPlayer source, string message)
         {
+            m_LastError = message;
             Debug.LogError($"[MemoryStoryPresenter] '{source.name}' failed: {message}", this);
             m_Aborted = true;
         }

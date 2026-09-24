@@ -28,14 +28,14 @@ namespace Collectables
         /// The robots that are live in the game, in display order — also the order the UI lays
         /// them out and the order <c>Assign Parts To Levels</c> walks.
         ///
-        /// Only PIXEL ships for now. ECHO, NOVA and PATCH are <b>parked, not deleted</b>: their
+        /// Only ECHO ships for now. NOVA, PATCH and PIXEL are <b>parked, not deleted</b>: their
         /// <see cref="RobotId"/> values, art and <c>RobotDefinition</c> assets all survive, so
         /// bringing one back is a one-line edit here plus a re-run of
         /// Tools ▸ Robot Collection ▸ Run Full Setup.
         /// </summary>
         public static readonly RobotId[] All =
         {
-            RobotId.Pixel,
+            RobotId.Echo,
         };
 
         /// <summary>Total parts in the whole game (live robots x 5 parts).</summary>

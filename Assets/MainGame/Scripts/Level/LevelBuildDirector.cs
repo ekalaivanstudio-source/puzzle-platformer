@@ -30,7 +30,8 @@ using UnityEngine.UI;
 ///
 /// When the level is won, <see cref="PlayerController"/> shuts the exit door behind the player
 /// and then runs the whole thing backwards: the HUD goes away an element at a time, the pipe
-/// empties out from the door end, and the exit doorway sinks back into the floor before the
+/// empties out from the door end back into the battery socket, which shrinks away and is
+/// switched off after it, and the exit doorway sinks back into the floor before the
 /// screen fades — joined by the entry doorway on a level that was set to keep that one
 /// standing.
 ///
@@ -227,6 +228,7 @@ public class LevelBuildDirector : MonoBehaviour
 
     private readonly List<ILevelBuildWave> m_GroundWaves = new List<ILevelBuildWave>();
     private readonly List<ILevelBuildWave> m_UIWaves = new List<ILevelBuildWave>();
+    private readonly List<KeySlot> m_Sockets = new List<KeySlot>();
     private readonly List<Coroutine> m_Running = new List<Coroutine>();
 
     private float m_NextStepTime;
@@ -400,7 +402,7 @@ public class LevelBuildDirector : MonoBehaviour
         // is only a delay.
         foreach (ILevelBuildWave wave in m_UIWaves) StartWave(wave, building: false, onDone: null);
 
-        yield return PlayPhase(m_PipeWave, m_PipeTiming, building: false, onDone: null);
+        yield return PlayPhase(m_PipeWave, m_PipeTiming, building: false, onDone: OnPipesDrained);
 
         // Both doorways go together rather than one after the other: the level is over and the
         // player is watching a shut door, so a queue of two sinks reads as a delay.
@@ -616,6 +618,16 @@ public class LevelBuildDirector : MonoBehaviour
     private void OnPipesReady() =>
         PlayFeel(m_PipesReadyFeel, m_ExitDoor != null ? m_ExitDoor.transform.position : GroundCentre());
 
+    // Scaled to nothing is not gone: the socket's light and shine still play at full size,
+    // and its trigger is still there. Switched off once the socket has shrunk away.
+    private void OnPipesDrained()
+    {
+        foreach (KeySlot socket in m_Sockets)
+        {
+            if (socket != null) socket.gameObject.SetActive(false);
+        }
+    }
+
     // Guarded rather than called blind: a preset left switched off would still reach through
     // FeelPreset.Play and spin the FeelService up for a level that asked for no feel at all.
     private static void PlayFeel(FeelPreset preset, Vector3 position)
@@ -777,12 +789,24 @@ public class LevelBuildDirector : MonoBehaviour
     // socket to the door, and the order they were authored in is the order the charge travels
     // later. Laying them in that same order is what makes the run read as plumbing being
     // connected rather than as scenery appearing near a door.
+    //
+    // The socket itself leads the wave, as one item — its root carries the renderer, so the
+    // battery sitting in it goes with it. It pops in first and the pipe grows out of it; on
+    // the way out the pipe drains back into it and the socket goes last, then is switched off
+    // (see OnPipesDrained) rather than left standing on its own in an emptied level.
     private void BuildPipeWave()
     {
-        if (m_Pipes == null) return;
+        m_Sockets.Clear();
+        foreach (KeySlot socket in SceneObjects.FindAllInActiveScene<KeySlot>())
+        {
+            // A level that opens without a key has already switched its socket off.
+            if (socket != null && socket.gameObject.activeInHierarchy && !IsManuallyExcluded(socket.transform))
+                m_Sockets.Add(socket);
+        }
 
         var pieces = new List<Transform>();
-        CollectBranch(m_Pipes.transform, pieces, ignoreExclusions: true);
+        foreach (KeySlot socket in m_Sockets) pieces.Add(socket.transform);
+        if (m_Pipes != null) CollectBranch(m_Pipes.transform, pieces, ignoreExclusions: true);
 
         if (pieces.Count == 0) return;
 
@@ -897,6 +921,7 @@ public class LevelBuildDirector : MonoBehaviour
         if (candidate.GetComponent<Grid>() != null) return true;
         if (candidate.GetComponent<Tilemap>() != null) return true;
         if (candidate.GetComponent<PipeConnection>() != null) return true;
+        if (candidate.GetComponent<KeySlot>() != null) return true;
         if (candidate.GetComponent<LevelEntryDoor>() != null) return true;
         if (candidate.GetComponent<LevelExitDoor>() != null) return true;
         if (candidate.GetComponent<PlayerController>() != null) return true;

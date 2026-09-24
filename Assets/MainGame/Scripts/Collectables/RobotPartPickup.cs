@@ -145,6 +145,13 @@ namespace Collectables
 
             robot = assignment.robot;
             partIndex = assignment.PartIndex;
+
+            // A parked robot's part still saves, but no HUD or collection tab counts it.
+            if (System.Array.IndexOf(RobotIds.All, robot) < 0)
+            {
+                Debug.LogWarning($"[RobotPartPickup] {config.name} places a {robot} part, but {robot} is " +
+                                 "not a live robot (RobotIds.All), so collecting it will not show in the UI.", this);
+            }
             return true;
         }
 
