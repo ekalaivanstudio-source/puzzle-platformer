@@ -11,7 +11,7 @@ namespace Collectables
     ///   • the level HUD, pinned to the right of the screen;
     ///   • the home screen's Collection tab, showing the same robots larger.
     ///
-    /// Both show one slot per robot in <see cref="RobotIds.All"/> — currently PIXEL alone.
+    /// Both show one slot per robot in <see cref="RobotIds.All"/> — currently ECHO alone.
     ///
     /// Put it on the parent of the slots and leave <see cref="m_Slots"/> empty to pick up
     /// every child slot automatically.
