@@ -28,7 +28,7 @@ public class CompanySplashScreen : MonoBehaviour
     [SerializeField] private float m_SettleDuration = 0.25f;
 
     [Header("Timing")]
-    [Tooltip("Total seconds the logo is on screen, bounce included, before the fade out starts.")]
+    [Tooltip("Seconds the logo holds at full size after the bounce settles, before the fade out starts.")]
     [SerializeField] private float m_DisplayDuration = 3f;
 
     [Tooltip("Seconds the fade out takes before the next scene loads.")]
@@ -53,15 +53,11 @@ public class CompanySplashScreen : MonoBehaviour
     private IEnumerator PlayRoutine()
     {
         // Unscaled throughout: a splash must run even if something left Time.timeScale at 0.
-        float startTime = Time.unscaledTime;
-
         yield return ScaleLogo(0f, m_OvershootScale, m_GrowDuration, EaseOutCubic);
         yield return ScaleLogo(m_OvershootScale, 1f, m_SettleDuration, EaseInOutQuad);
 
-        // Hold out the rest of the display window, so retuning the bounce never changes how long
-        // the splash takes overall.
-        float remaining = m_DisplayDuration - (Time.unscaledTime - startTime);
-        if (remaining > 0f) yield return new WaitForSecondsRealtime(remaining);
+        // Full hold at rest size, counted from when the bounce settles.
+        if (m_DisplayDuration > 0f) yield return new WaitForSecondsRealtime(m_DisplayDuration);
 
         yield return FadeOut();
 
