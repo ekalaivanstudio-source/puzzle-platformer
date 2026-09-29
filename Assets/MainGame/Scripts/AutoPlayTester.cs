@@ -26,8 +26,8 @@ public class AutoPlayTester : MonoBehaviour
     public static AutoPlayTester Instance { get; private set; }
 
     [Header("Availability")]
-    [Tooltip("Off by default: this is a test tool, so it stays out of player builds. " +
-             "It always runs in the editor and in development builds.")]
+    [Tooltip("Off by default: this is a test tool, so it stays out of every player build " +
+             "(development builds included). It always runs in the editor.")]
     [SerializeField] private bool m_EnableInReleaseBuilds = false;
 
     [Header("Button")]
@@ -63,8 +63,7 @@ public class AutoPlayTester : MonoBehaviour
     private bool m_IsRunning;
 
     /// <summary>True when this tool is allowed to run in the current build.</summary>
-    private bool IsAvailable =>
-        Application.isEditor || Debug.isDebugBuild || m_EnableInReleaseBuilds;
+    private bool IsAvailable => Application.isEditor || m_EnableInReleaseBuilds;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 

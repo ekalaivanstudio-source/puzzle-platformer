@@ -41,6 +41,10 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip m_WalkLoopClip;
     [SerializeField] private AudioClip m_DeathClip;
     [SerializeField] private AudioClip m_WinClip;
+    [Tooltip("Played when the player spins INTO a portal — out of the level through the exit door, or recalled to spawn.")]
+    [SerializeField] private AudioClip m_PortalEnterClip;
+    [Tooltip("Played when the player spins OUT of a portal — arriving on the level's start cell.")]
+    [SerializeField] private AudioClip m_PortalExitClip;
 
     [Header("Items / Keys")]
     [Tooltip("Played when the player picks up / collects a key.")]
@@ -180,6 +184,8 @@ public class AudioManager : MonoBehaviour
     public void PlayJump()  => PlaySfx(m_JumpClip);
     public void PlayDeath() => PlaySfx(m_DeathClip);
     public void PlayWin()   => PlaySfx(m_WinClip);
+    public void PlayPortalEnter() => PlaySfx(m_PortalEnterClip);
+    public void PlayPortalExit()  => PlaySfx(m_PortalExitClip);
 
     /// <summary>Starts or stops the looping footstep sound. Safe to call every frame.</summary>
     public void SetWalking(bool walking)

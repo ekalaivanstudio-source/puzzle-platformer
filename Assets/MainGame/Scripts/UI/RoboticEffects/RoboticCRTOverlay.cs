@@ -31,6 +31,13 @@ namespace MainGame.UI.RoboticEffects
                 m_Material = new Material(crtShader);
                 m_RawImage.material = m_Material;
             }
+            else
+            {
+                // Without its shader this full-screen RawImage renders as an opaque white quad over
+                // the entire UI. Hide it rather than white out the screen.
+                Debug.LogWarning("[RoboticCRTOverlay] Shader 'MainGame/UI/RoboticCRTOverlay' not found in build; overlay disabled.", this);
+                m_RawImage.enabled = false;
+            }
         }
 
         private void OnDestroy()

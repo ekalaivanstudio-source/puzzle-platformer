@@ -201,12 +201,43 @@ namespace MainGame.UI.Unified
         {
             if (EventSystem.current != null)
             {
-                EventSystem.current.SetSelectedGameObject(gameObject);
+                // Screens like Credits select their Back button by default, so the cursor often arrives on a
+                // button that is already selected. SetSelectedGameObject is a no-op then (no OnSelect fires),
+                // which left hover with no feedback at all - replay the focus accent instead.
+                if (m_IsFocused && EventSystem.current.currentSelectedGameObject == gameObject)
+                {
+                    ReplayFocusAccent();
+                }
+                else
+                {
+                    EventSystem.current.SetSelectedGameObject(gameObject);
+                }
             }
             else
             {
                 SetFocused(true);
             }
+        }
+
+        private void ReplayFocusAccent()
+        {
+            // Never interrupt the submit punch - its completion callback drives screen navigation
+            if (m_ConfirmCoroutine != null || !isActiveAndEnabled) return;
+
+            PlaySelectAudio();
+
+            if (m_LivingIdleCoroutine != null)
+            {
+                StopCoroutine(m_LivingIdleCoroutine);
+                m_LivingIdleCoroutine = null;
+            }
+
+            if (m_AnimationCoroutine != null)
+            {
+                StopCoroutine(m_AnimationCoroutine);
+            }
+
+            m_AnimationCoroutine = StartCoroutine(AnimateTransition(true));
         }
 
         public void OnPointerExit(PointerEventData eventData)
