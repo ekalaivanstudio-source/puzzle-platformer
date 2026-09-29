@@ -1834,6 +1834,11 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(false);
         m_Animator?.Play(PlayerAnimState.Idle);
 
+        // Every portal spin carries its sound, so the arrival, the win's departure and the
+        // recall to spawn all get it from the one place that plays the spin.
+        if (spinIn) AudioManager.Instance?.PlayPortalExit();
+        else        AudioManager.Instance?.PlayPortalEnter();
+
         // Captured once instead of re-read each frame: the scale the animation writes has
         // no usable sign at the zero end, so the facing has to come from before it started.
         float facing = FacingSign();
