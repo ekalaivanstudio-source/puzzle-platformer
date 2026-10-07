@@ -143,6 +143,11 @@ namespace Setting.Menu
                 voiceStepControl.OnValueChanged += (value) => HandleStepValueChanged(value, AudioMixerParameters.VoiceVolumeParameter);
             }
 
+            if (brightnessStepControl == null)
+            {
+                ResolveBrightnessStepControl();
+            }
+
             if (brightnessStepControl != null)
             {
                 brightnessStepControl.OnValueChanged += HandleBrightnessStepChanged;
@@ -186,6 +191,11 @@ namespace Setting.Menu
             if (voiceStepControl != null)
             {
                 voiceStepControl.SetValueWithoutNotify(Mathf.RoundToInt(currentSettings.VoiceVolume * 10f));
+            }
+
+            if (brightnessStepControl == null)
+            {
+                ResolveBrightnessStepControl();
             }
 
             if (brightnessStepControl != null)
@@ -270,15 +280,44 @@ namespace Setting.Menu
         /// <param name="brightness">The brightness value to apply.</param>
         private void ApplyBrightnessValue(float brightness)
         {
+            if (brightnessOverlay == null)
+            {
+                ResolveBrightnessOverlay();
+            }
+
             // Fallback: Adjust a UI screen overlay if one is assigned
             if (brightnessOverlay != null)
             {
                 // Max brightness (1.0) -> overlay is completely transparent (alpha = 0)
                 // Min brightness (0.0) -> overlay is 95% black (alpha = 0.95)
                 float alpha = Mathf.Lerp(0.95f, 0.0f, brightness);
-                Color color = brightnessOverlay.color;
-                color.a = alpha;
-                brightnessOverlay.color = color;
+                brightnessOverlay.color = new Color(0f, 0f, 0f, alpha);
+            }
+        }
+
+        private void ResolveBrightnessOverlay()
+        {
+            GameObject panelObj = GameObject.Find("BrightnessPanel");
+            if (panelObj != null)
+            {
+                Transform panel = panelObj.transform.Find("Panel");
+                if (panel != null)
+                {
+                    brightnessOverlay = panel.GetComponent<Image>();
+                }
+            }
+        }
+
+        private void ResolveBrightnessStepControl()
+        {
+            SettingStepControl[] allControls = Resources.FindObjectsOfTypeAll<SettingStepControl>();
+            foreach (var ctrl in allControls)
+            {
+                if (ctrl != null && ctrl.gameObject.scene.IsValid() && ctrl.gameObject.name.IndexOf("Bright", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    brightnessStepControl = ctrl;
+                    break;
+                }
             }
         }
 
