@@ -688,7 +688,7 @@ public class AttemptGhostService : MonoBehaviour
     {
         Camera camera = Camera.main;
         Mouse mouse = Mouse.current;
-        if (camera == null || mouse == null) return null;
+        if (camera == null || mouse == null || !mouse.enabled) return null;
 
         Vector2 screen = mouse.position.ReadValue();
         if (screen.x < 0f || screen.y < 0f || screen.x > Screen.width || screen.y > Screen.height)
