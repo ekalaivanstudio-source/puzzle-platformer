@@ -79,9 +79,10 @@ namespace MainGame.UI.Unified
             {
                 UpdateDevice(DeviceType.KeyboardMouse);
             }
-            else if (device is Mouse mouse)
+            else if (device is Mouse)
             {
-                HandleMouseEvent(mouse);
+                // Mouse input is disabled across the project
+                return;
             }
             else if (device is Gamepad)
             {

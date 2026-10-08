@@ -86,14 +86,8 @@ namespace MainGame.UI.CinematicEffects
             float dt = Time.unscaledDeltaTime;
             if (dt <= 0.0001f) return;
 
-            // 1. Read input (cursor normalized to -1..1 from screen center)
+            // 1. Target input (mouse disabled; keyboard/gamepad and ambient drift drive parallax)
             Vector2 targetInput = Vector2.zero;
-            if (Input.mousePresent)
-            {
-                Vector2 mousePos = Input.mousePosition;
-                targetInput.x = Mathf.Clamp((mousePos.x / Mathf.Max(1, Screen.width) - 0.5f) * 2f, -1f, 1f);
-                targetInput.y = Mathf.Clamp((mousePos.y / Mathf.Max(1, Screen.height) - 0.5f) * 2f, -1f, 1f);
-            }
 
             // Gamepad navigation input fallback / blend
             float horiz = Input.GetAxisRaw("Horizontal");
