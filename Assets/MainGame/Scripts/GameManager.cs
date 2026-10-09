@@ -10,12 +10,14 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    /// <summary>True once the player has collected the key this turn.</summary>
+    /// <summary>
+    /// True once the battery has been placed in its socket. Kept for the rest of the level —
+    /// a death or a finished run does not take it back; only reloading the scene clears it.
+    /// </summary>
     public bool IsKeyCollected { get; private set; }
 
     /// <summary>Fired at the end of every turn so interactables can reset themselves.</summary>
     public static event System.Action OnTurnReset;
-    public static event System.Action OnKeyReset;
 
     /// <summary>
     /// Fired only when the player explicitly restarts the level (UI Restart button or R key).
@@ -93,9 +95,9 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void PlayEnded()
     {
-        IsKeyCollected = false;
+        // Battery and socket are deliberately left alone: a collected battery stays collected
+        // and a placed one keeps its door open across runs.
         StopExecution();
-        OnKeyReset?.Invoke();
         OnPlayerRespawn?.Invoke();   // player is back at spawn — return platforms/riding bricks home
     }
 
@@ -114,10 +116,9 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void SoftResetLevel()
     {
-        IsKeyCollected = false;
+        // Battery and socket survive a death — see PlayEnded.
         OnFullReset?.Invoke();     // bricks, redirectors → initial state
         OnTurnReset?.Invoke();     // movable bricks, lock points
-        OnKeyReset?.Invoke();      // placeable key + key slot
         OnPlayerRespawn?.Invoke(); // player is back at spawn
         SequenceManager.Instance?.OnTurnEnded();
     }
