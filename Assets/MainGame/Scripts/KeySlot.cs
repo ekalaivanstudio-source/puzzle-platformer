@@ -79,17 +79,11 @@ public class KeySlot : MonoBehaviour
         m_ExitDoor?.SetClosed();
     }
 
-    // Reset on OnKeyReset (fired only when a full input run finishes) — NOT OnTurnReset.
-    // OnTurnReset also fires when the player accesses a rotator/mover/checkpoint
-    // (ResetAtCheckpoint), and the placed key must survive those. Death reloads the
-    // scene, which re-initialises the slot via Awake. This keeps the slot in sync with
-    // PlaceableKey, which already resets on OnKeyReset.
-    private void OnEnable() => GameManager.OnKeyReset += ResetSlot;
-
+    // A placed battery is never taken back during the level — not by a death, a finished
+    // run or a checkpoint — so the door it opened stays open. Only a scene reload puts the
+    // slot back to empty, through Awake.
     private void OnDisable()
     {
-        GameManager.OnKeyReset -= ResetSlot;
-
         // Nothing is going to finish answering once this is gone, and a run left waiting on
         // it would never move again.
         if (s_Answering == this)
@@ -186,31 +180,6 @@ public class KeySlot : MonoBehaviour
 
         StopCoroutine(m_Answer);
         m_Answer = null;
-    }
-
-    private void ResetSlot()
-    {
-        m_Filled = false;
-
-        if (m_EmptyVisual != null)
-            m_EmptyVisual.SetActive(true);
-
-        if (m_FilledVisual != null)
-            m_FilledVisual.SetActive(false);
-
-        if (shineEffect != null)
-            shineEffect.SetActive(false);
-
-        // Before the door: this also drops a charge still travelling, which would otherwise
-        // reach the end of the run and re-open the door that was just shut.
-        m_PipeConnection?.Unpower();
-
-        StopAnswer();
-
-        if (s_Answering == this)
-            s_Answering = null;
-
-        m_ExitDoor?.SetClosed();
     }
 
 }

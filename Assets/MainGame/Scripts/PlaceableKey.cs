@@ -6,9 +6,8 @@ using UnityEngine;
 /// object does NOT notify GameManager on collection — the door only opens when
 /// the key is placed in a slot.
 ///
-/// State resets on <see cref="GameManager.OnTurnReset"/>:
-///   • Key reappears at its original position.
-///   • m_IsCarried is cleared so KeySlots also reset.
+/// Once collected it stays collected for the rest of the level — a death or a finished
+/// run does not put it back. Only reloading the scene does.
 ///
 /// Setup:
 ///   • Add a Collider2D (non-trigger) for physics, or a trigger for overlap detection.
@@ -66,6 +65,10 @@ public class PlaceableKey : MonoBehaviour
 
     private void Awake()
     {
+        // Static, so it outlives the scene: a battery still carried when the level was
+        // restarted must not arrive in the reloaded level already in the player's hands.
+        IsCarried = false;
+
         m_SpriteRenderer = GetComponentInChildren<SpriteRenderer>();
 
         // A key serialized before the field existed deserializes it as 0, which would
@@ -87,14 +90,6 @@ public class PlaceableKey : MonoBehaviour
     {
         GameObject player = GameObject.FindGameObjectWithTag(m_PlayerTag);
         if (player != null) m_PlayerTransform = player.transform;
-    }
-
-    private void OnEnable() => GameManager.OnKeyReset += ResetKey;
-    private void OnDisable() => GameManager.OnKeyReset -= ResetKey;
-
-    private void OnDestroy()
-    {
-        GameManager.OnKeyReset -= ResetKey;
     }
 
     // ─── Update ───────────────────────────────────────────────────────────────
@@ -161,25 +156,6 @@ public class PlaceableKey : MonoBehaviour
             m_CollectEffectScale,
             0f,
             m_CollectEffectFadeDuration);
-
-    // ─── Reset ────────────────────────────────────────────────────────────────
-
-    private void ResetKey()
-    {
-        m_Collected = false;
-        IsCarried = false;
-
-        Show(m_PickIcon, false);
-        Show(m_CarryIndicator, false);
-
-        // Key is back in the world — bring the shine effect back.
-        Show(shineEffect, true);
-
-        if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
-
-        Collider2D col = GetComponent<Collider2D>();
-        if (col != null) col.enabled = true;
-    }
 
     // ─── Public API for KeySlot ───────────────────────────────────────────────
 
