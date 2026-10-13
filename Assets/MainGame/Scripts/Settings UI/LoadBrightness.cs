@@ -32,16 +32,22 @@ public class LoadBrightness : MonoBehaviour
     }
     private void ApplyBrightnessValue(float brightness)
     {
-      
+        if (brightnessOverlay == null)
+        {
+            Transform panel = transform.Find("Panel");
+            if (panel != null)
+            {
+                brightnessOverlay = panel.GetComponent<Image>();
+            }
+        }
+
         // Fallback: Adjust a UI screen overlay if one is assigned
         if (brightnessOverlay != null)
         {
             // Max brightness (1.0) -> overlay is completely transparent (alpha = 0)
-            // Min brightness (0.0) -> overlay is 80% black (alpha = 0.8)
+            // Min brightness (0.0) -> overlay is 95% black (alpha = 0.95)
             float alpha = Mathf.Lerp(0.95f, 0.0f, brightness);
-            Color color = brightnessOverlay.color;
-            color.a = alpha;
-            brightnessOverlay.color = color;
+            brightnessOverlay.color = new Color(0f, 0f, 0f, alpha);
         }
     }
 

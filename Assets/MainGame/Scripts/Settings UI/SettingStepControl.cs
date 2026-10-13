@@ -93,6 +93,12 @@ namespace Setting.Menu
         {
             base.Awake();
 
+            // Auto-resolve decrease and increase button transforms if not assigned in Inspector
+            if (decreaseButtonTransform == null || increaseButtonTransform == null)
+            {
+                ResolveButtonTransforms();
+            }
+
             // Ensure there is a graphic on this GameObject so it can receive focus
             if (targetGraphic == null)
             {
@@ -126,6 +132,12 @@ namespace Setting.Menu
                 {
                     img.raycastTarget = false;
                 }
+
+                Button btn = decreaseButtonTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(DecreaseValue);
+                }
             }
 
             if (increaseButtonTransform != null)
@@ -134,6 +146,12 @@ namespace Setting.Menu
                 foreach (var img in images)
                 {
                     img.raycastTarget = false;
+                }
+
+                Button btn = increaseButtonTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(IncreaseValue);
                 }
             }
 
@@ -243,7 +261,7 @@ namespace Setting.Menu
                 EventSystem.current.SetSelectedGameObject(gameObject);
             }
 
-            // Only change the value if clicking the decrease/increase button areas
+            // Only change the value if clicking the decrease/increase button areas or step blocks
             if (decreaseButtonTransform != null && IsPointInRect(decreaseButtonTransform, eventData.position, eventData.pressEventCamera))
             {
                 DecreaseValue();
@@ -251,6 +269,17 @@ namespace Setting.Menu
             else if (increaseButtonTransform != null && IsPointInRect(increaseButtonTransform, eventData.position, eventData.pressEventCamera))
             {
                 IncreaseValue();
+            }
+            else if (stepImages != null)
+            {
+                for (int i = 0; i < stepImages.Length; i++)
+                {
+                    if (stepImages[i] != null && IsPointInRect(stepImages[i].rectTransform, eventData.position, eventData.pressEventCamera))
+                    {
+                        SetValue(i + 1);
+                        break;
+                    }
+                }
             }
         }
 
@@ -347,14 +376,39 @@ namespace Setting.Menu
 
         #region Private Methods
 
-        private void IncreaseValue()
+        public void IncreaseValue()
         {
             SetValue(currentValue + 1);
         }
 
-        private void DecreaseValue()
+        public void DecreaseValue()
         {
             SetValue(currentValue - 1);
+        }
+
+        private void ResolveButtonTransforms()
+        {
+            Transform valuesTransform = transform.Find("Values");
+            if (valuesTransform != null)
+            {
+                if (decreaseButtonTransform == null)
+                {
+                    Transform left = valuesTransform.Find("Left +") ?? valuesTransform.Find("Left -") ?? valuesTransform.Find("Left");
+                    if (left != null)
+                    {
+                        decreaseButtonTransform = left as RectTransform;
+                    }
+                }
+
+                if (increaseButtonTransform == null)
+                {
+                    Transform right = valuesTransform.Find("Right +") ?? valuesTransform.Find("Right -") ?? valuesTransform.Find("Right");
+                    if (right != null)
+                    {
+                        increaseButtonTransform = right as RectTransform;
+                    }
+                }
+            }
         }
 
         private bool IsPointInRect(RectTransform rect, Vector2 screenPoint, Camera cam)

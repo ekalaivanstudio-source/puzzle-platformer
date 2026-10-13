@@ -226,9 +226,20 @@ namespace MainGame.UI.Unified
                 ? EventSystem.current.GetComponent<InputSystemUIInputModule>()
                 : FindAnyObjectByType<InputSystemUIInputModule>();
 
-            if (uiModule != null && m_CancelAction != null)
+            if (uiModule != null)
             {
-                uiModule.cancel = InputActionReference.Create(m_CancelAction);
+                if (m_CancelAction != null)
+                {
+                    uiModule.cancel = InputActionReference.Create(m_CancelAction);
+                }
+
+                // Strip pointer actions to disable mouse interaction completely
+                uiModule.point = null;
+                uiModule.leftClick = null;
+                uiModule.rightClick = null;
+                uiModule.middleClick = null;
+                uiModule.scrollWheel = null;
+                uiModule.deselectOnBackgroundClick = false;
             }
         }
 
