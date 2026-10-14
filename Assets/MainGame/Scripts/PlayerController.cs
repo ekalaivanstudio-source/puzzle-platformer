@@ -248,6 +248,18 @@ public class PlayerController : MonoBehaviour
     private int m_MaxTimeIndex;        // snapshotted from source at turn start
     private int m_CurrentCommandIndex; // index of the command currently executing
     private bool m_IsGamePlaying;
+
+    /// <summary>
+    /// Fired as each queued command begins executing, with its index in the sequence.
+    /// Drawn by <see cref="PlayerInputUIHelper"/> as the fill on the slot being run.
+    /// </summary>
+    public static event System.Action<int> OnCommandStarted;
+
+    /// <summary>
+    /// Fired when a command's own motion has finished, with its index in the sequence. Not
+    /// fired for a command cut short by an abort — the turn-end clear covers that.
+    /// </summary>
+    public static event System.Action<int> OnCommandFinished;
     private Coroutine m_ExecutionCoroutine;  // stored so it can be stopped on abort
     private Coroutine m_EndTurnCoroutine;    // stored so checkpoint can cancel a pending reset
 
@@ -1080,6 +1092,8 @@ public class PlayerController : MonoBehaviour
 
             if (action != null)
             {
+                OnCommandStarted?.Invoke(i);
+
                 switch (action.Value)
                 {
                     case ActionTypeEnum.Left: yield return MoveLeftCommand(); break;
@@ -1089,6 +1103,8 @@ public class PlayerController : MonoBehaviour
                     case ActionTypeEnum.JumpLeft: yield return JumpLeftCommand(); break;
                     case ActionTypeEnum.Interact: yield return InteractCommand(); break;
                 }
+
+                OnCommandFinished?.Invoke(i);
             }
 
             // A move that ended on a battery socket has set something off: the charge is

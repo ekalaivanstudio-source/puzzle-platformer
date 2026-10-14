@@ -13,6 +13,10 @@ using UnityEngine.InputSystem;
 /// occupied by a greyed-out ghost of them, and hovering that ghost shows the exact sequence
 /// that ended there, drawn with the same slot art the HUD uses.
 ///
+/// Without a mouse the same panel is reached through the LastTry action (Tab / Gamepad LT):
+/// each press selects the next marker, newest first, and the press after the oldest one
+/// hides the panel again. A marker under the mouse still wins over the selected one.
+///
 /// That hover panel replaced a fixed bottom-left recap that used to show only the most
 /// recent attempt. Putting it on the marker instead means every attempt still on screen can
 /// be asked about, and it is read where it happened rather than in a corner.
@@ -217,6 +221,9 @@ public class AttemptGhostService : MonoBehaviour
     // different attempt.
     private GameObject m_HoveredRoot;
 
+    // The marker picked with Tab / LT, by root for the same reason. Null when none is.
+    private GameObject m_SelectedRoot;
+
     private GameObject m_Panel;
 
     // One entry per slot, in step: the frame is the HUD's empty-slot box, the icon is the
@@ -251,6 +258,9 @@ public class AttemptGhostService : MonoBehaviour
     }
 
     private void OnApplicationQuit() { s_Quitting = true; }
+
+    private void OnEnable() => DeviceInputProvider.LastTryPressed += SelectNextMark;
+    private void OnDisable() => DeviceInputProvider.LastTryPressed -= SelectNextMark;
 
     // ─── Public API ───────────────────────────────────────────────────────────
 
@@ -337,6 +347,7 @@ public class AttemptGhostService : MonoBehaviour
         m_Marks.Clear();
 
         m_HoveredRoot = null;
+        m_SelectedRoot = null;
         HidePanel();
     }
 
@@ -359,6 +370,9 @@ public class AttemptGhostService : MonoBehaviour
             if (m_Marks[0].Root != null) Destroy(m_Marks[0].Root);
             m_Marks.RemoveAt(0);
         }
+
+        // A fresh attempt starts the Tab / LT cycle over from the newest marker.
+        m_SelectedRoot = null;
 
         var root = new GameObject($"Attempt Ghost {++m_NextMarkId}");
         root.transform.SetParent(transform, worldPositionStays: false);
@@ -659,10 +673,11 @@ public class AttemptGhostService : MonoBehaviour
         if (m_Marks.Count == 0)
         {
             if (m_HoveredRoot != null) { ClearHighlight(); HidePanel(); m_HoveredRoot = null; }
+            m_SelectedRoot = null;
             return;
         }
 
-        Mark hovered = FindHoveredMark();
+        Mark hovered = FindHoveredMark() ?? FindSelectedMark();
         GameObject root = hovered != null ? hovered.Root : null;
 
         if (root != m_HoveredRoot)
@@ -682,6 +697,30 @@ public class AttemptGhostService : MonoBehaviour
         }
 
         if (hovered != null) PositionPanel(hovered);
+    }
+
+    // Steps the Tab / LT selection one marker older: none → newest → … → oldest → none.
+    private void SelectNextMark()
+    {
+        int current = -1;
+        for (int i = 0; i < m_Marks.Count; i++)
+            if (m_SelectedRoot != null && m_Marks[i].Root == m_SelectedRoot) { current = i; break; }
+
+        int next = current < 0 ? m_Marks.Count - 1 : current - 1;
+        while (next >= 0 && m_Marks[next].Root == null) next--;
+
+        m_SelectedRoot = next >= 0 ? m_Marks[next].Root : null;
+    }
+
+    private Mark FindSelectedMark()
+    {
+        if (m_SelectedRoot == null) return null;
+
+        foreach (Mark mark in m_Marks)
+            if (mark.Root == m_SelectedRoot) return mark;
+
+        m_SelectedRoot = null;   // its marker was merged away or dropped by the cap
+        return null;
     }
 
     private Mark FindHoveredMark()

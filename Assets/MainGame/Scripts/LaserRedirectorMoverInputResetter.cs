@@ -164,13 +164,13 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
     {
         if (m_TargetRedirector == null) return;
         var keyboard = Keyboard.current;
-        if (keyboard == null) return;
+        var gamepad = Gamepad.current;
 
         Vector2 delta = Vector2.zero;
-        if (keyboard.leftArrowKey.wasPressedThisFrame) delta = Vector2.left;
-        if (keyboard.rightArrowKey.wasPressedThisFrame) delta = Vector2.right;
-        if (keyboard.upArrowKey.wasPressedThisFrame) delta = Vector2.up;
-        if (keyboard.downArrowKey.wasPressedThisFrame) delta = Vector2.down;
+        if (WasPressed(keyboard?.leftArrowKey, gamepad?.dpad.left)) delta = Vector2.left;
+        if (WasPressed(keyboard?.rightArrowKey, gamepad?.dpad.right)) delta = Vector2.right;
+        if (WasPressed(keyboard?.upArrowKey, gamepad?.dpad.up)) delta = Vector2.up;
+        if (WasPressed(keyboard?.downArrowKey, gamepad?.dpad.down)) delta = Vector2.down;
 
         if (delta == Vector2.zero) return;
 
@@ -183,6 +183,10 @@ public class LaserRedirectorMoverInputResetter : MonoBehaviour
 
         m_TargetRedirector.transform.position = pos;
     }
+
+    private static bool WasPressed(UnityEngine.InputSystem.Controls.ButtonControl key,
+                                   UnityEngine.InputSystem.Controls.ButtonControl button)
+        => (key != null && key.wasPressedThisFrame) || (button != null && button.wasPressedThisFrame);
 
     // ─── Control mode ─────────────────────────────────────────────────────────
 

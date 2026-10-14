@@ -7,11 +7,17 @@ using UnityEngine.InputSystem;
 /// Access via <see cref="Instance"/>.
 ///
 /// Actions mapped (configure bindings in the Input Actions editor):
-///   Left / Right / Jump             → queues into SequenceManager
-///   Submit (Enter / Gamepad Start)  → triggers execution via GameManager
-///   Undo (Backspace / Gamepad B)    → removes last queued action
+///   Left / Right (Arrows / D-pad), Jump (Space / RT) → queues into SequenceManager
+///   Submit (Enter / Gamepad A)      → triggers execution via GameManager
+///   Undo (Backspace / Gamepad Y)    → removes last queued action
 ///   Clear (Delete / Gamepad Select) → clears entire queue
-///   Restart (R)                     → reloads the level immediately (no confirmation)
+///   Restart (R / Gamepad RB)        → reloads the level immediately (no confirmation)
+///   LastTry (Tab / Gamepad LT)      → raises <see cref="LastTryPressed"/> (cycles the attempt markers)
+///
+/// Jump and a direction held together queue a directional jump, whichever went down
+/// first. A key that ends up part of such a chord queues nothing when it is released;
+/// a key released on its own queues its plain action — so directions queue on release,
+/// not on press, which is what lets "Right, then Space" still become JumpRight.
 /// </summary>
 public class DeviceInputProvider : MonoBehaviour
 {
@@ -27,9 +33,22 @@ public class DeviceInputProvider : MonoBehaviour
     private InputAction m_UndoAction;
     private InputAction m_ClearAction;
     private InputAction m_RestartAction;
+    private InputAction m_LastTryAction;
 
-    private bool m_IsJumpHeld;
-    private bool m_JumpComboQueued;
+    /// <summary>
+    /// Raised when the LastTry action (Tab / Gamepad LT) is pressed during gameplay.
+    /// <see cref="AttemptGhostService"/> uses it to step through the previous attempts.
+    /// </summary>
+    public static event System.Action LastTryPressed;
+
+    // Held state per chord key. "Consumed" means the key already took part in a
+    // directional jump, so its release must not queue a plain action as well.
+    private struct ChordKey { public bool Held; public bool Consumed; }
+    private ChordKey m_Jump;
+    private ChordKey m_Left;
+    private ChordKey m_Right;
+    // Which direction went down most recently, for Jump pressed with both held.
+    private bool m_RightPressedLast;
 
     // Gameplay input is allowed only when this provider is locally enabled.
     private bool m_LocallyEnabled;
@@ -66,6 +85,7 @@ public class DeviceInputProvider : MonoBehaviour
                         ?? map.FindAction("Back", throwIfNotFound: false);
         m_ClearAction = map.FindAction("Clear", throwIfNotFound: false);
         m_RestartAction = map.FindAction("Restart", throwIfNotFound: false);
+        m_LastTryAction = map.FindAction("LastTry", throwIfNotFound: false);
 
         m_InputActionAsset.Enable();
         m_LocallyEnabled = true;
@@ -88,9 +108,10 @@ public class DeviceInputProvider : MonoBehaviour
 
         if (register)
         {
-            if (m_LeftAction != null) m_LeftAction.performed += OnLeft;
-            if (m_RightAction != null) m_RightAction.performed += OnRight;
+            if (m_LeftAction != null) { m_LeftAction.started += OnLeftStarted; m_LeftAction.canceled += OnLeftCanceled; }
+            if (m_RightAction != null) { m_RightAction.started += OnRightStarted; m_RightAction.canceled += OnRightCanceled; }
             if (m_JumpAction != null) { m_JumpAction.started += OnJumpStarted; m_JumpAction.canceled += OnJumpCanceled; }
+            if (m_LastTryAction != null) m_LastTryAction.performed += OnLastTry;
             if (m_SubmitAction != null) m_SubmitAction.performed += OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed += OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed += OnClear;
@@ -98,9 +119,10 @@ public class DeviceInputProvider : MonoBehaviour
         }
         else
         {
-            if (m_LeftAction != null) m_LeftAction.performed -= OnLeft;
-            if (m_RightAction != null) m_RightAction.performed -= OnRight;
+            if (m_LeftAction != null) { m_LeftAction.started -= OnLeftStarted; m_LeftAction.canceled -= OnLeftCanceled; }
+            if (m_RightAction != null) { m_RightAction.started -= OnRightStarted; m_RightAction.canceled -= OnRightCanceled; }
             if (m_JumpAction != null) { m_JumpAction.started -= OnJumpStarted; m_JumpAction.canceled -= OnJumpCanceled; }
+            if (m_LastTryAction != null) m_LastTryAction.performed -= OnLastTry;
             if (m_SubmitAction != null) m_SubmitAction.performed -= OnSubmit;
             if (m_UndoAction != null) m_UndoAction.performed -= OnUndo;
             if (m_ClearAction != null) m_ClearAction.performed -= OnClear;
@@ -119,63 +141,66 @@ public class DeviceInputProvider : MonoBehaviour
     {
         m_LocallyEnabled = enabled;
         if (!enabled)
-        {
-            m_IsJumpHeld = false;
-            m_JumpComboQueued = false;
-        }
+            ResetChord();
         if (enabled)
             m_InputActionAsset?.Enable();
     }
 
     // ─── Input Callbacks ─────────────────────────────────────────────────────
 
-    private void OnLeft(InputAction.CallbackContext c)
+    private void OnLeftStarted(InputAction.CallbackContext c) => OnDirectionStarted(ref m_Left, ActionTypeEnum.JumpLeft, false);
+    private void OnRightStarted(InputAction.CallbackContext c) => OnDirectionStarted(ref m_Right, ActionTypeEnum.JumpRight, true);
+    private void OnLeftCanceled(InputAction.CallbackContext c) => OnKeyReleased(ref m_Left, ActionTypeEnum.Left);
+    private void OnRightCanceled(InputAction.CallbackContext c) => OnKeyReleased(ref m_Right, ActionTypeEnum.Right);
+    private void OnJumpCanceled(InputAction.CallbackContext c) => OnKeyReleased(ref m_Jump, ActionTypeEnum.Jump);
+
+    // Jump already held → this press completes the chord (Space, then Right).
+    private void OnDirectionStarted(ref ChordKey dir, ActionTypeEnum jumpAction, bool isRight)
     {
         if (!IsEnabled) return;
-        bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
-        if (jumpHeld && !m_JumpComboQueued)
+        dir = new ChordKey { Held = true };
+        m_RightPressedLast = isRight;
+        if (m_Jump.Held && !m_Jump.Consumed)
         {
-            m_JumpComboQueued = true;
-            TryQueue(ActionTypeEnum.JumpLeft);
-            return;
+            m_Jump.Consumed = true;
+            dir.Consumed = true;
+            TryQueue(jumpAction);
         }
-        TryQueue(ActionTypeEnum.Left);
     }
 
-    private void OnRight(InputAction.CallbackContext c)
-    {
-        if (!IsEnabled) return;
-        bool jumpHeld = m_IsJumpHeld || (m_JumpAction != null && m_JumpAction.IsPressed());
-        if (jumpHeld && !m_JumpComboQueued)
-        {
-            m_JumpComboQueued = true;
-            TryQueue(ActionTypeEnum.JumpRight);
-            return;
-        }
-        TryQueue(ActionTypeEnum.Right);
-    }
-
+    // A direction already held → this press completes the chord (Right, then Space).
     private void OnJumpStarted(InputAction.CallbackContext c)
     {
         if (!IsEnabled) return;
-        m_IsJumpHeld = true;
-        m_JumpComboQueued = false;
+        m_Jump = new ChordKey { Held = true };
+
+        bool right = m_Right.Held && !m_Right.Consumed;
+        bool left = m_Left.Held && !m_Left.Consumed;
+        if (right && left) { right = m_RightPressedLast; left = !right; }
+
+        if (right) { m_Right.Consumed = true; m_Jump.Consumed = true; TryQueue(ActionTypeEnum.JumpRight); }
+        else if (left) { m_Left.Consumed = true; m_Jump.Consumed = true; TryQueue(ActionTypeEnum.JumpLeft); }
     }
 
-    private void OnJumpCanceled(InputAction.CallbackContext c)
+    // A key released without having joined a chord queues its own action.
+    private void OnKeyReleased(ref ChordKey key, ActionTypeEnum action)
     {
-        if (!IsEnabled)
-        {
-            m_IsJumpHeld = false;
-            m_JumpComboQueued = false;
-            return;
-        }
-        if (!m_JumpComboQueued)
-        {
-            TryQueue(ActionTypeEnum.Jump);
-        }
-        m_IsJumpHeld = false;
-        m_JumpComboQueued = false;
+        bool queue = IsEnabled && key.Held && !key.Consumed;
+        key = default;
+        if (queue) TryQueue(action);
+    }
+
+    private void ResetChord()
+    {
+        m_Jump = default;
+        m_Left = default;
+        m_Right = default;
+    }
+
+    private void OnLastTry(InputAction.CallbackContext c)
+    {
+        if (!IsEnabled || MainGame.UI.Unified.PauseMenuScreen.IsPaused) return;
+        LastTryPressed?.Invoke();
     }
 
     /// <summary>
