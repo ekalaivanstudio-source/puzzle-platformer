@@ -59,6 +59,13 @@ public class KeySlot : MonoBehaviour
     /// </summary>
     public static bool IsAnsweringBattery => s_Answering != null;
 
+    /// <summary>
+    /// The run of pipe this socket powers, or null. Read by <see cref="LevelExitDoor"/>, which
+    /// switches it off along with the socket on a level that opens without a battery — a pipe
+    /// leading to a door that was never locked would be a lie about the puzzle.
+    /// </summary>
+    public PipeConnection PipeConnection => m_PipeConnection;
+
     private Coroutine m_Answer;
 
     private void Awake()
