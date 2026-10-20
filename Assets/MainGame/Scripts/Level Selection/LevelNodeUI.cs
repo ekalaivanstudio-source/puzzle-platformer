@@ -536,7 +536,16 @@ namespace LevelSelection
             Time.timeScale = 1f;
             DeviceInputProvider.Instance?.SetEnabled(true);
 
-            // Load the scene corresponding to the level number
+            // Load the scene corresponding to the level number. Arcs draw more nodes than there
+            // are levels built, and the home screen sits at the last build index — a node past
+            // the final level must not load it (or an index that doesn't exist).
+            if (levelNumber < 1 || levelNumber >= UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings - 1)
+            {
+                Debug.LogWarning($"[LevelNodeUI] Level {levelNumber} is not built yet.");
+                m_IsLoading = false;
+                transform.localScale = m_NodeBaseScale;
+                yield break;
+            }
             UnityEngine.SceneManagement.SceneManager.LoadScene(levelNumber);
         }
 
