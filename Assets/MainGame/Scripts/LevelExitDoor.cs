@@ -18,8 +18,8 @@ using UnityEngine;
 /// no longer has to enable it separately.
 ///
 /// A level with no battery and no socket ticks <see cref="OpensWithoutKey"/>: the doorway
-/// starts open, the battery and socket named in Key Puzzle Objects are switched off, and
-/// walking in wins. That is the whole conversion — nothing else in the level changes.
+/// starts open, the battery and socket named in Key Puzzle Objects are switched off along
+/// with the socket's pipe run, and walking in wins. That is the whole conversion — nothing else in the level changes.
 ///
 /// The doorway EFFECT is held back until the doorway is actually standing in the level —
 /// see <see cref="SetStanding"/>. On a level that opens without a key the door is open from
@@ -118,8 +118,15 @@ public class LevelExitDoor : MonoBehaviour
 
         foreach (GameObject puzzleObject in m_KeyPuzzleObjects)
         {
-            if (puzzleObject != null)
-                puzzleObject.SetActive(false);
+            if (puzzleObject == null) continue;
+
+            // The socket's pipe run lives out in the scene rather than under the socket, so it
+            // has to be switched off on its own — before LevelBuildDirector collects it in its
+            // Start, which leaves anything already switched off alone.
+            if (puzzleObject.TryGetComponent(out KeySlot slot) && slot.PipeConnection != null)
+                slot.PipeConnection.gameObject.SetActive(false);
+
+            puzzleObject.SetActive(false);
         }
     }
 
