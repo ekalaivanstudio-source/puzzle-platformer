@@ -148,20 +148,24 @@ public class LaserRedirectorRotatorInputResetter : MonoBehaviour
     {
         if (m_TargetRedirector == null) return;
         var keyboard = Keyboard.current;
-        if (keyboard == null) return;
+        var gamepad = Gamepad.current;
 
-        if (keyboard.leftArrowKey.wasPressedThisFrame)
+        if (WasPressed(keyboard?.leftArrowKey, gamepad?.dpad.left))
         {
             m_TargetRedirector.transform.Rotate(0f, 0f, 90f);   // CCW
             AudioManager.Instance?.PlayLaserRotate();
         }
 
-        if (keyboard.rightArrowKey.wasPressedThisFrame)
+        if (WasPressed(keyboard?.rightArrowKey, gamepad?.dpad.right))
         {
             m_TargetRedirector.transform.Rotate(0f, 0f, -90f);  // CW
             AudioManager.Instance?.PlayLaserRotate();
         }
     }
+
+    private static bool WasPressed(UnityEngine.InputSystem.Controls.ButtonControl key,
+                                   UnityEngine.InputSystem.Controls.ButtonControl button)
+        => (key != null && key.wasPressedThisFrame) || (button != null && button.wasPressedThisFrame);
 
     // ─── Control mode ─────────────────────────────────────────────────────────
 

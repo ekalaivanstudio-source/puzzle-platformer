@@ -578,3 +578,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 387efc9992ad4a76a5eb0d6489d26c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BackgroundMusic
+  m_MenuTrack: {fileID: 8300000, guid: c1c9cc6fc4bb69441a27ac92e63f68ec, type: 3}
+  m_LevelTracks:
+  - FirstLevel: 1
+    LastLevel: 10
+    Clip: {fileID: 8300000, guid: 1e97b2ab9b6dafc4eab29dec00f1741c, type: 3}
+  - FirstLevel: 11
+    LastLevel: 20
+    Clip: {fileID: 8300000, guid: 5011e35f0cf4e0046aff4d39d7f4cc4f, type: 3}
+  - FirstLevel: 21
+    LastLevel: 30
+    Clip: {fileID: 8300000, guid: 5011e35f0cf4e0046aff4d39d7f4cc4f, type: 3}
+  m_FadeOutTime: 1.5
+  m_FadeInTime: 1.5

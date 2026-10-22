@@ -86,13 +86,22 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "LastTry",
+                    "type": "Button",
+                    "id": "c809df5f-cb61-44ed-9a32-a866d92fe489",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
                 {
                     "name": "",
-                    "id": "88100ce0-bbb5-4f9d-8289-18bfc0fa3c06",
-                    "path": "<Keyboard>/upArrow",
+                    "id": "ed16cc03-8def-4320-a535-455357080719",
+                    "path": "<Keyboard>/space",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -102,8 +111,8 @@
                 },
                 {
                     "name": "",
-                    "id": "9a071eae-809c-4bc9-8da9-9a78809bd8cf",
-                    "path": "<XInputController>/buttonSouth",
+                    "id": "6a5b40b8-9f98-471e-91e7-c24ab6db30b6",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -124,8 +133,8 @@
                 },
                 {
                     "name": "",
-                    "id": "424c736e-8b86-4754-9d18-a675ce876686",
-                    "path": "<XInputController>/dpad/left",
+                    "id": "05aee7a7-64d9-4717-8297-3159ae7b0873",
+                    "path": "<Gamepad>/dpad/left",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -146,8 +155,8 @@
                 },
                 {
                     "name": "",
-                    "id": "1815c98d-6c96-4734-9f78-530b1526339a",
-                    "path": "<XInputController>/dpad/down",
+                    "id": "0a24d2cc-bfe4-470e-8c26-4800e4d27c9e",
+                    "path": "<Gamepad>/dpad/down",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -168,8 +177,8 @@
                 },
                 {
                     "name": "",
-                    "id": "ecc8412d-b6ef-42b5-aba7-a326fcd59bcc",
-                    "path": "<XInputController>/dpad/right",
+                    "id": "39e3aadd-ef53-4b5d-8e7b-f9bf35635844",
+                    "path": "<Gamepad>/dpad/right",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -190,8 +199,19 @@
                 },
                 {
                     "name": "",
-                    "id": "e334571e-975f-440d-a256-bff6a7a2167c",
-                    "path": "<XInputController>/rightTrigger",
+                    "id": "9c483d15-04b6-40f2-99b0-5a5417e42f4d",
+                    "path": "<Keyboard>/numpadEnter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Submit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f2a19c20-c49d-4a96-ad0e-bbf65812e7b0",
+                    "path": "<Gamepad>/buttonSouth",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -212,8 +232,8 @@
                 },
                 {
                     "name": "",
-                    "id": "2b85ace2-511b-4a4c-83a6-80406b95dd03",
-                    "path": "<XInputController>/buttonEast",
+                    "id": "07f1b933-7dd5-45b1-9961-af8722721d53",
+                    "path": "<Gamepad>/buttonEast",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -234,8 +254,8 @@
                 },
                 {
                     "name": "",
-                    "id": "5ac9b285-e3dd-46bd-a03d-3b188320a202",
-                    "path": "<XInputController>/buttonNorth",
+                    "id": "b4941f1a-7fb8-4113-9bbd-4348328f001f",
+                    "path": "<Gamepad>/buttonNorth",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -256,8 +276,8 @@
                 },
                 {
                     "name": "",
-                    "id": "243a2e2c-a2cb-4dc9-9e2a-d799605d6229",
-                    "path": "<XInputController>/rightShoulder",
+                    "id": "d76552c4-7950-4868-bd43-32b4ff0fb4c3",
+                    "path": "<Gamepad>/rightShoulder",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -289,12 +309,23 @@
                 },
                 {
                     "name": "",
-                    "id": "3b35e4d2-f12b-4567-89ab-123456789abf",
-                    "path": "<XInputController>/start",
+                    "id": "fcc47a2b-ce9d-462e-8234-4569eb7ba27b",
+                    "path": "<Keyboard>/tab",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Pause",
+                    "action": "LastTry",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5fef571a-fc8e-4f6f-9cb1-fcf3d6959d1d",
+                    "path": "<Gamepad>/leftTrigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "LastTry",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

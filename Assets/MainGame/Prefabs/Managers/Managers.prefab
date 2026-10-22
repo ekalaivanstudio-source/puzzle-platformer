@@ -836,28 +836,12 @@ MonoBehaviour:
     FlashCount: 1
     Particle: {fileID: 0}
     ParticleScale: 1
-  m_QueueFeel:
-    Delay: 0
-    Chance: 1
-    Cooldown: 0
-    CameraShake:
-      Magnitude: 0
-      Duration: 0
-    Haptic: 1
-    FreezeDuration: 0
-    FreezeTimeScale: 0.05
-    SquashAmount: 0.09
-    PunchDistance: 0
-    PunchDuration: 0.18
-    PunchFrequency: 1.6
-    ImpulseStrength: 0
-    ImpulseRadius: 2.5
-    FlashColor: {r: 1, g: 1, b: 1, a: 0}
-    FlashHold: 0.04
-    FlashFade: 0.18
-    FlashCount: 1
-    Particle: {fileID: 0}
-    ParticleScale: 1
+  m_PopScale: 1.2
+  m_PopDuration: 0.14
+  m_FillColor: {r: 0.35, g: 0.95, b: 1, a: 0.55}
+  m_FillDoneColor: {r: 0.35, g: 0.95, b: 1, a: 0.22}
+  m_DefaultCommandDuration: 0.4
+  m_FillHoldCap: 0.95
 --- !u!114 &7412559036821440917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1382,6 +1366,10 @@ PrefabInstance:
     - target: {fileID: 1254327794437873081, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
       propertyPath: m_Name
       value: Pause Menu
+      objectReference: {fileID: 0}
+    - target: {fileID: 1254327794437873081, guid: 07a9bfb275e1093428681c6f839ee065, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

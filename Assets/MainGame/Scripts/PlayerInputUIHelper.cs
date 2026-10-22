@@ -68,16 +68,39 @@ public class PlayerInputUIHelper : MonoBehaviour
         Haptic = HapticPattern.Warning,
     };
 
-    [Tooltip("Played on the input holder each time a command lands in it — the row taking " +
-             "the hit, so an accepted input is felt as well as seen. The squash and the " +
-             "haptic are the channels that mean anything on a canvas; the world ones " +
-             "(particles, impulse, punch distance) have no world to act in.")]
-    [SerializeField] private FeelPreset m_QueueFeel = new FeelPreset
-    {
-        Haptic = HapticPattern.Selection,
-        SquashAmount = 0.09f,
-        PunchDuration = 0.18f,
-    };
+    [Header("Queue Pop")]
+    [Tooltip("Scale the slot a command just landed in grows to before settling back. Only " +
+             "that one slot pops — the rest of the row stays still.")]
+    [SerializeField] private float m_PopScale = 1.2f;
+    [Tooltip("Seconds for the whole pop, out and back.")]
+    [SerializeField] private float m_PopDuration = 0.14f;
+
+    [Header("Execution Fill")]
+    [Tooltip("Tint of the fill sweeping across the slot whose command is running right now.")]
+    [SerializeField] private Color m_FillColor = new Color(0.35f, 0.95f, 1f, 0.55f);
+    [Tooltip("Tint the fill is left at on slots whose command has already run, so the one " +
+             "running stands out from the ones behind it.")]
+    [SerializeField] private Color m_FillDoneColor = new Color(0.35f, 0.95f, 1f, 0.22f);
+    [Tooltip("Seconds a command is assumed to take before one of its kind has been timed. " +
+             "After that, each action's last measured duration is used instead.")]
+    [SerializeField] private float m_DefaultCommandDuration = 0.4f;
+    [Tooltip("How far the fill may get before the command reports it has finished. Holds " +
+             "short of full so a command running longer than expected never sits 'done'.")]
+    [Range(0.5f, 1f)]
+    [SerializeField] private float m_FillHoldCap = 0.95f;
+
+    // One overlay per slot, built alongside the slots.
+    private Image[] m_Fills;
+    private Coroutine[] m_PopCoroutines;
+    private Vector3[] m_PopBaseScales;
+
+    // The slot whose command is executing (-1 when none), and how long it has been running.
+    private int m_ExecutingSlot = -1;
+    private ActionTypeEnum m_ExecutingAction;
+    private float m_ExecutingElapsed;
+    private float m_ExecutingEstimate;
+    private readonly System.Collections.Generic.Dictionary<ActionTypeEnum, float> m_MeasuredDurations
+        = new System.Collections.Generic.Dictionary<ActionTypeEnum, float>();
 
     // â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -105,6 +128,9 @@ public class PlayerInputUIHelper : MonoBehaviour
     {
         int count = m_CorrectSequence != null ? m_CorrectSequence.Length : 0;
         inputsUI = new Image[count];
+        m_Fills = new Image[count];
+        m_PopCoroutines = new Coroutine[count];
+        m_PopBaseScales = new Vector3[count];
 
         if (inputUI_GO == null || inputContainer == null || count == 0)
             return;
@@ -116,7 +142,32 @@ public class PlayerInputUIHelper : MonoBehaviour
             Image img = instance.GetComponent<Image>();
             if (img == null) img = instance.GetComponentInChildren<Image>(true);
             inputsUI[i] = img;
+            if (img != null) m_Fills[i] = CreateFill(img);
         }
+    }
+
+    // A filled overlay stretched over the slot, drawn on top of its icon. Appended as the
+    // LAST child on purpose: the slot's icon is read everywhere as GetChild(0).
+    private Image CreateFill(Image slot)
+    {
+        var go = new GameObject("ExecutionFill", typeof(RectTransform), typeof(Image));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(slot.transform, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.SetAsLastSibling();
+
+        Image fill = go.GetComponent<Image>();
+        fill.raycastTarget = false;
+        fill.type = Image.Type.Filled;
+        fill.fillMethod = Image.FillMethod.Horizontal;
+        fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        fill.fillAmount = 0f;
+        fill.color = m_FillColor;
+        fill.enabled = false;
+        return fill;
     }
 
     private void OnEnable()
@@ -125,6 +176,9 @@ public class PlayerInputUIHelper : MonoBehaviour
 
         if (m_SubmitAction != null)
             m_SubmitAction.performed += OnSubmit;
+
+        PlayerController.OnCommandStarted += HandleCommandStarted;
+        PlayerController.OnCommandFinished += HandleCommandFinished;
     }
 
     private void OnDisable()
@@ -133,6 +187,9 @@ public class PlayerInputUIHelper : MonoBehaviour
 
         if (m_SubmitAction != null)
             m_SubmitAction.performed -= OnSubmit;
+
+        PlayerController.OnCommandStarted -= HandleCommandStarted;
+        PlayerController.OnCommandFinished -= HandleCommandFinished;
     }
 
     private void Start()
@@ -209,11 +266,11 @@ public class PlayerInputUIHelper : MonoBehaviour
             SetAlpha(inputsUI[i], i < count ? m_ActiveAlpha : m_InactiveAlpha);
         }
 
-        // The row takes the hit each time a command lands in it — feedback for the input the
-        // player just gave, where they are already looking. Only on an ADDITION: an undo, a
-        // turn-end clear and the rejection's own removal all come back through here too.
-        if (count > m_PreviousSequenceCount && inputContainer != null)
-            m_QueueFeel.Play(Vector3.zero, inputContainer);
+        // The slot a command just landed in pops — feedback for the input the player just
+        // gave, on the box it went into. Only on an ADDITION: an undo, a turn-end clear and
+        // the rejection's own removal all come back through here too.
+        if (count > m_PreviousSequenceCount)
+            PopSlot(count - 1);
 
         // When a wildcard (Any) slot is filled, show the sprite of the actual input chosen, but not for Interact
         if (count > m_PreviousSequenceCount)
@@ -258,6 +315,7 @@ public class PlayerInputUIHelper : MonoBehaviour
         {
             AssignSlotSprites(); // restore Any slots back to the Any sprite
             SetSubmitAlpha(m_InactiveAlpha);
+            ClearFills();        // turn over — however it ended, nothing is executing now
         }
         else if (count >= slots)
             SetSubmitAlpha(m_ActiveAlpha);
@@ -361,7 +419,7 @@ public class PlayerInputUIHelper : MonoBehaviour
     }
 
     // Placed once per sequence change, and then it FOLLOWS its slot, because the row moves
-    // under it: the holder is punched every time a command lands in it, and the level build
+    // under it: a slot pops every time a command lands in it, and the level build
     // pops the whole HUD in from nothing. Placed once and left alone, the indicator would
     // come away from the row the first time either of those ran.
     private void LateUpdate()
@@ -387,6 +445,120 @@ public class PlayerInputUIHelper : MonoBehaviour
         return slot.parent is RectTransform container
             ? container.TransformPoint(slot.localPosition + (Vector3)centre)
             : slot.TransformPoint(centre);
+    }
+
+    // ─── Queue Pop ────────────────────────────────────────────────────────────
+
+    private void PopSlot(int slotIndex)
+    {
+        if (inputsUI == null || slotIndex < 0 || slotIndex >= inputsUI.Length) return;
+        if (inputsUI[slotIndex] == null) return;
+
+        Transform t = inputsUI[slotIndex].transform;
+
+        // A pop still running is restarted from its own resting scale, not from wherever it
+        // had grown to — otherwise fast presses would ratchet the slot up.
+        if (m_PopCoroutines[slotIndex] != null)
+            StopCoroutine(m_PopCoroutines[slotIndex]);
+        else
+            m_PopBaseScales[slotIndex] = t.localScale;
+
+        m_PopCoroutines[slotIndex] = StartCoroutine(PopRoutine(slotIndex, t));
+    }
+
+    private IEnumerator PopRoutine(int slotIndex, Transform t)
+    {
+        Vector3 baseScale = m_PopBaseScales[slotIndex];
+        float half = Mathf.Max(0.01f, m_PopDuration * 0.5f);
+
+        // Scale in: ease out to the peak.
+        for (float e = 0f; e < half; e += Time.unscaledDeltaTime)
+        {
+            float k = 1f - (1f - e / half) * (1f - e / half);
+            t.localScale = baseScale * Mathf.Lerp(1f, m_PopScale, k);
+            yield return null;
+        }
+
+        // Scale out: ease in-out back to rest.
+        for (float e = 0f; e < half; e += Time.unscaledDeltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, e / half);
+            t.localScale = baseScale * Mathf.Lerp(m_PopScale, 1f, k);
+            yield return null;
+        }
+
+        t.localScale = baseScale;
+        m_PopCoroutines[slotIndex] = null;
+    }
+
+    // ─── Execution Fill ───────────────────────────────────────────────────────
+
+    // Interact commands have no slot of their own (see RefreshSequenceSlots), so a sequence
+    // index maps to the number of non-Interact commands before it. -1 for an Interact.
+    private static int SequenceIndexToSlot(int sequenceIndex)
+    {
+        if (SequenceManager.Instance == null) return -1;
+        var seq = SequenceManager.Instance.Sequence;
+        if (sequenceIndex < 0 || sequenceIndex >= seq.Count) return -1;
+        if (seq[sequenceIndex] == ActionTypeEnum.Interact) return -1;
+
+        int slot = 0;
+        for (int i = 0; i < sequenceIndex; i++)
+            if (seq[i] != ActionTypeEnum.Interact) slot++;
+        return slot;
+    }
+
+    private void HandleCommandStarted(int sequenceIndex)
+    {
+        int slot = SequenceIndexToSlot(sequenceIndex);
+        if (slot < 0 || m_Fills == null || slot >= m_Fills.Length || m_Fills[slot] == null) return;
+
+        m_ExecutingSlot = slot;
+        m_ExecutingAction = SequenceManager.Instance.Sequence[sequenceIndex];
+        m_ExecutingElapsed = 0f;
+        m_ExecutingEstimate = m_MeasuredDurations.TryGetValue(m_ExecutingAction, out float measured)
+            ? measured
+            : m_DefaultCommandDuration;
+
+        Image fill = m_Fills[slot];
+        fill.sprite = inputsUI[slot].sprite; // same shape as the box it fills
+        fill.color = m_FillColor;
+        fill.fillAmount = 0f;
+        fill.enabled = true;
+    }
+
+    private void HandleCommandFinished(int sequenceIndex)
+    {
+        int slot = SequenceIndexToSlot(sequenceIndex);
+        if (slot < 0 || slot != m_ExecutingSlot) return;
+
+        m_MeasuredDurations[m_ExecutingAction] = Mathf.Max(0.05f, m_ExecutingElapsed);
+
+        Image fill = m_Fills[slot];
+        fill.fillAmount = 1f;
+        fill.color = m_FillDoneColor;
+        m_ExecutingSlot = -1;
+    }
+
+    private void Update()
+    {
+        if (m_ExecutingSlot < 0) return;
+
+        m_ExecutingElapsed += Time.deltaTime;
+        float progress = Mathf.Clamp01(m_ExecutingElapsed / Mathf.Max(0.01f, m_ExecutingEstimate));
+        m_Fills[m_ExecutingSlot].fillAmount = progress * m_FillHoldCap;
+    }
+
+    private void ClearFills()
+    {
+        m_ExecutingSlot = -1;
+        if (m_Fills == null) return;
+        foreach (Image fill in m_Fills)
+        {
+            if (fill == null) continue;
+            fill.fillAmount = 0f;
+            fill.enabled = false;
+        }
     }
 
     private void StopBlinkImmediate()

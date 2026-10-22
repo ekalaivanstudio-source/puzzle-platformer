@@ -59,6 +59,13 @@ public class KeySlot : MonoBehaviour
     /// </summary>
     public static bool IsAnsweringBattery => s_Answering != null;
 
+    /// <summary>
+    /// The run of pipe this socket powers, or null. Read by <see cref="LevelExitDoor"/>, which
+    /// switches it off along with the socket on a level that opens without a battery — a pipe
+    /// leading to a door that was never locked would be a lie about the puzzle.
+    /// </summary>
+    public PipeConnection PipeConnection => m_PipeConnection;
+
     private Coroutine m_Answer;
 
     private void Awake()
@@ -79,17 +86,11 @@ public class KeySlot : MonoBehaviour
         m_ExitDoor?.SetClosed();
     }
 
-    // Reset on OnKeyReset (fired only when a full input run finishes) — NOT OnTurnReset.
-    // OnTurnReset also fires when the player accesses a rotator/mover/checkpoint
-    // (ResetAtCheckpoint), and the placed key must survive those. Death reloads the
-    // scene, which re-initialises the slot via Awake. This keeps the slot in sync with
-    // PlaceableKey, which already resets on OnKeyReset.
-    private void OnEnable() => GameManager.OnKeyReset += ResetSlot;
-
+    // A placed battery is never taken back during the level — not by a death, a finished
+    // run or a checkpoint — so the door it opened stays open. Only a scene reload puts the
+    // slot back to empty, through Awake.
     private void OnDisable()
     {
-        GameManager.OnKeyReset -= ResetSlot;
-
         // Nothing is going to finish answering once this is gone, and a run left waiting on
         // it would never move again.
         if (s_Answering == this)
@@ -186,31 +187,6 @@ public class KeySlot : MonoBehaviour
 
         StopCoroutine(m_Answer);
         m_Answer = null;
-    }
-
-    private void ResetSlot()
-    {
-        m_Filled = false;
-
-        if (m_EmptyVisual != null)
-            m_EmptyVisual.SetActive(true);
-
-        if (m_FilledVisual != null)
-            m_FilledVisual.SetActive(false);
-
-        if (shineEffect != null)
-            shineEffect.SetActive(false);
-
-        // Before the door: this also drops a charge still travelling, which would otherwise
-        // reach the end of the run and re-open the door that was just shut.
-        m_PipeConnection?.Unpower();
-
-        StopAnswer();
-
-        if (s_Answering == this)
-            s_Answering = null;
-
-        m_ExitDoor?.SetClosed();
     }
 
 }
