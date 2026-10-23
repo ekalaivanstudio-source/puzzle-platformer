@@ -228,7 +228,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &37026084
 Transform:
   m_ObjectHideFlags: 0
@@ -412,7 +412,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &95631874
 Transform:
   m_ObjectHideFlags: 0
@@ -13185,7 +13185,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2858287987497494257, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3110206737723083598, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_LocalScale.x
@@ -13213,7 +13213,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3254666324338532335, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3684165378722987524, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_LocalScale.x
@@ -13263,9 +13263,21 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 5491127148996133710, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 10.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5491127148996133710, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 5524689932692190220, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7638393339491262536, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8417218096188073375, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_IsActive
