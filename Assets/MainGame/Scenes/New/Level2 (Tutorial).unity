@@ -562,7 +562,7 @@ MonoBehaviour:
     rid: 3755662711200415838
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1
+  m_Intensity: 0.6
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 63ef7bf3a7a8f8b6058414c800000000i
@@ -612,7 +612,11 @@ MonoBehaviour:
         m_SelectedSource:
           rid: -2
         m_Provider2DCache:
-          rid: -2
+          rid: 5343397248523567105
+    - rid: 5343397248523567105
+      type: {class: 'Provider2DCache`1[[UnityEngine.Rendering.Universal.Light2DProvider, Unity.RenderPipelines.Universal.2D.Runtime]]', ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Cache: []
 --- !u!4 &317656643
 Transform:
   m_ObjectHideFlags: 0
@@ -19926,6 +19930,10 @@ PrefabInstance:
     - target: {fileID: 4577944256262588169, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: m_Name
       value: Managers
+      objectReference: {fileID: 0}
+    - target: {fileID: 4577944256262588169, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7178919839492170681, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: config
