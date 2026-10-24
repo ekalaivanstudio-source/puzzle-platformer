@@ -1931,7 +1931,7 @@ MonoBehaviour:
     rid: 3755662711200415845
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1
+  m_Intensity: 0.6
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 63ef7bf3a7a8f8b6058414c800000000i
@@ -1974,6 +1974,10 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
+    - rid: 2955271208105410721
+      type: {class: 'Provider2DCache`1[[UnityEngine.Rendering.Universal.Light2DProvider, Unity.RenderPipelines.Universal.2D.Runtime]]', ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Cache: []
     - rid: 3755662711200415845
       type: {class: Light2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
       data:
@@ -1981,7 +1985,7 @@ MonoBehaviour:
         m_SelectedSource:
           rid: -2
         m_Provider2DCache:
-          rid: -2
+          rid: 2955271208105410721
 --- !u!4 &317656643
 Transform:
   m_ObjectHideFlags: 0
@@ -13528,9 +13532,9 @@ MonoBehaviour:
     rid: -2
   m_SelectionSources:
     rid: 2955271181214154857
-  m_FalloffIntensity: 0.593
+  m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1
+  m_Intensity: 2
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: a904652863ef7bf3a7a8f8b6058414c800000000a1014a9ai
@@ -13543,8 +13547,8 @@ MonoBehaviour:
   m_NormalMapQuality: 2
   m_UseNormalMap: 0
   m_ShadowsEnabled: 1
-  m_ShadowIntensity: 0.815
-  m_ShadowSoftness: 0.149
+  m_ShadowIntensity: 1
+  m_ShadowSoftness: 0.315
   m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
@@ -13552,8 +13556,8 @@ MonoBehaviour:
     serializedVersion: 0
     m_Bits: 1
   m_LocalBounds:
-    m_Center: {x: 0.7716, y: -6.95895, z: 0}
-    m_Extent: {x: 3.706, y: 7.10365, z: 0}
+    m_Center: {x: 2.2708, y: -8.8434, z: 0}
+    m_Extent: {x: 4.1531, y: 7.9359, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -13561,11 +13565,11 @@ MonoBehaviour:
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
-  m_ShapeLightFalloffSize: 1.55
+  m_ShapeLightFalloffSize: 0.5
   m_ShapeLightFalloffOffset: {x: 0, y: 0}
   m_ShapePath:
-  - {x: 1.7842922, y: -12.514046, z: 0}
-  - {x: 2.9289784, y: -12.451568, z: 0}
+  - {x: 0.8149233, y: -16.262302, z: 0}
+  - {x: 5.9237003, y: -16.28015, z: 0}
   - {x: -0.9342308, y: -1.4060192, z: 0}
   - {x: -1.3843718, y: -1.448554, z: 0}
   references:
@@ -14320,6 +14324,173 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &687933799
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 687933800}
+  - component: {fileID: 687933801}
+  m_Layer: 0
+  m_Name: shadow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &687933800
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 687933799}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1387902192}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &687933801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 687933799}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7db70e0ea77f5ac47a8f4565a9406397, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.2D.Runtime::UnityEngine.Rendering.Universal.ShadowCaster2D
+  m_ShadowGroup: 0
+  m_Priority: 0
+  m_ComponentVersion: 6
+  m_HasRenderer: 0
+  m_UseRendererSilhouette: 1
+  m_CastsShadows: 1
+  m_SelfShadows: 0
+  m_AlphaCutoff: 0.1
+  m_ApplyToSortingLayers: a904652863ef7bf3a7a8f8b6058414c800000000a1014a9ai
+  m_ShapePath:
+  - {x: -0.53325987, y: -0.031343088, z: 0}
+  - {x: -0.5285101, y: 1.1368052, z: 0}
+  - {x: -0.43387032, y: 1.2737119, z: 0}
+  - {x: 0.35435867, y: 1.2588034, z: 0}
+  - {x: 0.50017166, y: 1.1566832, z: 0}
+  - {x: 0.49847317, y: -0.011465192, z: 0}
+  m_ShapePathHash: 1438247393
+  m_InstanceId: 0
+  m_ShadowShape2DComponent: {fileID: 0}
+  m_ShadowShape2DProvider:
+    rid: -2
+  m_ShadowCastingSource: 1
+  m_ShadowMesh:
+    rid: 2955271208105410725
+  m_CastingOption: 1
+  m_PreviousTrimEdge: 0
+  m_PreviousEdgeProcessing: 1
+  m_PreviousShadowCastingSource: 1
+  m_PreviousShadowShape2DSource: {fileID: 0}
+  m_PreviousShadowShape2DProviderHash: 0
+  m_SelectionSources:
+    rid: 2955271208105410726
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2955271208105410725
+      type: {class: ShadowMesh2D, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Vertices:
+        - position: {x: -0.53325987, y: -0.031343088, z: 0}
+          tangent: {x: -1, y: 0, z: -0.5285101, w: 1.1368052}
+        - position: {x: -0.5285101, y: 1.1368052, z: 0}
+          tangent: {x: -1, y: 0, z: -0.43387032, w: 1.2737119}
+        - position: {x: -0.43387032, y: 1.2737119, z: 0}
+          tangent: {x: -1, y: 0, z: 0.35435867, w: 1.2588034}
+        - position: {x: 0.35435867, y: 1.2588034, z: 0}
+          tangent: {x: -1, y: 0, z: 0.50017166, w: 1.1566832}
+        - position: {x: 0.50017166, y: 1.1566832, z: 0}
+          tangent: {x: -1, y: 0, z: 0.49847317, w: -0.011465192}
+        - position: {x: 0.49847317, y: -0.011465192, z: 0}
+          tangent: {x: -1, y: 0, z: -0.53325987, w: -0.031343088}
+        - position: {x: 0.49847317, y: -0.011465192, z: 0}
+          tangent: {x: 0, y: 0, z: -0.53325987, w: -0.031343088}
+        - position: {x: -0.53325987, y: -0.031343088, z: 0}
+          tangent: {x: 0, y: 0, z: 0.49847317, w: -0.011465192}
+        - position: {x: 0.49847317, y: -0.011465192, z: 0}
+          tangent: {x: 1, y: 0, z: 0.50017166, w: 1.1566832}
+        - position: {x: 0.49847317, y: -0.011465192, z: 0}
+          tangent: {x: 3, y: 0, z: -0.5285101, w: 1.1368052}
+        - position: {x: -0.53325987, y: -0.031343088, z: 0}
+          tangent: {x: 0, y: 0, z: -0.5285101, w: 1.1368052}
+        - position: {x: -0.5285101, y: 1.1368052, z: 0}
+          tangent: {x: 0, y: 0, z: -0.53325987, w: -0.031343088}
+        - position: {x: -0.53325987, y: -0.031343088, z: 0}
+          tangent: {x: 1, y: 0, z: 0.49847317, w: -0.011465192}
+        - position: {x: -0.53325987, y: -0.031343088, z: 0}
+          tangent: {x: 3, y: 0, z: -0.43387032, w: 1.2737119}
+        - position: {x: -0.5285101, y: 1.1368052, z: 0}
+          tangent: {x: 0, y: 0, z: -0.43387032, w: 1.2737119}
+        - position: {x: -0.43387032, y: 1.2737119, z: 0}
+          tangent: {x: 0, y: 0, z: -0.5285101, w: 1.1368052}
+        - position: {x: -0.5285101, y: 1.1368052, z: 0}
+          tangent: {x: 1, y: 0, z: -0.53325987, w: -0.031343088}
+        - position: {x: -0.5285101, y: 1.1368052, z: 0}
+          tangent: {x: 3, y: 0, z: 0.35435867, w: 1.2588034}
+        - position: {x: -0.43387032, y: 1.2737119, z: 0}
+          tangent: {x: 0, y: 0, z: 0.35435867, w: 1.2588034}
+        - position: {x: 0.35435867, y: 1.2588034, z: 0}
+          tangent: {x: 0, y: 0, z: -0.43387032, w: 1.2737119}
+        - position: {x: -0.43387032, y: 1.2737119, z: 0}
+          tangent: {x: 1, y: 0, z: -0.5285101, w: 1.1368052}
+        - position: {x: -0.43387032, y: 1.2737119, z: 0}
+          tangent: {x: 3, y: 0, z: 0.50017166, w: 1.1566832}
+        - position: {x: 0.35435867, y: 1.2588034, z: 0}
+          tangent: {x: 0, y: 0, z: 0.50017166, w: 1.1566832}
+        - position: {x: 0.50017166, y: 1.1566832, z: 0}
+          tangent: {x: 0, y: 0, z: 0.35435867, w: 1.2588034}
+        - position: {x: 0.35435867, y: 1.2588034, z: 0}
+          tangent: {x: 1, y: 0, z: -0.43387032, w: 1.2737119}
+        - position: {x: 0.35435867, y: 1.2588034, z: 0}
+          tangent: {x: 3, y: 0, z: 0.49847317, w: -0.011465192}
+        - position: {x: 0.50017166, y: 1.1566832, z: 0}
+          tangent: {x: 0, y: 0, z: 0.49847317, w: -0.011465192}
+        - position: {x: 0.49847317, y: -0.011465192, z: 0}
+          tangent: {x: 0, y: 0, z: 0.50017166, w: 1.1566832}
+        - position: {x: 0.50017166, y: 1.1566832, z: 0}
+          tangent: {x: 1, y: 0, z: 0.35435867, w: 1.2588034}
+        - position: {x: 0.50017166, y: 1.1566832, z: 0}
+          tangent: {x: 3, y: 0, z: -0.53325987, w: -0.031343088}
+        m_Indices: 050000000600000007000000070000000000000005000000000000000a0000000b0000000b0000000100000000000000010000000e0000000f0000000f0000000200000001000000020000001200000013000000130000000300000002000000030000001600000017000000170000000400000003000000040000001a0000001b0000001b0000000500000004000000050000000800000009000000000000000c0000000d000000010000001000000011000000020000001400000015000000030000001800000019000000040000001c0000001d000000i
+        m_IsTransformable: 1
+        m_LocalBounds:
+          m_Center: {x: -0.016544104, y: 0.6211844, z: 0}
+          m_Extent: {x: 0.51671576, y: 0.6525275, z: 0}
+        m_EdgeProcessing: 1
+        m_TrimEdge: 0
+        m_FlipX: 0
+        m_FlipY: 0
+        m_InitialTrim: 0
+    - rid: 2955271208105410726
+      type: {class: Shadow2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_SelectedHashCode: 0
+        m_SelectedSource:
+          rid: -2
+        m_Provider2DCache:
+          rid: 2955271208105410727
+    - rid: 2955271208105410727
+      type: {class: 'Provider2DCache`1[[UnityEngine.Rendering.Universal.ShadowShape2DProvider, Unity.RenderPipelines.Universal.2D.Runtime]]', ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Cache: []
 --- !u!1 &705822054
 GameObject:
   m_ObjectHideFlags: 0
@@ -14413,6 +14584,151 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &709839096
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 709839097}
+  - component: {fileID: 709839098}
+  m_Layer: 0
+  m_Name: sahdow (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &709839097
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 709839096}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5.02, y: -1.99, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1791156656}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &709839098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 709839096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7db70e0ea77f5ac47a8f4565a9406397, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.2D.Runtime::UnityEngine.Rendering.Universal.ShadowCaster2D
+  m_ShadowGroup: 0
+  m_Priority: 0
+  m_ComponentVersion: 6
+  m_HasRenderer: 0
+  m_UseRendererSilhouette: 1
+  m_CastsShadows: 1
+  m_SelfShadows: 0
+  m_AlphaCutoff: 0.1
+  m_ApplyToSortingLayers: a904652863ef7bf3a7a8f8b6058414c800000000a1014a9ai
+  m_ShapePath:
+  - {x: -0.514873, y: -0.47025442, z: 0}
+  - {x: -0.5, y: 0.4405074, z: 0}
+  - {x: 5.437924, y: 0.4256333, z: 0}
+  - {x: 5.437924, y: -0.48512602, z: 0}
+  m_ShapePathHash: 1421254523
+  m_InstanceId: 0
+  m_ShadowShape2DComponent: {fileID: 0}
+  m_ShadowShape2DProvider:
+    rid: -2
+  m_ShadowCastingSource: 1
+  m_ShadowMesh:
+    rid: 2955271208105410729
+  m_CastingOption: 1
+  m_PreviousTrimEdge: 0
+  m_PreviousEdgeProcessing: 1
+  m_PreviousShadowCastingSource: 1
+  m_PreviousShadowShape2DSource: {fileID: 0}
+  m_PreviousShadowShape2DProviderHash: 0
+  m_SelectionSources:
+    rid: 2955271208105410728
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2955271208105410728
+      type: {class: Shadow2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_SelectedHashCode: 0
+        m_SelectedSource:
+          rid: -2
+        m_Provider2DCache:
+          rid: 2955271208105410730
+    - rid: 2955271208105410729
+      type: {class: ShadowMesh2D, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Vertices:
+        - position: {x: -0.514873, y: -0.47025442, z: 0}
+          tangent: {x: -1, y: 0, z: -0.5, w: 0.4405074}
+        - position: {x: -0.5, y: 0.4405074, z: 0}
+          tangent: {x: -1, y: 0, z: 5.437924, w: 0.4256333}
+        - position: {x: 5.437924, y: 0.4256333, z: 0}
+          tangent: {x: -1, y: 0, z: 5.437924, w: -0.48512602}
+        - position: {x: 5.437924, y: -0.48512602, z: 0}
+          tangent: {x: -1, y: 0, z: -0.514873, w: -0.47025442}
+        - position: {x: 5.437924, y: -0.48512602, z: 0}
+          tangent: {x: 0, y: 0, z: -0.514873, w: -0.47025442}
+        - position: {x: -0.514873, y: -0.47025442, z: 0}
+          tangent: {x: 0, y: 0, z: 5.437924, w: -0.48512602}
+        - position: {x: 5.437924, y: -0.48512602, z: 0}
+          tangent: {x: 1, y: 0, z: 5.437924, w: 0.4256333}
+        - position: {x: 5.437924, y: -0.48512602, z: 0}
+          tangent: {x: 3, y: 0, z: -0.5, w: 0.4405074}
+        - position: {x: -0.514873, y: -0.47025442, z: 0}
+          tangent: {x: 0, y: 0, z: -0.5, w: 0.4405074}
+        - position: {x: -0.5, y: 0.4405074, z: 0}
+          tangent: {x: 0, y: 0, z: -0.514873, w: -0.47025442}
+        - position: {x: -0.514873, y: -0.47025442, z: 0}
+          tangent: {x: 1, y: 0, z: 5.437924, w: -0.48512602}
+        - position: {x: -0.514873, y: -0.47025442, z: 0}
+          tangent: {x: 3, y: 0, z: 5.437924, w: 0.4256333}
+        - position: {x: -0.5, y: 0.4405074, z: 0}
+          tangent: {x: 0, y: 0, z: 5.437924, w: 0.4256333}
+        - position: {x: 5.437924, y: 0.4256333, z: 0}
+          tangent: {x: 0, y: 0, z: -0.5, w: 0.4405074}
+        - position: {x: -0.5, y: 0.4405074, z: 0}
+          tangent: {x: 1, y: 0, z: -0.514873, w: -0.47025442}
+        - position: {x: -0.5, y: 0.4405074, z: 0}
+          tangent: {x: 3, y: 0, z: 5.437924, w: -0.48512602}
+        - position: {x: 5.437924, y: 0.4256333, z: 0}
+          tangent: {x: 0, y: 0, z: 5.437924, w: -0.48512602}
+        - position: {x: 5.437924, y: -0.48512602, z: 0}
+          tangent: {x: 0, y: 0, z: 5.437924, w: 0.4256333}
+        - position: {x: 5.437924, y: 0.4256333, z: 0}
+          tangent: {x: 1, y: 0, z: -0.5, w: 0.4405074}
+        - position: {x: 5.437924, y: 0.4256333, z: 0}
+          tangent: {x: 3, y: 0, z: -0.514873, w: -0.47025442}
+        m_Indices: 030000000400000005000000050000000000000003000000000000000800000009000000090000000100000000000000010000000c0000000d0000000d0000000200000001000000020000001000000011000000110000000300000002000000030000000600000007000000000000000a0000000b000000010000000e0000000f000000020000001200000013000000i
+        m_IsTransformable: 1
+        m_LocalBounds:
+          m_Center: {x: 2.4615254, y: -0.022309303, z: 0}
+          m_Extent: {x: 2.9763985, y: 0.46281672, z: 0}
+        m_EdgeProcessing: 1
+        m_TrimEdge: 0
+        m_FlipX: 0
+        m_FlipY: 0
+        m_InitialTrim: 0
+    - rid: 2955271208105410730
+      type: {class: 'Provider2DCache`1[[UnityEngine.Rendering.Universal.ShadowShape2DProvider, Unity.RenderPipelines.Universal.2D.Runtime]]', ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Cache: []
 --- !u!1 &710252105
 GameObject:
   m_ObjectHideFlags: 0
@@ -15681,13 +15997,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: LightParticles (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 1574953722860812573, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -2.28
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.05
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15720,6 +16040,14 @@ PrefabInstance:
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 8715191640032235085, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
+      propertyPath: ShapeModule.m_Scale.x
+      value: 22.619621
+      objectReference: {fileID: 0}
+    - target: {fileID: 8715191640032235085, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
+      propertyPath: ShapeModule.m_Scale.y
+      value: 36.097603
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -16539,7 +16867,7 @@ Transform:
   m_GameObject: {fileID: 1121984373}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.9300008, y: 9.1, z: 0}
+  m_LocalPosition: {x: 3.23, y: 11.88, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16564,9 +16892,9 @@ MonoBehaviour:
     rid: -2
   m_SelectionSources:
     rid: 2955271181214154857
-  m_FalloffIntensity: 0.593
+  m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1
+  m_Intensity: 2
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: a904652863ef7bf3a7a8f8b6058414c800000000a1014a9ai
@@ -16579,8 +16907,8 @@ MonoBehaviour:
   m_NormalMapQuality: 2
   m_UseNormalMap: 0
   m_ShadowsEnabled: 1
-  m_ShadowIntensity: 0.815
-  m_ShadowSoftness: 0.149
+  m_ShadowIntensity: 1
+  m_ShadowSoftness: 0.29
   m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
@@ -16588,8 +16916,8 @@ MonoBehaviour:
     serializedVersion: 0
     m_Bits: 1
   m_LocalBounds:
-    m_Center: {x: 0.7716, y: -6.95895, z: 0}
-    m_Extent: {x: 3.706, y: 7.10365, z: 0}
+    m_Center: {x: 1.9512999, y: -10.3926, z: 0}
+    m_Extent: {x: 3.8338, y: 9.486501, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -16597,11 +16925,11 @@ MonoBehaviour:
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
-  m_ShapeLightFalloffSize: 1.55
+  m_ShapeLightFalloffSize: 0.5
   m_ShapeLightFalloffOffset: {x: 0, y: 0}
   m_ShapePath:
-  - {x: 1.7842922, y: -12.514046, z: 0}
-  - {x: 2.9289784, y: -12.451568, z: 0}
+  - {x: 0.4270618, y: -19.36205, z: 0}
+  - {x: 5.284989, y: -19.379934, z: 0}
   - {x: -0.9342308, y: -1.4060192, z: 0}
   - {x: -1.3843718, y: -1.448554, z: 0}
   references:
@@ -17129,6 +17457,151 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
+--- !u!1 &1269601401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1269601402}
+  - component: {fileID: 1269601403}
+  m_Layer: 0
+  m_Name: sahdow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1269601402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1269601401}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -12.05, y: -0.04, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1791156656}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1269601403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1269601401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7db70e0ea77f5ac47a8f4565a9406397, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.2D.Runtime::UnityEngine.Rendering.Universal.ShadowCaster2D
+  m_ShadowGroup: 0
+  m_Priority: 0
+  m_ComponentVersion: 6
+  m_HasRenderer: 0
+  m_UseRendererSilhouette: 1
+  m_CastsShadows: 1
+  m_SelfShadows: 0
+  m_AlphaCutoff: 0.1
+  m_ApplyToSortingLayers: a904652863ef7bf3a7a8f8b6058414c800000000a1014a9ai
+  m_ShapePath:
+  - {x: -0.7484741, y: -1.4243225, z: 0}
+  - {x: -0.6888399, y: 0.5, z: 0}
+  - {x: 3.5313797, y: 0.5, z: 0}
+  - {x: 3.5115032, y: -1.4441997, z: 0}
+  m_ShapePathHash: -345297507
+  m_InstanceId: 0
+  m_ShadowShape2DComponent: {fileID: 0}
+  m_ShadowShape2DProvider:
+    rid: -2
+  m_ShadowCastingSource: 1
+  m_ShadowMesh:
+    rid: 2955271208105410722
+  m_CastingOption: 1
+  m_PreviousTrimEdge: 0
+  m_PreviousEdgeProcessing: 1
+  m_PreviousShadowCastingSource: 1
+  m_PreviousShadowShape2DSource: {fileID: 0}
+  m_PreviousShadowShape2DProviderHash: 0
+  m_SelectionSources:
+    rid: 2955271208105410723
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2955271208105410722
+      type: {class: ShadowMesh2D, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Vertices:
+        - position: {x: -0.7484741, y: -1.4243225, z: 0}
+          tangent: {x: -1, y: 0, z: -0.6888399, w: 0.5}
+        - position: {x: -0.6888399, y: 0.5, z: 0}
+          tangent: {x: -1, y: 0, z: 3.5313797, w: 0.5}
+        - position: {x: 3.5313797, y: 0.5, z: 0}
+          tangent: {x: -1, y: 0, z: 3.5115032, w: -1.4441997}
+        - position: {x: 3.5115032, y: -1.4441997, z: 0}
+          tangent: {x: -1, y: 0, z: -0.7484741, w: -1.4243225}
+        - position: {x: 3.5115032, y: -1.4441997, z: 0}
+          tangent: {x: 0, y: 0, z: -0.7484741, w: -1.4243225}
+        - position: {x: -0.7484741, y: -1.4243225, z: 0}
+          tangent: {x: 0, y: 0, z: 3.5115032, w: -1.4441997}
+        - position: {x: 3.5115032, y: -1.4441997, z: 0}
+          tangent: {x: 1, y: 0, z: 3.5313797, w: 0.5}
+        - position: {x: 3.5115032, y: -1.4441997, z: 0}
+          tangent: {x: 3, y: 0, z: -0.6888399, w: 0.5}
+        - position: {x: -0.7484741, y: -1.4243225, z: 0}
+          tangent: {x: 0, y: 0, z: -0.6888399, w: 0.5}
+        - position: {x: -0.6888399, y: 0.5, z: 0}
+          tangent: {x: 0, y: 0, z: -0.7484741, w: -1.4243225}
+        - position: {x: -0.7484741, y: -1.4243225, z: 0}
+          tangent: {x: 1, y: 0, z: 3.5115032, w: -1.4441997}
+        - position: {x: -0.7484741, y: -1.4243225, z: 0}
+          tangent: {x: 3, y: 0, z: 3.5313797, w: 0.5}
+        - position: {x: -0.6888399, y: 0.5, z: 0}
+          tangent: {x: 0, y: 0, z: 3.5313797, w: 0.5}
+        - position: {x: 3.5313797, y: 0.5, z: 0}
+          tangent: {x: 0, y: 0, z: -0.6888399, w: 0.5}
+        - position: {x: -0.6888399, y: 0.5, z: 0}
+          tangent: {x: 1, y: 0, z: -0.7484741, w: -1.4243225}
+        - position: {x: -0.6888399, y: 0.5, z: 0}
+          tangent: {x: 3, y: 0, z: 3.5115032, w: -1.4441997}
+        - position: {x: 3.5313797, y: 0.5, z: 0}
+          tangent: {x: 0, y: 0, z: 3.5115032, w: -1.4441997}
+        - position: {x: 3.5115032, y: -1.4441997, z: 0}
+          tangent: {x: 0, y: 0, z: 3.5313797, w: 0.5}
+        - position: {x: 3.5313797, y: 0.5, z: 0}
+          tangent: {x: 1, y: 0, z: -0.6888399, w: 0.5}
+        - position: {x: 3.5313797, y: 0.5, z: 0}
+          tangent: {x: 3, y: 0, z: -0.7484741, w: -1.4243225}
+        m_Indices: 030000000400000005000000050000000000000003000000000000000800000009000000090000000100000000000000010000000c0000000d0000000d0000000200000001000000020000001000000011000000110000000300000002000000030000000600000007000000000000000a0000000b000000010000000e0000000f000000020000001200000013000000i
+        m_IsTransformable: 1
+        m_LocalBounds:
+          m_Center: {x: 1.3914528, y: -0.47209984, z: 0}
+          m_Extent: {x: 2.139927, y: 0.97209984, z: 0}
+        m_EdgeProcessing: 1
+        m_TrimEdge: 0
+        m_FlipX: 0
+        m_FlipY: 0
+        m_InitialTrim: 0
+    - rid: 2955271208105410723
+      type: {class: Shadow2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_SelectedHashCode: 0
+        m_SelectedSource:
+          rid: -2
+        m_Provider2DCache:
+          rid: 2955271208105410724
+    - rid: 2955271208105410724
+      type: {class: 'Provider2DCache`1[[UnityEngine.Rendering.Universal.ShadowShape2DProvider, Unity.RenderPipelines.Universal.2D.Runtime]]', ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
+      data:
+        m_Cache: []
 --- !u!1 &1273666236
 GameObject:
   m_ObjectHideFlags: 0
@@ -17837,9 +18310,17 @@ PrefabInstance:
       objectReference: {fileID: 1747081609}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 885956512362806909, guid: 3740696f20264314b98931ededa88f4c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 687933800}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3740696f20264314b98931ededa88f4c, type: 3}
+--- !u!4 &1387902192 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 885956512362806909, guid: 3740696f20264314b98931ededa88f4c, type: 3}
+  m_PrefabInstance: {fileID: 1387902191}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1390609293
 GameObject:
   m_ObjectHideFlags: 0
@@ -19682,6 +20163,8 @@ Transform:
   - {fileID: 987635789}
   - {fileID: 580624020}
   - {fileID: 1121984374}
+  - {fileID: 1269601402}
+  - {fileID: 709839097}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1795888949
