@@ -20071,7 +20071,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4577944256262588169, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7178919839492170681, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: config
@@ -22875,6 +22875,11 @@ MonoBehaviour:
   m_ExitDoor: {fileID: 0}
   m_UIRoots: []
   m_EntryDoor: {fileID: 0}
+  m_Lights: []
+  m_LightEffects: []
+  m_LightEffectNames:
+  - Light
+  - Glow
   m_SweepAngle: 20
   m_GroundTiming:
     Spread: 0.45
@@ -22892,6 +22897,10 @@ MonoBehaviour:
     Spread: 0.35
     ItemDuration: 0.22
     Overlap: 0.45
+  m_LightTiming:
+    Spread: 0.3
+    ItemDuration: 0.45
+    Overlap: 0.15
   m_DoorRiseDuration: 0.38
   m_DoorSinkDuration: 0.3
   m_DoorWidthSquash: 0.18
