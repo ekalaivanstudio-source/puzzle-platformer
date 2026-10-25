@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using MainGame.UI.Unified;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
@@ -22,14 +23,16 @@ using UnityEngine.UI;
 ///      the tutorial prompt waits for the input row under it to finish arriving,
 ///   6. the ENTRY DOOR grows up out of the floor — and <see cref="LevelEntryDoor"/> takes it
 ///      from there: the door opens, the player spins out of it, the door shuts behind them,
-///      and the doorway sinks back into the floor, leaving the level clean to play on.
+///      and the doorway sinks back into the floor, leaving the level clean to play on,
+///   7. the LIGHTS come on last — the god rays flicker up one after another and the glow
+///      effects in them start drifting, so the level is lit only once it is whole.
 ///
-/// That last beat is a doorway, not a one-off: every later arrival plays it again. A death
+/// That door beat is a doorway, not a one-off: every later arrival plays it again. A death
 /// respawns the player through it — the doorway rises, opens, hands them back out and sinks
 /// away — so coming back after a mistake reads as arriving rather than as being teleported.
 ///
 /// When the level is won, <see cref="PlayerController"/> shuts the exit door behind the player
-/// and then runs the whole thing backwards: the HUD goes away an element at a time, the pipe
+/// and then runs the whole thing backwards: the lights go out first, then the HUD goes away an element at a time, the pipe
 /// empties out from the door end back into the battery socket, which shrinks away and is
 /// switched off after it, and the exit doorway sinks back into the floor before the
 /// screen fades — joined by the entry doorway on a level that was set to keep that one
@@ -131,6 +134,19 @@ public class LevelBuildDirector : MonoBehaviour
              "Empty: the LevelEntryDoor in the scene.")]
     [SerializeField] private LevelEntryDoor m_EntryDoor;
 
+    [Tooltip("The lights switched on in phase 7, and off first when the level ends. Empty: " +
+             "every 2D light in the open scene except the GLOBAL ones, which light the whole " +
+             "level and must stay on.")]
+    [SerializeField] private Light2D[] m_Lights;
+
+    [Tooltip("Particle effects switched on and off with the lights. Empty: every particle " +
+             "effect in the open scene whose object name contains one of the words below.")]
+    [SerializeField] private ParticleSystem[] m_LightEffects;
+
+    [Tooltip("Name fragments that mark a particle effect as part of the lighting, matched " +
+             "ignoring case — the LightParticles and Ambient Glows prefabs.")]
+    [SerializeField] private string[] m_LightEffectNames = { "Light", "Glow" };
+
     // ─── Timing ───────────────────────────────────────────────────────────────────────────
 
     [Header("Timing")]
@@ -148,6 +164,11 @@ public class LevelBuildDirector : MonoBehaviour
     // is the phase the player is least likely to be looking at, so it finishes UNDER the
     // entry door rising rather than holding it up.
     [SerializeField] private PhaseTiming m_UITiming = new PhaseTiming(0.35f, 0.22f, 0.45f);
+
+    // Spread is between lights, duration is one light's flicker-and-settle. The overlap is
+    // only used on the way OUT, where the HUD and pipe start leaving while the last light
+    // dims; on the way in the lights are the final beat and nothing comes after them.
+    [SerializeField] private PhaseTiming m_LightTiming = new PhaseTiming(0.30f, 0.45f, 0.15f);
 
     [Tooltip("Seconds a doorway takes to grow up out of the floor.")]
     [Min(0.05f)][SerializeField] private float m_DoorRiseDuration = 0.38f;
@@ -225,6 +246,7 @@ public class LevelBuildDirector : MonoBehaviour
     private ILevelBuildWave m_PipeWave;
     private ILevelBuildWave m_ExitDoorWave;
     private ILevelBuildWave m_EntryDoorWave;
+    private ILevelBuildWave m_LightWave;
 
     private readonly List<ILevelBuildWave> m_GroundWaves = new List<ILevelBuildWave>();
     private readonly List<ILevelBuildWave> m_UIWaves = new List<ILevelBuildWave>();
@@ -330,6 +352,11 @@ public class LevelBuildDirector : MonoBehaviour
         // to its exact authored transforms — before the entry door opens on it.
         yield return WaitForRunning();
 
+        // The lights come on only over a whole level: lit while it is still assembling, the
+        // god rays would be shining on empty air.
+        if (m_LightWave != null && m_LightWave.Count > 0)
+            yield return DriveWave(m_LightWave, building: true, onDone: null);
+
         m_State = State.Built;
     }
 
@@ -396,6 +423,10 @@ public class LevelBuildDirector : MonoBehaviour
         m_State = State.TearingDown;
         m_Running.Clear();
 
+        // The lights were the last thing on, so they are the first thing off — the level goes
+        // dark and only then starts taking itself apart.
+        yield return PlayPhase(m_LightWave, m_LightTiming, building: false, onDone: null);
+
         // Started rather than awaited, and every canvas at once rather than one after
         // another: the HUD clears itself while the pipe drains. The canvases queue on the way
         // IN because the player has to read them; on the way out the level is over and a queue
@@ -443,6 +474,7 @@ public class LevelBuildDirector : MonoBehaviour
         m_ExitDoorWave?.Finish(true);
         SetExitDoorStanding(true);
         m_EntryDoorWave?.Finish(true);
+        m_LightWave?.Finish(true);
 
         m_State = State.Built;
     }
@@ -677,6 +709,7 @@ public class LevelBuildDirector : MonoBehaviour
         BuildSceneryWave();
         BuildPipeWave();
         BuildUIWaves();
+        BuildLightWave();
 
         m_ExitDoorWave = m_ExitDoor != null
             ? new TransformRiseWave(m_ExitDoor.transform, m_DoorRiseDuration, m_DoorWidthSquash)
@@ -695,7 +728,103 @@ public class LevelBuildDirector : MonoBehaviour
                   $"pipe {(m_PipeWave?.Count ?? 0)}, " +
                   $"HUD {hud} across {m_UIWaves.Count} canvas(es), " +
                   $"exit door {(m_ExitDoorWave != null ? "yes" : "no")}, " +
-                  $"entry door {(m_EntryDoorWave != null ? "yes" : "no")}.", this);
+                  $"entry door {(m_EntryDoorWave != null ? "yes" : "no")}, " +
+                  $"lights {(m_LightWave?.Count ?? 0)}.", this);
+    }
+
+    // The lights switch on in the same sweep the ground and scenery were laid in, so the
+    // level lights up across itself rather than in whatever order the hierarchy holds.
+    private void BuildLightWave()
+    {
+        var lights = new List<Light2D>();
+        if (m_Lights != null && m_Lights.Length > 0)
+        {
+            foreach (Light2D light in m_Lights)
+            {
+                if (light != null) lights.Add(light);
+            }
+        }
+        else
+        {
+            foreach (Light2D light in SceneObjects.FindAllInActiveScene<Light2D>())
+            {
+                if (light == null || !light.isActiveAndEnabled) continue;
+                if (light.lightType == Light2D.LightType.Global) continue;
+                if (IsOwnedElsewhere(light.transform)) continue;
+                lights.Add(light);
+            }
+        }
+
+        var effects = new List<ParticleSystem>();
+        if (m_LightEffects != null && m_LightEffects.Length > 0)
+        {
+            foreach (ParticleSystem effect in m_LightEffects)
+            {
+                if (effect != null) effects.Add(effect);
+            }
+        }
+        else
+        {
+            foreach (ParticleSystem effect in SceneObjects.FindAllInActiveScene<ParticleSystem>())
+            {
+                if (effect == null || !effect.gameObject.activeInHierarchy) continue;
+                if (IsOwnedElsewhere(effect.transform)) continue;
+                if (!IsLightEffect(effect)) continue;
+                effects.Add(effect);
+            }
+        }
+
+        if (lights.Count + effects.Count == 0) return;
+
+        Vector2 sweep = SweepDirection();
+        var keys = new List<float>(lights.Count + effects.Count);
+        foreach (Light2D light in lights) keys.Add(Vector2.Dot(light.transform.position, sweep));
+        foreach (ParticleSystem effect in effects) keys.Add(Vector2.Dot(effect.transform.position, sweep));
+
+        // Normalised together, then split, so lights and effects share one sweep.
+        float[] delays = Normalise(keys);
+        var lightDelays = new float[lights.Count];
+        var effectDelays = new float[effects.Count];
+        System.Array.Copy(delays, 0, lightDelays, 0, lightDelays.Length);
+        System.Array.Copy(delays, lightDelays.Length, effectDelays, 0, effectDelays.Length);
+
+        m_LightWave = new LightFadeWave(
+            lights, lightDelays, effects, effectDelays,
+            m_LightTiming.Spread, m_LightTiming.ItemDuration);
+    }
+
+    // A light or glow on a doorway, the socket, the key or the player belongs to that
+    // object's own logic — the exit door lights its doorway only once it stands, the key and
+    // socket shine while they wait for each other — so only the level's free-standing
+    // lighting is collected.
+    private bool IsOwnedElsewhere(Transform candidate)
+    {
+        for (Transform t = candidate; t != null; t = t.parent)
+        {
+            if (IsExcluded(t)) return true;
+            if (t.GetComponent<PlaceableKey>() != null) return true;
+        }
+
+        return false;
+    }
+
+    // Only the ROOT of an effect is taken — Play and Stop already reach the systems under it,
+    // and driving each child on its own would restart them out of step.
+    private bool IsLightEffect(ParticleSystem effect)
+    {
+        Transform parent = effect.transform.parent;
+        if (parent != null && parent.GetComponentInParent<ParticleSystem>() != null) return false;
+        if (m_LightEffectNames == null) return false;
+
+        string name = effect.gameObject.name;
+        foreach (string fragment in m_LightEffectNames)
+        {
+            if (!string.IsNullOrEmpty(fragment) &&
+                name.IndexOf(fragment, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+
+        return false;
     }
 
     // Every tilemap sweeps on ONE shared wave: the cells are gathered from all of them first
@@ -1048,6 +1177,7 @@ public class LevelBuildDirector : MonoBehaviour
         m_ExitDoorWave?.Finish(false);
         SetExitDoorStanding(false);
         m_EntryDoorWave?.Finish(false);
+        m_LightWave?.Finish(false);
 
         m_State = State.Hidden;
     }
