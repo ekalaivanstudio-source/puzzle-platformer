@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using LevelSelection;
+using MainGame.UI.PauseMenu;
 
 namespace MainGame.UI.Unified
 {
@@ -221,6 +222,19 @@ namespace MainGame.UI.Unified
 
         #region Navigation & Back Button
 
+        /// <summary>
+        /// True if this level selection screen is active in hierarchy.
+        /// </summary>
+        public bool IsOpen => gameObject.activeSelf;
+
+        /// <summary>
+        /// Public trigger for back navigation.
+        /// </summary>
+        public void HandleBack()
+        {
+            HandleBackClicked();
+        }
+
         private void HandleBackClicked()
         {
             if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
@@ -228,27 +242,30 @@ namespace MainGame.UI.Unified
                 return;
             }
 
+            Action executeBack = () =>
+            {
+                if (UINavigationManager.Instance != null)
+                {
+                    UINavigationManager.Instance.PopScreen();
+                }
+                else if (PauseMenuController.Instance != null && PauseMenuController.Instance.CurrentState == PauseState.LevelSelection)
+                {
+                    PauseMenuController.Instance.BackFromLevelSelection();
+                }
+            };
+
             if (m_BackButton != null)
             {
                 UIAnimatedButton animBtn = m_BackButton.GetComponent<UIAnimatedButton>();
                 if (animBtn != null)
                 {
-                    animBtn.PlayConfirmPunch(() =>
-                    {
-                        if (UINavigationManager.Instance != null)
-                        {
-                            UINavigationManager.Instance.PopScreen();
-                        }
-                    });
+                    animBtn.PlayConfirmPunch(executeBack);
                     return;
                 }
             }
 
             AudioManager.Instance?.PlayButton();
-            if (UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PopScreen();
-            }
+            executeBack();
         }
 
         #endregion

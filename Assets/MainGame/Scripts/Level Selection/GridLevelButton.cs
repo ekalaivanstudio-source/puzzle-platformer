@@ -768,6 +768,7 @@ namespace LevelSelection
 
             // Re-enable input and timeScale before loading scene
             Time.timeScale = 1f;
+            DeviceInputProvider.Instance?.SetEnabled(true);
 
             // Check if LevelManager is available
             if (LevelManager.Instance != null)
