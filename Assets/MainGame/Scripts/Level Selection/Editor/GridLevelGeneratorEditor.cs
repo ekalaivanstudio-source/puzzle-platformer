@@ -8,9 +8,24 @@ namespace LevelSelection.Editor
     {
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
-
             var generator = (GridLevelGenerator)target;
+
+            if (generator.ArcDatabase != null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Centralized Arc Database: \"{generator.ArcDatabase.name}\" ({generator.ArcDatabase.Count} Arcs, {generator.ArcDatabase.CalculateTotalLevels()} Total Levels)\n" +
+                    $"Any new arcs added to this database automatically apply to both Main Menu and Pause Menu.",
+                    MessageType.Info);
+
+                if (GUILayout.Button("Ping Centralized Arc Database", GUILayout.Height(24)))
+                {
+                    Selection.activeObject = generator.ArcDatabase;
+                    EditorGUIUtility.PingObject(generator.ArcDatabase);
+                }
+                EditorGUILayout.Space(6);
+            }
+
+            DrawDefaultInspector();
 
             EditorGUILayout.Space(12);
             EditorGUILayout.LabelField("Generator Controls", EditorStyles.boldLabel);

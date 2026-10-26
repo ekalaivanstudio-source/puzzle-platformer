@@ -72,7 +72,10 @@ namespace LevelSelection
         #region Inspector Fields
 
         [Header("Arc Configurations")]
-        [Tooltip("Existing ArcData ScriptableObjects from the project (ARC 1, ARC 2, etc.).")]
+        [Tooltip("Centralized database ScriptableObject containing all level arcs (shared between Main Menu and Pause Menu). If assigned, this is used as the primary source.")]
+        [SerializeField] private LevelArcDatabase m_ArcDatabase;
+
+        [Tooltip("Existing ArcData ScriptableObjects from the project (ARC 1, ARC 2, etc.). Used as fallback if ArcDatabase is not assigned.")]
         [SerializeField] private List<ArcData> m_ArcDataList = new List<ArcData>();
 
         [Tooltip("Alternative or additional inline custom arc definitions.")]
@@ -171,6 +174,7 @@ namespace LevelSelection
 
         #region Public Properties
 
+        public LevelArcDatabase ArcDatabase => m_ArcDatabase;
         public int CurrentArcIndex => m_CurrentArcIndex;
         public int CurrentPageIndex => m_CurrentPageIndex;
         public int LevelsPerPage => m_LevelsPerPage;
@@ -507,6 +511,17 @@ namespace LevelSelection
             }
 
 #if UNITY_EDITOR
+            // Auto-discover LevelArcDatabase if not assigned
+            if (m_ArcDatabase == null)
+            {
+                string[] dbGuids = UnityEditor.AssetDatabase.FindAssets("t:LevelArcDatabase");
+                if (dbGuids != null && dbGuids.Length > 0)
+                {
+                    string dbPath = UnityEditor.AssetDatabase.GUIDToAssetPath(dbGuids[0]);
+                    m_ArcDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelArcDatabase>(dbPath);
+                }
+            }
+
             // Auto-discover ArcData assets in project if list is empty
             if (m_ArcDataList == null || m_ArcDataList.Count == 0)
             {
@@ -708,10 +723,20 @@ namespace LevelSelection
                 runningStartLevel += totalLevels;
             }
 
-            // 1. From ScriptableObject ArcData list
-            if (m_ArcDataList != null && m_ArcDataList.Count > 0)
+            // 1. From centralized LevelArcDatabase (or fallback to inline ArcData list)
+            List<ArcData> activeArcList = null;
+            if (m_ArcDatabase != null && m_ArcDatabase.Arcs != null && m_ArcDatabase.Arcs.Count > 0)
             {
-                foreach (var data in m_ArcDataList)
+                activeArcList = m_ArcDatabase.Arcs;
+            }
+            else if (m_ArcDataList != null && m_ArcDataList.Count > 0)
+            {
+                activeArcList = m_ArcDataList;
+            }
+
+            if (activeArcList != null && activeArcList.Count > 0)
+            {
+                foreach (var data in activeArcList)
                 {
                     if (data == null) continue;
                     AddSegment(data.arcName, data.arcTitleSprite, data.totalLevelsInArc, data.arcThemeImage, data.levelThumbnails);

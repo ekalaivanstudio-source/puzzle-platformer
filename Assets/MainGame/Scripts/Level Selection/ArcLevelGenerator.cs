@@ -106,10 +106,10 @@ namespace LevelSelection
                 config.arcName = arcData.arcName;
                 config.totalLevelsInArc = arcData.totalLevelsInArc;
                 config.startLevelNumber = startLevel;
-                config.columns = Mathf.Max(1, arcData.columns);
-                config.horizontalSpacing = arcData.horizontalSpacing;
-                config.verticalSpacing = arcData.verticalSpacing;
-                config.startOffset = arcData.startOffset;
+                config.columns = Mathf.Max(1, columns);
+                config.horizontalSpacing = horizontalSpacing;
+                config.verticalSpacing = verticalSpacing;
+                config.startOffset = startOffset;
 
                 hasPreviousArc = arcIndex > 0;
                 hasNextArc = arcIndex < arcs.Count - 1;
