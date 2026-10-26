@@ -33,6 +33,8 @@ namespace MainGame.UI.Unified
 
         #endregion
 
+        private bool m_IsExiting = false;
+
         #region Public Properties
 
         public override GameObject DefaultSelectedObject
@@ -88,20 +90,26 @@ namespace MainGame.UI.Unified
 
             bool backPressed = false;
 
-            // 1. New Input System Gamepad B (buttonEast)
+            // 1. New Input System Keyboard B, Backspace, Escape
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.bKey.wasPressedThisFrame ||
+                    Keyboard.current.backspaceKey.wasPressedThisFrame ||
+                    Keyboard.current.escapeKey.wasPressedThisFrame)
+                {
+                    backPressed = true;
+                }
+            }
+
+            // 2. New Input System Gamepad B (buttonEast)
             if (Gamepad.current != null && (Gamepad.current.buttonEast.wasPressedThisFrame || Gamepad.current.bButton.wasPressedThisFrame))
             {
                 backPressed = true;
             }
 
-            // 2. New Input System Keyboard Escape
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                backPressed = true;
-            }
-
             // 3. Legacy Input Manager fallback
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.JoystickButton1))
+            if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Backspace) ||
+                Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.JoystickButton1))
             {
                 backPressed = true;
             }
@@ -157,6 +165,7 @@ namespace MainGame.UI.Unified
 
         public override void PlayEnterTransition(Action onComplete)
         {
+            m_IsExiting = false;
             base.Open();
 
             // Clear any remembered selection so we always focus the current unlocked level on panel open
@@ -237,10 +246,7 @@ namespace MainGame.UI.Unified
 
         private void HandleBackClicked()
         {
-            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
-            {
-                return;
-            }
+            if (m_IsExiting) return;
 
             Action executeBack = () =>
             {
@@ -253,6 +259,8 @@ namespace MainGame.UI.Unified
                     PauseMenuController.Instance.BackFromLevelSelection();
                 }
             };
+
+            m_IsExiting = true;
 
             if (m_BackButton != null)
             {

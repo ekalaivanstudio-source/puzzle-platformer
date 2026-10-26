@@ -284,7 +284,7 @@ namespace MainGame.UI.Unified
                 m_PrevButton.localScale = Vector3.zero;
             }
 
-            // Keep grid container and cards immediately visible with their thumbnails
+            // Prepare grid container and cards for staggered arcade pop-in
             if (m_GridContainer != null)
             {
                 CanvasGroup gridCg = m_GridContainer.GetComponent<CanvasGroup>();
@@ -295,7 +295,8 @@ namespace MainGame.UI.Unified
                 {
                     Transform child = m_GridContainer.GetChild(i);
                     var glb = child.GetComponent<LevelSelection.GridLevelButton>();
-                    child.localScale = (glb != null && glb.BaseScale != Vector3.zero) ? glb.BaseScale : Vector3.one;
+                    Vector3 baseS = (glb != null && glb.BaseScale != Vector3.zero) ? glb.BaseScale : Vector3.one;
+                    child.localScale = baseS * 0.70f;
                 }
             }
         }
@@ -422,31 +423,48 @@ namespace MainGame.UI.Unified
         {
             PrepareEntranceState();
 
-            // 1. Animate header signs (slide down with gentle overshoot)
+            // 1. Animate header signs (slide down with punchy overshoot)
             if (m_ArcSign != null)
             {
-                Vector2 startArc = new Vector2(m_ArcRestPos.x, m_ArcRestPos.y + 60f);
-                StartCoroutine(AnimateMotion(m_ArcSign, startArc, m_ArcRestPos, 0.28f, 0.02f, EasingType.EaseOutBack, 1.15f));
+                Vector2 startArc = new Vector2(m_ArcRestPos.x, m_ArcRestPos.y + 65f);
+                StartCoroutine(AnimateMotion(m_ArcSign, startArc, m_ArcRestPos, 0.26f, 0.01f, EasingType.EaseOutBack, 1.20f));
             }
             if (m_LevelsSign != null)
             {
-                Vector2 startLevels = new Vector2(m_LevelsRestPos.x, m_LevelsRestPos.y + 60f);
-                StartCoroutine(AnimateMotion(m_LevelsSign, startLevels, m_LevelsRestPos, 0.28f, 0.02f, EasingType.EaseOutBack, 1.15f));
+                Vector2 startLevels = new Vector2(m_LevelsRestPos.x, m_LevelsRestPos.y + 65f);
+                StartCoroutine(AnimateMotion(m_LevelsSign, startLevels, m_LevelsRestPos, 0.26f, 0.01f, EasingType.EaseOutBack, 1.20f));
             }
             if (m_TitleLogo != null)
             {
-                Vector2 startLogo = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 60f);
-                StartCoroutine(AnimateMotion(m_TitleLogo, startLogo, m_LogoRestPos, 0.28f, 0.02f, EasingType.EaseOutBack, 1.15f));
+                Vector2 startLogo = new Vector2(m_LogoRestPos.x, m_LogoRestPos.y + 65f);
+                StartCoroutine(AnimateMotion(m_TitleLogo, startLogo, m_LogoRestPos, 0.26f, 0.01f, EasingType.EaseOutBack, 1.20f));
             }
 
             // 2. Animate back button (slide up from bottom)
             if (m_BackButton != null)
             {
-                Vector2 startBack = new Vector2(m_BackRestPos.x, m_BackRestPos.y - 60f);
-                StartCoroutine(AnimateMotion(m_BackButton, startBack, m_BackRestPos, 0.28f, 0.04f, EasingType.EaseOutCubic));
+                Vector2 startBack = new Vector2(m_BackRestPos.x, m_BackRestPos.y - 65f);
+                StartCoroutine(AnimateMotion(m_BackButton, startBack, m_BackRestPos, 0.26f, 0.03f, EasingType.EaseOutBack, 1.15f));
             }
 
-            // 3. Animate next and previous arrow buttons if active
+            // 3. Staggered cascading pop-in of all 10 level button cards
+            if (m_GridContainer != null)
+            {
+                int count = m_GridContainer.childCount;
+                for (int i = 0; i < count; i++)
+                {
+                    Transform card = m_GridContainer.GetChild(i);
+                    if (card != null && card.gameObject.activeSelf)
+                    {
+                        var glb = card.GetComponent<LevelSelection.GridLevelButton>();
+                        Vector3 targetScale = (glb != null && glb.BaseScale != Vector3.zero) ? glb.BaseScale : Vector3.one;
+                        float cardDelay = i * 0.015f;
+                        StartCoroutine(AnimateCardPopIn(card, targetScale, 0.22f, cardDelay));
+                    }
+                }
+            }
+
+            // 4. Animate next and previous arrow buttons if active
             if (m_NextButton != null && m_NextButton.gameObject.activeSelf)
             {
                 StartCoroutine(PopInButtonRoutine(m_NextButton, 0.20f));
@@ -458,8 +476,8 @@ namespace MainGame.UI.Unified
 
             UIFeedbackAudio.PlaySfx(UISfxType.Whoosh, 0.35f, 0.02f);
 
-            // 4. Quick settle wait to ensure all banner animations are completed
-            float settleWait = 0.22f;
+            // 5. Quick settle wait to ensure all card & banner animations are completed
+            float settleWait = 0.26f;
             float timer = 0f;
             while (timer < settleWait)
             {
@@ -472,6 +490,45 @@ namespace MainGame.UI.Unified
 
             m_ActiveRoutine = null;
             onComplete?.Invoke();
+        }
+
+        private IEnumerator AnimateCardPopIn(Transform card, Vector3 targetScale, float duration, float delay)
+        {
+            if (card == null) yield break;
+
+            card.localScale = targetScale * 0.70f;
+            CanvasGroup cg = card.GetComponent<CanvasGroup>();
+            if (cg != null) cg.alpha = 0.2f;
+
+            if (delay > 0f)
+            {
+                float d = 0f;
+                while (d < delay)
+                {
+                    d += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            float elapsed = 0f;
+            Vector3 startScale = targetScale * 0.70f;
+
+            while (elapsed < duration && card != null)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float ease = UIEasing.Evaluate(EasingType.EaseOutBack, t, 1.30f);
+
+                card.localScale = Vector3.LerpUnclamped(startScale, targetScale, ease);
+                if (cg != null) cg.alpha = Mathf.Lerp(0.2f, 1f, t * 1.4f);
+                yield return null;
+            }
+
+            if (card != null)
+            {
+                card.localScale = targetScale;
+                if (cg != null) cg.alpha = 1f;
+            }
         }
 
         private IEnumerator AnimateGridContainerEntrance(CanvasGroup gridCg, Vector2 startPos, Vector2 targetPos, float duration)

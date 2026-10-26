@@ -75,17 +75,12 @@ namespace LevelSelection
         [Tooltip("Centralized database ScriptableObject containing all level arcs (shared between Main Menu and Pause Menu). If assigned, this is used as the primary source.")]
         [SerializeField] private LevelArcDatabase m_ArcDatabase;
 
-        [Tooltip("Existing ArcData ScriptableObjects from the project (ARC 1, ARC 2, etc.). Used as fallback if ArcDatabase is not assigned.")]
-        [SerializeField] private List<ArcData> m_ArcDataList = new List<ArcData>();
-
-        [Tooltip("Alternative or additional inline custom arc definitions.")]
-        [SerializeField] private List<ArcConfig> m_CustomArcs = new List<ArcConfig>();
-
-        [Header("Fallback Arc Config (Used if both lists above are empty)")]
-        [SerializeField] private string m_FallbackArcName = "ARC 1";
-        [SerializeField] private Sprite m_FallbackArcTitleSprite;
-        [SerializeField] private int m_FallbackTotalLevels = 25;
-        [SerializeField] private int m_FallbackStartLevel = 1;
+        [HideInInspector] [SerializeField] private List<ArcData> m_ArcDataList = new List<ArcData>();
+        [HideInInspector] [SerializeField] private List<ArcConfig> m_CustomArcs = new List<ArcConfig>();
+        [HideInInspector] [SerializeField] private string m_FallbackArcName = "ARC 1";
+        [HideInInspector] [SerializeField] private Sprite m_FallbackArcTitleSprite;
+        [HideInInspector] [SerializeField] private int m_FallbackTotalLevels = 25;
+        [HideInInspector] [SerializeField] private int m_FallbackStartLevel = 1;
 
         [Header("Grid Layout & Button Spawning")]
         [Tooltip("The parent transform containing the GridLayoutGroup (e.g. 'Grid View').")]
@@ -118,18 +113,11 @@ namespace LevelSelection
         [Tooltip("Header image displaying current arc title/banner (e.g. 'IMG Arc').")]
         [SerializeField] private Image m_ArcTitleImage;
 
-        [Tooltip("Optional TMP text displaying the arc title.")]
-        [SerializeField] private TextMeshProUGUI m_ArcTitleText;
-
-        [Header("Page Indicators (Optional)")]
-        [Tooltip("List of pip GameObjects for pages (Pip_1, Pip_2, etc.).")]
-        [SerializeField] private List<GameObject> m_PagePips = new List<GameObject>();
-
-        [Tooltip("Optional text displaying 'Page X / Y'.")]
-        [SerializeField] private TextMeshProUGUI m_PageNumberText;
-
-        [SerializeField] private Color m_ActivePipColor = Color.white;
-        [SerializeField] private Color m_InactivePipColor = new Color(0.4f, 0.45f, 0.55f, 0.5f);
+        [HideInInspector] [SerializeField] private TextMeshProUGUI m_ArcTitleText;
+        [HideInInspector] [SerializeField] private List<GameObject> m_PagePips = new List<GameObject>();
+        [HideInInspector] [SerializeField] private TextMeshProUGUI m_PageNumberText;
+        [HideInInspector] [SerializeField] private Color m_ActivePipColor = Color.white;
+        [HideInInspector] [SerializeField] private Color m_InactivePipColor = new Color(0.4f, 0.45f, 0.55f, 0.5f);
 
         [Header("Progression & Initialization")]
         [Tooltip("If true, automatically opens the arc and page containing the player's highest unlocked level.")]
@@ -141,12 +129,8 @@ namespace LevelSelection
         [Tooltip("Debug override for highest unlocked level (-1 to use SaveManager).")]
         [SerializeField] private int m_DebugHighestUnlocked = -1;
 
-        [Header("Level Thumbnail Images")]
-        [Tooltip("Sprite sheet texture containing sliced level thumbnail sprites (e.g. LVL_BG.png).")]
-        [SerializeField] private Texture2D m_ThumbnailSpriteSheet;
-
-        [Tooltip("List of level thumbnail sprites sliced from the sprite sheet (LVL_BG_0, LVL_BG_1, ...).")]
-        [SerializeField] private List<Sprite> m_LevelThumbnailSprites = new List<Sprite>();
+        [HideInInspector] [SerializeField] private Texture2D m_ThumbnailSpriteSheet;
+        [HideInInspector] [SerializeField] private List<Sprite> m_LevelThumbnailSprites = new List<Sprite>();
 
         #endregion
 
