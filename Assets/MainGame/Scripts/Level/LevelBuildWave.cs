@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.Tilemaps;
 
 /// <summary>
@@ -443,4 +444,168 @@ public sealed class TilemapPopWave : ILevelBuildWave
             m_Colliders[i].enabled = built && m_ColliderEnabled[i];
         }
     }
+}
+
+/// <summary>
+/// The level's lights coming on, one after another — the god rays and the glow effects that
+/// hang in them. The last beat of the build, and the first thing to go when the level ends.
+///
+/// A light is switched on, not popped: its intensity flickers up like a lamp warming, then
+/// eases to the authored value. Scaling it would do nothing a player could see. A glow effect
+/// rides along at the moment its slot in the wave starts — it starts emitting on the way in,
+/// and on the way out it stops emitting and lets the particles it has already shed die out
+/// rather than vanishing mid-air.
+/// </summary>
+public sealed class LightFadeWave : ILevelBuildWave
+{
+    private readonly Light2D[] m_Lights;
+    private readonly float[] m_Intensities;
+    private readonly float[] m_VolumeIntensities;
+    private readonly float[] m_LightDelays;     // seconds into the wave, 0..spread
+
+    private readonly ParticleSystem[] m_Effects;
+    private readonly float[] m_EffectDelays;
+
+    // Set when the outro stopped an effect's emission, so finishing the outro lets what is
+    // already in the air live out its lifetime instead of clearing it mid-flight.
+    private readonly bool[] m_EffectFading;
+
+    private readonly float m_Spread;
+    private readonly float m_ItemDuration;
+
+    // How much of a light's switch-on is spent flickering before it settles into the ease.
+    private const float k_FlickerPortion = 0.45f;
+
+    /// <param name="lights">The lights, already in the order they should come on.</param>
+    /// <param name="lightDelays">Each light's place in the wave, 0..1.</param>
+    /// <param name="effects">Root particle systems switched on and off with the lights.</param>
+    /// <param name="effectDelays">Each effect's place in the wave, 0..1.</param>
+    /// <param name="spread">Seconds between the first item starting and the last.</param>
+    /// <param name="itemDuration">Seconds one light takes to come fully on.</param>
+    public LightFadeWave(
+        IReadOnlyList<Light2D> lights,
+        IReadOnlyList<float> lightDelays,
+        IReadOnlyList<ParticleSystem> effects,
+        IReadOnlyList<float> effectDelays,
+        float spread,
+        float itemDuration)
+    {
+        m_Spread = Mathf.Max(0f, spread);
+        m_ItemDuration = Mathf.Max(0.01f, itemDuration);
+
+        int lightCount = lights != null ? lights.Count : 0;
+        m_Lights = new Light2D[lightCount];
+        m_Intensities = new float[lightCount];
+        m_VolumeIntensities = new float[lightCount];
+        m_LightDelays = new float[lightCount];
+
+        for (int i = 0; i < lightCount; i++)
+        {
+            Light2D light = lights[i];
+            m_Lights[i] = light;
+            m_Intensities[i] = light != null ? light.intensity : 0f;
+            m_VolumeIntensities[i] = light != null ? light.volumeIntensity : 0f;
+            m_LightDelays[i] = DelayAt(lightDelays, i);
+        }
+
+        int effectCount = effects != null ? effects.Count : 0;
+        m_Effects = new ParticleSystem[effectCount];
+        m_EffectDelays = new float[effectCount];
+        m_EffectFading = new bool[effectCount];
+
+        for (int i = 0; i < effectCount; i++)
+        {
+            m_Effects[i] = effects[i];
+            m_EffectDelays[i] = DelayAt(effectDelays, i);
+        }
+    }
+
+    public int Count => m_Lights.Length + m_Effects.Length;
+
+    public float Duration => m_Spread + m_ItemDuration;
+
+    public void Apply(float elapsed, bool building)
+    {
+        for (int i = 0; i < m_Lights.Length; i++)
+        {
+            Light2D light = m_Lights[i];
+            if (light == null) continue;
+
+            // Reversed in order as well as in motion, like every other wave: the last light
+            // to come on is the first to go out.
+            float delay = building ? m_LightDelays[i] : m_Spread - m_LightDelays[i];
+            float local = Mathf.Clamp01((elapsed - delay) / m_ItemDuration);
+            float level = building ? SwitchOn(local, i) : 1f - LevelBuildEase.OutCubic(local);
+
+            SetLevel(i, level);
+        }
+
+        for (int i = 0; i < m_Effects.Length; i++)
+        {
+            ParticleSystem effect = m_Effects[i];
+            if (effect == null) continue;
+
+            float delay = building ? m_EffectDelays[i] : m_Spread - m_EffectDelays[i];
+            if (elapsed < delay) continue;
+
+            if (building && !effect.isEmitting)
+            {
+                m_EffectFading[i] = false;
+                effect.Play(true);
+            }
+            else if (!building && !m_EffectFading[i])
+            {
+                m_EffectFading[i] = true;
+                effect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+        }
+    }
+
+    public void Finish(bool built)
+    {
+        for (int i = 0; i < m_Lights.Length; i++)
+        {
+            if (m_Lights[i] != null) SetLevel(i, built ? 1f : 0f);
+        }
+
+        for (int i = 0; i < m_Effects.Length; i++)
+        {
+            ParticleSystem effect = m_Effects[i];
+            if (effect == null) continue;
+
+            if (built)
+            {
+                m_EffectFading[i] = false;
+                effect.Play(true);
+            }
+            else if (!m_EffectFading[i])
+            {
+                // Hidden before the level has been seen: nothing in the air is worth keeping.
+                effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+    }
+
+    // A flicker that is deterministic per light, so no two lights stutter in step and the
+    // same level always switches on the same way.
+    private static float SwitchOn(float local, int index)
+    {
+        if (local <= 0f) return 0f;
+        if (local >= k_FlickerPortion) return LevelBuildEase.OutCubic(local);
+
+        float t = local / k_FlickerPortion;
+        float blink = Mathf.Sin((t * 3f + index * 0.37f) * Mathf.PI * 2f) > 0.1f ? 1f : 0.25f;
+        return LevelBuildEase.OutCubic(local) * blink;
+    }
+
+    private void SetLevel(int index, float level)
+    {
+        Light2D light = m_Lights[index];
+        level = Mathf.Max(0f, level);
+        light.intensity = m_Intensities[index] * level;
+        light.volumeIntensity = m_VolumeIntensities[index] * level;
+    }
+
+    private float DelayAt(IReadOnlyList<float> delays, int index) =>
+        (delays != null && index < delays.Count ? Mathf.Clamp01(delays[index]) : 0f) * m_Spread;
 }
