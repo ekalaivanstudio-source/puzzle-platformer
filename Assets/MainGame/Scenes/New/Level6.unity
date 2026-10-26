@@ -1523,7 +1523,7 @@ MonoBehaviour:
     rid: 3755662711200415840
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 0.6
+  m_Intensity: 0.7
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 63ef7bf3a7a8f8b6058414c800000000i
@@ -22557,8 +22557,8 @@ MonoBehaviour:
     serializedVersion: 0
     m_Bits: 1
   m_LocalBounds:
-    m_Center: {x: 1.82735, y: -6.8239503, z: 0}
-    m_Extent: {x: 3.85495, y: 6.01835, z: 0}
+    m_Center: {x: 2.6426, y: -8.2435, z: 0}
+    m_Extent: {x: 1.7601, y: 4.5446, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -22569,10 +22569,10 @@ MonoBehaviour:
   m_ShapeLightFalloffSize: 0.5
   m_ShapeLightFalloffOffset: {x: 0, y: 0}
   m_ShapePath:
-  - {x: 1.3548832, y: -12.084637, z: 0}
-  - {x: 5.183376, y: -12.344215, z: 0}
-  - {x: -0.9342308, y: -1.3344498, z: 0}
-  - {x: -1.5275068, y: -1.305418, z: 0}
+  - {x: 1.3820515, y: -12.1661415, z: 0}
+  - {x: 3.3902807, y: -12.289879, z: 0}
+  - {x: 3.904768, y: -4.1997094, z: 0}
+  - {x: 3.2425961, y: -4.208201, z: 0}
   references:
     version: 2
     RefIds:
@@ -24492,7 +24492,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4577944256262588169, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 883825677294895380, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
@@ -26527,6 +26527,10 @@ PrefabInstance:
       propertyPath: m_Materials.Array.size
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6026478784411965173, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: b5e97d28e138970478bfa242ca2cb9d1, type: 2}
     - target: {fileID: 8715191640032235085, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: prewarm
       value: 0
