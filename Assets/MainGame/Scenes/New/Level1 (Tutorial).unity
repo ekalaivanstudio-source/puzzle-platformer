@@ -191,7 +191,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &138191729
 Transform:
   m_ObjectHideFlags: 0
@@ -351,7 +351,7 @@ MonoBehaviour:
     rid: 3755662711200415837
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 0.5
+  m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 63ef7bf3a7a8f8b6058414c800000000i
@@ -674,6 +674,11 @@ MonoBehaviour:
   m_ExitDoor: {fileID: 0}
   m_UIRoots: []
   m_EntryDoor: {fileID: 0}
+  m_Lights: []
+  m_LightEffects: []
+  m_LightEffectNames:
+  - Light
+  - Glow
   m_SweepAngle: 20
   m_GroundTiming:
     Spread: 0.45
@@ -691,6 +696,10 @@ MonoBehaviour:
     Spread: 0.35
     ItemDuration: 0.22
     Overlap: 0.45
+  m_LightTiming:
+    Spread: 0.3
+    ItemDuration: 0.45
+    Overlap: 0.15
   m_DoorRiseDuration: 0.38
   m_DoorSinkDuration: 0.3
   m_DoorWidthSquash: 0.18
@@ -13697,7 +13706,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3231443174093298871, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4355564510309583494, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: m_CorrectSequence.Array.size
@@ -14525,63 +14534,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &3150123898892483647
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1014215684382388482, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: m_Name
-      value: LeafParticle
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -14606,5 +14558,4 @@ SceneRoots:
   - {fileID: 339974571}
   - {fileID: 282613288}
   - {fileID: 808610148}
-  - {fileID: 3150123898892483647}
   - {fileID: 138191729}
