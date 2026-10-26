@@ -31,11 +31,17 @@ namespace ModernLevelSelection
         /// </summary>
         public static int GetCurrentLevelNumber()
         {
+            if (LevelContext.Instance != null && LevelContext.Instance.CurrentLevel > 0)
+                return LevelContext.Instance.CurrentLevel;
+
+            int buildIdx = SceneManager.GetActiveScene().buildIndex;
+            if (buildIdx > 0) return buildIdx;
+
             string name = SceneManager.GetActiveScene().name;
             if (string.IsNullOrEmpty(name)) return -1;
-            if (!name.StartsWith("Level_", StringComparison.OrdinalIgnoreCase)) return -1;
-            var suffix = name.Substring("Level_".Length);
-            if (int.TryParse(suffix, out var n)) return n;
+
+            var match = System.Text.RegularExpressions.Regex.Match(name, @"\d+");
+            if (match.Success && int.TryParse(match.Value, out var n)) return n;
             return -1;
         }
     }
