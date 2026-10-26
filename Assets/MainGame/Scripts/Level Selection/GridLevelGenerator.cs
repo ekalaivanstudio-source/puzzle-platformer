@@ -1,3 +1,4 @@
+using UnityEngine.InputSystem;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -263,12 +264,43 @@ namespace LevelSelection
 
             if (!gameObject.activeInHierarchy) return;
 
-            // Navigation strictly uses Left/Right Arrows and A/D keys (no Up/Down arrows, no W/S keys)
-            bool right = Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D);
-            bool left = Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A);
-            bool submit = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.KeypadEnter);
+            bool right = false;
+            bool left = false;
+            bool submit = false;
 
-            // Gamepad stick navigation (horizontal only)
+            // 1. New Input System Keyboard (Strictly Left/Right and A/D, no Up/Down or W/S)
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame) right = true;
+                if (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame) left = true;
+                if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame) submit = true;
+            }
+
+            // 2. New Input System Gamepad (Xbox Controller)
+            if (Gamepad.current != null)
+            {
+                if (Gamepad.current.dpad.right.wasPressedThisFrame) right = true;
+                if (Gamepad.current.dpad.left.wasPressedThisFrame) left = true;
+                if (Gamepad.current.buttonSouth.wasPressedThisFrame || Gamepad.current.aButton.wasPressedThisFrame) submit = true;
+
+                // Gamepad Left Stick horizontal with cooldown
+                if (m_NavCooldown <= 0f)
+                {
+                    float stickX = Gamepad.current.leftStick.x.ReadValue();
+                    if (stickX > 0.55f) { right = true; m_NavCooldown = 0.20f; }
+                    else if (stickX < -0.55f) { left = true; m_NavCooldown = 0.20f; }
+                }
+
+                // Bumpers for fast page turning (RB = Next Page, LB = Previous Page)
+                if (Gamepad.current.rightShoulder.wasPressedThisFrame) NextPage();
+                if (Gamepad.current.leftShoulder.wasPressedThisFrame) PreviousPage();
+            }
+
+            // 3. Legacy Input Manager fallback
+            if (!right && (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))) right = true;
+            if (!left && (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))) left = true;
+            if (!submit && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.JoystickButton0))) submit = true;
+
             if (m_NavCooldown <= 0f)
             {
                 float h = Input.GetAxisRaw("Horizontal");
