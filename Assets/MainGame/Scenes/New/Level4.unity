@@ -446,6 +446,10 @@ MonoBehaviour:
   m_BackdropSortingLayers:
   - Bg1
   - Bg2
+  m_FogNames:
+  - Fog
+  m_SceneryEffectNames:
+  - Leaf
   m_Pipes: {fileID: 0}
   m_ExitDoor: {fileID: 0}
   m_UIRoots: []
@@ -460,10 +464,22 @@ MonoBehaviour:
     Spread: 0.45
     ItemDuration: 0.26
     Overlap: 0.15
+  m_BackdropTiming:
+    Spread: 0.15
+    ItemDuration: 0.35
+    Overlap: 0.15
+  m_FogTiming:
+    Spread: 0.25
+    ItemDuration: 0.4
+    Overlap: 0.2
   m_SceneryTiming:
     Spread: 0.3
     ItemDuration: 0.24
     Overlap: 0.12
+  m_CollectableTiming:
+    Spread: 0.2
+    ItemDuration: 0.26
+    Overlap: 0
   m_PipeTiming:
     Spread: 0.3
     ItemDuration: 0.2
@@ -23821,7 +23837,7 @@ PrefabInstance:
     - target: {fileID: 7178919839492170681, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
       propertyPath: config
       value: 
-      objectReference: {fileID: 11400000, guid: 6b84ae30f2a16f34d929004ef48627e9, type: 2}
+      objectReference: {fileID: 11400000, guid: f335ed432e6cd5d4f8af98d524b44fbd, type: 2}
     m_RemovedComponents:
     - {fileID: 883825677294895380, guid: 783dbfff3e18f87458bb59fa312e24a9, type: 3}
     m_RemovedGameObjects: []
