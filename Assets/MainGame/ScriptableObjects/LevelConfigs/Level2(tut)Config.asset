@@ -10,32 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
-  m_Name: Level2Config
+  m_Name: Level2(tut)Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
-  levelNumber: 6
+  levelNumber: 2
   robotPart:
     placePart: 0
-    robot: 1
-    partNumber: 1
+    robot: 3
+    partNumber: 2
   memoryShard:
-    placeShard: 1
+    placeShard: 0
     shardVariant: 0
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1
     offset: {x: 0, y: 0}
     smoothTime: 1
-    minX: 1
-    maxX: 3
+    minX: -0.5
+    maxX: 1
     minY: 0
     maxY: 1
     followX: 1
     followY: 1
   sequence:
-    maxSequenceLength: 6
+    maxSequenceLength: 4
     requireFullSequence: 0
-    autoPlaySequence: 05000000050000000500000006000000i
+    autoPlaySequence: 01000000050000000100000001000000i
   tutorial:
-    showTutorial: 0
+    showTutorial: 1
     introHints: 
     introHintDuration: 3

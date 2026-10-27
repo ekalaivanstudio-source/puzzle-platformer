@@ -13624,6 +13624,10 @@ MonoBehaviour:
   m_BackdropSortingLayers:
   - Bg1
   - Bg2
+  m_FogNames:
+  - Fog
+  m_SceneryEffectNames:
+  - Leaf
   m_Pipes: {fileID: 0}
   m_ExitDoor: {fileID: 0}
   m_UIRoots: []
@@ -13638,10 +13642,22 @@ MonoBehaviour:
     Spread: 0.45
     ItemDuration: 0.26
     Overlap: 0.15
+  m_BackdropTiming:
+    Spread: 0.15
+    ItemDuration: 0.35
+    Overlap: 0.15
+  m_FogTiming:
+    Spread: 0.25
+    ItemDuration: 0.4
+    Overlap: 0.2
   m_SceneryTiming:
     Spread: 0.3
     ItemDuration: 0.24
     Overlap: 0.12
+  m_CollectableTiming:
+    Spread: 0.2
+    ItemDuration: 0.26
+    Overlap: 0
   m_PipeTiming:
     Spread: 0.3
     ItemDuration: 0.2
@@ -16051,7 +16067,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.1222718, g: 0.10234958, b: 0.18867922, a: 0}
+  m_BackGroundColor: {r: 0, g: 0.003921569, b: 0.027450982, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -19645,8 +19661,8 @@ MonoBehaviour:
     serializedVersion: 0
     m_Bits: 1
   m_LocalBounds:
-    m_Center: {x: 6.5616503, y: -5.15315, z: 0}
-    m_Extent: {x: 7.57545, y: 4.04065, z: 0}
+    m_Center: {x: 6.55995, y: -5.15265, z: 0}
+    m_Extent: {x: 7.57355, y: 4.04115, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -19658,9 +19674,9 @@ MonoBehaviour:
   m_ShapeLightFalloffOffset: {x: 0, y: 0}
   m_ShapePath:
   - {x: 13.63443, y: -8.651772, z: 0}
-  - {x: 13.636982, y: -5.367493, z: 0}
+  - {x: 13.557682, y: -7.4887657, z: 0}
   - {x: -0.5129485, y: -1.6123958, z: 0}
-  - {x: -0.4589913, y: -4.0947766, z: 0}
+  - {x: -0.4788165, y: -2.5484276, z: 0}
   - {x: 9.729317, y: -8.694504, z: 0}
   references:
     version: 2
@@ -20748,8 +20764,8 @@ MonoBehaviour:
     serializedVersion: 0
     m_Bits: 1
   m_LocalBounds:
-    m_Center: {x: 4.1317997, y: -9.13765, z: 0}
-    m_Extent: {x: 7.5388002, y: 7.69655, z: 0}
+    m_Center: {x: 2.19795, y: -9.3939, z: 0}
+    m_Extent: {x: 5.66425, y: 7.4398994, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0
@@ -20761,9 +20777,8 @@ MonoBehaviour:
   m_ShapeLightFalloffOffset: {x: 0, y: 0}
   m_ShapePath:
   - {x: 1.7489285, y: -16.333275, z: 0}
-  - {x: 11.170443, y: -16.229712, z: 0}
-  - {x: 11.141933, y: -12.263895, z: 0}
-  - {x: -2.884307, y: -1.941093, z: 0}
+  - {x: 7.362348, y: -16.114792, z: 0}
+  - {x: -2.9663868, y: -2.454094, z: 0}
   - {x: -2.90773, y: -3.3663821, z: 0}
   references:
     version: 2

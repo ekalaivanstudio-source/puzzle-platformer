@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
   m_Name: Level6Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
-  levelNumber: 10
+  levelNumber: 6
   robotPart:
     placePart: 0
     robot: 1
-    partNumber: 5
+    partNumber: 1
   memoryShard:
     placeShard: 1
     shardVariant: 0
@@ -34,7 +34,7 @@ MonoBehaviour:
   sequence:
     maxSequenceLength: 6
     requireFullSequence: 0
-    autoPlaySequence: 010000000500000005000000060000000500000005000000i
+    autoPlaySequence: 05000000050000000500000006000000i
   tutorial:
     showTutorial: 0
     introHints: 
