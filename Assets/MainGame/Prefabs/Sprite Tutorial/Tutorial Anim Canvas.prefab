@@ -36,7 +36,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 150, y: 150}
+  m_SizeDelta: {x: 120, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1122334455667788003
 CanvasRenderer:
@@ -66,7 +66,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 98b6278feba91f3488f05635526d274f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: c124c5b9367e47ac952c67b0ffa09801, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -89,8 +89,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 21300000, guid: 98b6278feba91f3488f05635526d274f, type: 3}
-  - {fileID: 21300000, guid: ab8d8cb1d85f48d41818ff41d997f0b3, type: 3}
+  - {fileID: 21300000, guid: c124c5b9367e47ac952c67b0ffa09801, type: 3}
+  - {fileID: 21300000, guid: f1e14f44f4894f68a14d7ffca92128ec, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!1 &1480173546077447087
@@ -131,6 +131,7 @@ RectTransform:
   - {fileID: 4743447897434843170}
   - {fileID: 3885382234195827871}
   - {fileID: 1122334455667788002}
+  - {fileID: 1122334455667788012}
   m_Father: {fileID: 5254440526430821497}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -159,7 +160,7 @@ GameObject:
   - component: {fileID: 8295607777166259975}
   - component: {fileID: 8631162163275656001}
   m_Layer: 5
-  m_Name: Up
+  m_Name: Space
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -182,7 +183,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 150, y: 150}
+  m_SizeDelta: {x: 258, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3823664950044105741
 CanvasRenderer:
@@ -212,7 +213,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a4eb80ecb42e71949b2f583cd0adb445, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d17d6240c68a4942b7347501a8f958f0, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -235,8 +236,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 21300000, guid: a4eb80ecb42e71949b2f583cd0adb445, type: 3}
-  - {fileID: 21300000, guid: 759422554c9735c46a4ab14ecc34ee65, type: 3}
+  - {fileID: 21300000, guid: d17d6240c68a4942b7347501a8f958f0, type: 3}
+  - {fileID: 21300000, guid: 2f151f95706d4924aca153ad71c3cdf6, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!1 &2379670361693370170
@@ -252,7 +253,7 @@ GameObject:
   - component: {fileID: 3390739702323913509}
   - component: {fileID: 8208023038210928034}
   m_Layer: 5
-  m_Name: Jump
+  m_Name: Space Right
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -275,7 +276,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 332, y: 150}
+  m_SizeDelta: {x: 465, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3017498570014410519
 CanvasRenderer:
@@ -305,7 +306,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 5a08309cc94d81d4b8079b0fbec856fa, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a8394b24baf340e9988c5522da4b97f2, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -328,9 +329,107 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 21300000, guid: 5a08309cc94d81d4b8079b0fbec856fa, type: 3}
-  - {fileID: 21300000, guid: 1b62ed95a25b9184db7424dc325ee243, type: 3}
-  - {fileID: 21300000, guid: 6552306c75b34f842b2e119ee4f5f4a0, type: 3}
+  - {fileID: 21300000, guid: a8394b24baf340e9988c5522da4b97f2, type: 3}
+  - {fileID: 21300000, guid: 4bf26fb0066d4b8491be4fde050313ef, type: 3}
+  - {fileID: 21300000, guid: 45d8beef793142faa516358f96a8b750, type: 3}
+  - {fileID: 21300000, guid: a8eca7c97682491bbc65c427ccd75e1c, type: 3}
+  - {fileID: 21300000, guid: cfa25f0322cc447eb552f8b86c1ae36c, type: 3}
+  m_FramesPerSecond: 4
+  m_Loop: 1
+--- !u!1 &1122334455667788011
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1122334455667788012}
+  - component: {fileID: 1122334455667788013}
+  - component: {fileID: 1122334455667788014}
+  - component: {fileID: 1122334455667788015}
+  m_Layer: 5
+  m_Name: Space Left
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1122334455667788012
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122334455667788011}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2242895722031992180}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 465, y: 120}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &1122334455667788013
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122334455667788011}
+  m_CullTransparentMesh: 1
+--- !u!114 &1122334455667788014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122334455667788011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 1d76af79e89a4eedbf55be143f6e72ea, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &1122334455667788015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122334455667788011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbf748754517f25438268befa039e2bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
+  m_Frames:
+  - {fileID: 21300000, guid: 1d76af79e89a4eedbf55be143f6e72ea, type: 3}
+  - {fileID: 21300000, guid: 48e2cae865954c048d5460ce1ae47d3b, type: 3}
+  - {fileID: 21300000, guid: d14505e768914931a68f9452c08b2069, type: 3}
+  - {fileID: 21300000, guid: b7c25ea131d4412ba70a56d193430ee7, type: 3}
+  - {fileID: 21300000, guid: 366344c9889849d7947e4888db9e0339, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!1 &2999190747297211005
@@ -462,7 +561,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 150, y: 150}
+  m_SizeDelta: {x: 120, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7021464840362986759
 CanvasRenderer:
@@ -492,7 +591,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: f814a76d37372094b8481d03cff7e32e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 47d7359e38c54002bad34547b24e7a12, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -515,8 +614,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 21300000, guid: f814a76d37372094b8481d03cff7e32e, type: 3}
-  - {fileID: 21300000, guid: a52863e792c94b74a8a59bb83d1999b1, type: 3}
+  - {fileID: 21300000, guid: 47d7359e38c54002bad34547b24e7a12, type: 3}
+  - {fileID: 21300000, guid: 7b6fb5b075064843b6cd3b977c5bfe7d, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!1 &4505784002804298680
@@ -658,6 +757,9 @@ MonoBehaviour:
   - name: 6
     pcAnim: {fileID: 1122334455667788005}
     xboxAnim: {fileID: 1122334455667788005}
+  - name: 7
+    pcAnim: {fileID: 1122334455667788015}
+    xboxAnim: {fileID: 1122334455667788015}
   animType: 2
   playOnStart: 0
 --- !u!114 &1122334455667788006
@@ -898,7 +1000,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 150, y: 150}
+  m_SizeDelta: {x: 198, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1404670012432140151
 CanvasRenderer:
@@ -928,7 +1030,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e6a88d78476644a4d9c76225a861466f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 905bce3b4e7946aea966c1888b61a5f2, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -951,8 +1053,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpriteSheetAnimator
   m_Frames:
-  - {fileID: 21300000, guid: e6a88d78476644a4d9c76225a861466f, type: 3}
-  - {fileID: 21300000, guid: 5daef4720fc8a414486b8c4a6b84b504, type: 3}
+  - {fileID: 21300000, guid: 905bce3b4e7946aea966c1888b61a5f2, type: 3}
+  - {fileID: 21300000, guid: f423e7d5df7146cdbedb7da4daa31ab4, type: 3}
   m_FramesPerSecond: 4
   m_Loop: 1
 --- !u!1 &9159554766576477335

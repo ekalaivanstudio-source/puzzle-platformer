@@ -128,8 +128,28 @@ namespace MainGame.UI
                 m_Target = GetComponent<RectTransform>();
             }
 
+            // A layout group owns the position of its children: the rest position captured here
+            // would be taken before the layout runs, and re-writing it every frame would pile
+            // every child onto the same spot (the level select grid did exactly that).
+            if (IsPositionDrivenByLayout(m_Target))
+            {
+                enabled = false;
+                return;
+            }
+
             m_Selectable = GetComponent<Selectable>();
             CaptureRestState();
+        }
+
+        private static bool IsPositionDrivenByLayout(RectTransform target)
+        {
+            if (target == null || target.parent == null) return false;
+
+            var layoutGroup = target.parent.GetComponent<LayoutGroup>();
+            if (layoutGroup == null || !layoutGroup.enabled) return false;
+
+            var layoutElement = target.GetComponent<LayoutElement>();
+            return layoutElement == null || !layoutElement.ignoreLayout;
         }
 
         private void Start()

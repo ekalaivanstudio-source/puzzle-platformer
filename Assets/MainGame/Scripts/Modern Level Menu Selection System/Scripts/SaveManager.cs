@@ -13,6 +13,8 @@ namespace ModernLevelSelection
         private const string CompletedKeyFormat = "MLS_Completed_{0}"; // {level}
         // Highest level index that ever had per-level data written, so ResetProgress knows how far to sweep.
         private const string MaxTouchedLevelKey = "MLS_MaxTouchedLevel";
+        // Set once Byte has told the player about Tab / LT — that hint is said once per playthrough.
+        private const string RewindHintShownKey = "MLS_RewindHintShown";
 
         /// <summary>
         /// Returns true when the player has any stored progress, i.e. a "Continue" entry point exists.
@@ -38,6 +40,20 @@ namespace ModernLevelSelection
 
             PlayerPrefs.DeleteKey(MaxTouchedLevelKey);
             PlayerPrefs.DeleteKey(HighestUnlockedKey);
+            PlayerPrefs.DeleteKey(RewindHintShownKey);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>True once Byte's Tab / LT hint has been shown in this playthrough.</summary>
+        public static bool IsRewindHintShown()
+        {
+            return PlayerPrefs.GetInt(RewindHintShownKey, 0) == 1;
+        }
+
+        /// <summary>Records that Byte's Tab / LT hint has been shown, so no later level repeats it.</summary>
+        public static void MarkRewindHintShown()
+        {
+            PlayerPrefs.SetInt(RewindHintShownKey, 1);
             PlayerPrefs.Save();
         }
 

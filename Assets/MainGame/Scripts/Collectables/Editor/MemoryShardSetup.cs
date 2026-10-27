@@ -32,6 +32,7 @@ namespace Collectables.EditorTools
         // ─── Paths ────────────────────────────────────────────────────────────────
 
         private const string ShardSpriteFolder = "Assets/MainGame/Sprites/Collectibles/memory shards";
+        private const string ShardSpriteFile = "MEMORY SHARD.png";
         private const string CollectEffectSpriteFolder = "Assets/MainGame/Sprites/Effects/item_collection_effect";
         private const string ResourcesFolder = "Assets/Resources";
         internal const string DatabasePath = ResourcesFolder + "/MemoryShardDatabase.asset";
@@ -402,8 +403,7 @@ namespace Collectables.EditorTools
             var renderer = root.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = 10;
 
-            // A placeholder so the object is visible in the scene view before play; the real
-            // sprite is applied at runtime from the level's assignment.
+            // The shard still. The pickup re-applies it from the database at runtime.
             var sprites = LoadShardSprites();
             if (sprites.Length > 0) renderer.sprite = sprites[0];
 
@@ -419,11 +419,6 @@ namespace Collectables.EditorTools
             if (effectPrefab != null) SetPrivateField(pickup, "m_CollectEffectPrefab", effectPrefab);
             else Debug.LogWarning($"[MemoryShards] No collect effect at {CollectEffectPrefabPath}; " +
                                   "the pickup will collect silently.");
-
-            // The shard's spin. Same call as Tools ▸ Memory Shards ▸ Rebuild Shard Animation,
-            // which is the one to use once levels hold instances — it patches the prefab instead
-            // of re-authoring it.
-            MemoryShardAnimationBuilder.Build(root.transform, pickup);
 
             EnsureFolder(PrefabFolder);
             PrefabUtility.SaveAsPrefabAsset(root, PickupPrefabPath);
@@ -607,29 +602,18 @@ namespace Collectables.EditorTools
         }
 
         /// <summary>
-        /// The shard sprites in variant order (1.png … 5.png). Missing files are skipped with a
-        /// warning rather than leaving null holes in the database, which would draw as nothing.
+        /// The shard art — the single still <c>MEMORY SHARD.png</c>. Returns an empty array with
+        /// a warning when it is missing, rather than a null hole that would draw as nothing.
         /// </summary>
         private static Sprite[] LoadShardSprites()
         {
-            var sprites = new List<Sprite>();
+            string path = $"{ShardSpriteFolder}/{ShardSpriteFile}";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite != null) return new[] { sprite };
 
-            for (int i = 1; i <= MemoryShardIds.VariantCount; i++)
-            {
-                string path = $"{ShardSpriteFolder}/{i}.png";
-                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-
-                if (sprite == null)
-                {
-                    Debug.LogWarning($"[MemoryShards] No sprite at {path}. It is either missing or " +
-                                     "not imported as a Sprite (Texture Type ▸ Sprite (2D and UI)).");
-                    continue;
-                }
-
-                sprites.Add(sprite);
-            }
-
-            return sprites.ToArray();
+            Debug.LogWarning($"[MemoryShards] No sprite at {path}. It is either missing or " +
+                             "not imported as a Sprite (Texture Type ▸ Sprite (2D and UI)).");
+            return new Sprite[0];
         }
 
         /// <summary>

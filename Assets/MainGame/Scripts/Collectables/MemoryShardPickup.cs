@@ -14,12 +14,9 @@ namespace Collectables
     /// not from this object. Drop the prefab in and the level's config decides whether it is
     /// there, so moving it around the scene never changes anything.
     ///
-    /// The shard is never a still image: the five sprites in
-    /// <c>Sprites/Collectibles/memory shards/</c> are one shard turning on the spot — front,
-    /// edge-on, back — and the pickup hands them to a <see cref="SpriteSheetAnimator"/> as the
-    /// frames they are. They came into the project read as five interchangeable looks, which is
-    /// what the <c>Shard Variant</c> field below is left over from; it now only picks the still
-    /// frame for a shard that has no animator.
+    /// The shard is a single still: <c>Sprites/Collectibles/memory shards/MEMORY SHARD.png</c>,
+    /// with no animation. The <c>Shard Variant</c> field below is left over from an older
+    /// five-frame art set; with one sprite every value resolves to the same picture.
     ///
     /// Collecting a shard never plays a story here. It raises
     /// <see cref="MemoryShardService.OnStoryUnlocked"/> if the new total crossed a threshold,
@@ -28,7 +25,7 @@ namespace Collectables
     ///
     /// Setup:
     ///   • Add a trigger Collider2D (this component enforces it).
-    ///   • Give it a SpriteRenderer and a SpriteSheetAnimator — the spin is applied automatically.
+    ///   • Give it a SpriteRenderer — the shard sprite is applied automatically.
     ///   • Tick Place Shard on the scene's LevelConfig ▸ Collectables.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
@@ -41,12 +38,7 @@ namespace Collectables
         [Tooltip("Renderer the shard sprite is written to. Falls back to one on this object or a child.")]
         [SerializeField] private SpriteRenderer m_Renderer;
 
-        [Tooltip("Plays the shard's spin. Falls back to one on this object or a child. With no " +
-                 "animator the shard simply stands still on its front-facing frame.")]
-        [SerializeField] private SpriteSheetAnimator m_SpinAnimator;
-
-        [Tooltip("Dress the shard in the database's art on load — the spin when there is an " +
-                 "animator, the front-facing frame when there is not. Turn off to keep hand-placed art.")]
+        [Tooltip("Dress the shard in the database's art on load. Turn off to keep hand-placed art.")]
         [SerializeField] private bool m_ApplyShardSprite = true;
 
         [Header("Feedback")]
@@ -65,9 +57,8 @@ namespace Collectables
                  "this number, so two test scenes sharing it share one shard.")]
         [SerializeField, Min(1)] private int m_LevelNumber = 1;
 
-        [Tooltip("ONLY used when Override Assignment is ticked, and only by a shard with no " +
-                 "SpriteSheetAnimator — one that spins plays every frame. Which frame to stand " +
-                 "still on (1-5), or 0 to pick automatically from the level number.")]
+        [Tooltip("ONLY used when Override Assignment is ticked. Which shard sprite to show, or 0 " +
+                 "to pick automatically from the level number. There is one sprite today.")]
         [SerializeField, Range(0, MemoryShardIds.VariantCount)] private int m_ShardVariant;
 
         private bool m_Collected;
@@ -84,7 +75,6 @@ namespace Collectables
             var col = GetComponent<Collider2D>();
             if (col != null) col.isTrigger = true;
             if (m_Renderer == null) m_Renderer = GetComponentInChildren<SpriteRenderer>();
-            if (m_SpinAnimator == null) m_SpinAnimator = GetComponentInChildren<SpriteSheetAnimator>();
         }
 
         private void Start()
@@ -179,24 +169,11 @@ namespace Collectables
         }
 
         /// <summary>
-        /// Dresses the pickup in the shard art and sets it spinning.
-        ///
-        /// The frames come from the database rather than the prefab, so re-drawing the shard or
-        /// adding a frame to <c>Sprites/Collectibles/memory shards/</c> reaches every shard in
-        /// the game after one Build Database — no prefab rebuild, no scene touched.
-        ///
-        /// With no animator on the pickup it falls back to the front-facing frame, which is how
-        /// a hand-built shard object with only a SpriteRenderer still shows up.
+        /// Dresses the pickup in the shard art from the database rather than the prefab, so
+        /// re-drawing <c>MEMORY SHARD.png</c> reaches every shard after one Build Database.
         /// </summary>
         private void ApplyShardSprite()
         {
-            if (m_SpinAnimator == null) m_SpinAnimator = GetComponentInChildren<SpriteSheetAnimator>();
-            if (m_SpinAnimator != null)
-            {
-                m_SpinAnimator.SetFrames(MemoryShardService.ShardFrames);
-                return;
-            }
-
             if (m_Renderer == null) m_Renderer = GetComponentInChildren<SpriteRenderer>();
             if (m_Renderer == null) return;
 

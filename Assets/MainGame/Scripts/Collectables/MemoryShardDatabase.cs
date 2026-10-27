@@ -19,16 +19,9 @@ namespace Collectables
     public class MemoryShardDatabase : ScriptableObject
     {
         [Header("Artwork")]
-        [Tooltip("The shard's spin, frame by frame (1.png … 5.png). These are one turning shard " +
-                 "— front, edge-on, back — not five different shards, so the order is the " +
-                 "animation and 1 is the front-facing frame used wherever a still is needed.")]
+        [Tooltip("The shard art (MEMORY SHARD.png), shown as a still on the pickup, HUD and " +
+                 "level select. Element 0 is the one used wherever a single icon is needed.")]
         public Sprite[] shardSprites = new Sprite[0];
-
-        /// <summary>
-        /// The spin frames in order, or an empty array when the database has no art. This is
-        /// what the pickup plays; <see cref="GetShardSprite"/> is for the stills (HUD icon).
-        /// </summary>
-        public Sprite[] ShardFrames => shardSprites != null ? shardSprites : new Sprite[0];
 
         [Header("Stories")]
         [Tooltip("Every story and the shard total that unlocks it. Order here does not matter — " +
@@ -64,11 +57,10 @@ namespace Collectables
         }
 
         /// <summary>
-        /// A single frame by 0-based index, or null when the database has no art. Frame 0 is
-        /// the front-facing one, which is what a still (the HUD icon) wants.
+        /// A shard sprite by 0-based index, or null when the database has no art.
         ///
         /// Out-of-range indices wrap rather than fail, so nothing ends up invisible because the
-        /// frame count changed.
+        /// sprite count changed.
         /// </summary>
         public Sprite GetShardSprite(int variantIndex)
         {

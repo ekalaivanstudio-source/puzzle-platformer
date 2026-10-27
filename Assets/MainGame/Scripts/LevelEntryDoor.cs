@@ -62,9 +62,9 @@ public class LevelEntryDoor : MonoBehaviour
             yield return UIManager.Instance.FadeRoutine(1f, 0f);
 
         // The level builds itself in front of the player before this door is even there to
-        // open: ground, scenery, exit door and pipe run, and finally THIS doorway growing up
-        // out of the floor — which is the last thing the director does, so the delivery below
-        // starts on a door that has just landed. A level with no director is unchanged; the
+        // open: ground, background, fog, scenery, exit door and collectables, pipe run, THIS
+        // doorway growing up out of the floor, and the lights coming on over all of it — so the
+        // delivery below is the very last beat. A level with no director is unchanged; the
         // fade simply comes up on the finished level.
         if (LevelBuildDirector.Instance != null)
             yield return LevelBuildDirector.Instance.BuildRoutine();
