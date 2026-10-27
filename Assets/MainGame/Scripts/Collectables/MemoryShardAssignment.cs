@@ -22,16 +22,13 @@ namespace Collectables
                  "scene hides itself, and the shard stops counting towards the total.")]
         public bool placeShard = false;
 
-        [Tooltip("Leftover from when the five sprites were read as five shards: they are the " +
-                 "frames of one spinning shard, and the pickup plays all of them. This only " +
-                 "picks the resting frame (1-5, or 0 to spread by level number) for a shard " +
-                 "with no SpriteSheetAnimator. Cosmetic either way — every shard counts the same.")]
+        [Tooltip("Which shard sprite to show (0 to spread by level number). There is one " +
+                 "sprite today, so every value looks the same. Cosmetic — every shard counts the same.")]
         [Range(0, MemoryShardIds.VariantCount)]
         public int shardVariant = 0;
 
         /// <summary>
-        /// The 0-based frame a shard with no animator rests on, resolving 0 to the automatic
-        /// spread. A spinning shard ignores it.
+        /// The 0-based shard sprite index, resolving 0 to the automatic spread.
         /// </summary>
         public int VariantIndex(int levelNumber) =>
             shardVariant <= 0

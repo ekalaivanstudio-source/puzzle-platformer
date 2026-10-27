@@ -38,6 +38,10 @@ public class TutorialSequenceGuide : MonoBehaviour
 
     private Coroutine m_IntroRoutine;
 
+    // True while the queue holds a step the solution does not have. Byte tells the player to
+    // undo it once on the way in, not again on every later input stacked on top of it.
+    private bool m_IsOffTrack;
+
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
     private void Awake()
@@ -114,6 +118,7 @@ public class TutorialSequenceGuide : MonoBehaviour
     private void OnTurnReset()
     {
         m_IsExecuting = false;
+        m_IsOffTrack = false;
         StartIntro();
     }
 
@@ -168,7 +173,7 @@ public class TutorialSequenceGuide : MonoBehaviour
     // ─── Hint display ────────────────────────────────────────────────────────
 
     // Shows the hint for the action the player has to queue next, or the Enter hint once
-    // the whole solution is queued.
+    // the whole solution is queued — or the Backspace hint once the queue has strayed from it.
     private void Refresh()
     {
         if (m_IsExecuting || m_Solution == null || m_Solution.Length == 0)
@@ -179,6 +184,21 @@ public class TutorialSequenceGuide : MonoBehaviour
 
         // The intro owns the display until the player's first input ends it.
         if (m_IntroRoutine != null) return;
+
+        // A wrong step: hinting at the next one would teach the player to build on top of
+        // the mistake, so point at Backspace until it is cleared.
+        if (HasWrongStep())
+        {
+            m_Anims.PlayAnimation(TutorialAnimType.BackSpace);
+
+            if (!m_IsOffTrack)
+                ByteHintController.Instance?.Say(ByteHintController.ByteHint.Undo);
+
+            m_IsOffTrack = true;
+            return;
+        }
+
+        m_IsOffTrack = false;
 
         int count = QueuedCount;
 
@@ -208,16 +228,36 @@ public class TutorialSequenceGuide : MonoBehaviour
         }
     }
 
-    // The hint that teaches how to queue an action. JumpLeft has no art yet, and Any /
-    // Interact are not things a player is told to press, so those show nothing.
+    // True when a queued action differs from the solution step in its place, or runs past
+    // the end of it. Skips Interact the same way QueuedCount does; an Any step in the
+    // solution accepts whatever was queued there.
+    private bool HasWrongStep()
+    {
+        if (SequenceManager.Instance == null) return false;
+
+        int index = 0;
+        foreach (ActionTypeEnum action in SequenceManager.Instance.Sequence)
+        {
+            if (action == ActionTypeEnum.Interact) continue;
+            if (index >= m_Solution.Length) return true;
+
+            ActionTypeEnum expected = m_Solution[index++];
+            if (expected != ActionTypeEnum.Any && action != expected) return true;
+        }
+        return false;
+    }
+
+    // The hint that teaches how to queue an action. Any / Interact are not things a player
+    // is told to press, so those show nothing.
     private bool TryGetHint(ActionTypeEnum action, out TutorialAnimType hint)
     {
         switch (action)
         {
             case ActionTypeEnum.Right:     hint = TutorialAnimType.Right;     return true;
             case ActionTypeEnum.Left:      hint = TutorialAnimType.Left;      return true;
-            case ActionTypeEnum.Jump:      hint = TutorialAnimType.Up;        return true;
+            case ActionTypeEnum.Jump:      hint = TutorialAnimType.Space;     return true;
             case ActionTypeEnum.JumpRight: hint = TutorialAnimType.JumpRight; return true;
+            case ActionTypeEnum.JumpLeft:  hint = TutorialAnimType.JumpLeft;  return true;
             default:
                 hint = default;
                 Debug.LogWarning($"[TutorialSequenceGuide] No tutorial hint for {action} — " +

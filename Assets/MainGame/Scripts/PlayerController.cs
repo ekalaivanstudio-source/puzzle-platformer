@@ -200,7 +200,7 @@ public class PlayerController : MonoBehaviour
              "two-frame hold sells the weight.")]
     [SerializeField] private FeelPreset m_LandFeel = new FeelPreset
     {
-        CameraShake = new CameraShakeSettings(0.05f, 0.14f),
+        CameraShake = new CameraShakeSettings(0.1f, 0.2f),
         Haptic = HapticPattern.MediumImpact,
         FreezeDuration = 0.035f,
         FreezeTimeScale = 0.05f,
