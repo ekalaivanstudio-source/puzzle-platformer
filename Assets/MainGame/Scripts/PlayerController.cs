@@ -1,4 +1,4 @@
-﻿using ModernLevelSelection;
+using ModernLevelSelection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -175,7 +175,7 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Streak drawn behind the body for the length of a cannon flight, and only " +
              "then — it is switched on as the shot leaves the barrel and stops emitting on " +
              "landing, so it never smears behind an ordinary walk. Built and wired by " +
-             "Tools ▸ Cannon ▸ Build Everything; leave empty for no trail.")]
+             "Tools ? Cannon ? Build Everything; leave empty for no trail.")]
     [SerializeField] private TrailRenderer m_CannonTrail;
 
     [Header("Feel")]
@@ -275,7 +275,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 m_StartPosition;
     private Vector3 m_OriginalScale;   // spawn facing — restored on respawn so a left-facing death doesn't persist
 
-    // ─── Motion state ───────────────────────────────────────────────────────────
+    // --- Motion state -----------------------------------------------------------
     // The body is kinematic, so linearVelocity is always zero and can no longer tell
     // the animator or the footstep loop what the player is doing. These flags carry
     // that information instead, set by whichever routine currently owns the body.
@@ -381,7 +381,7 @@ public class PlayerController : MonoBehaviour
     private ContactFilter2D m_NoFilter;       // all layers, includes triggers (matches *All defaults)
     private ContactFilter2D m_InteractFilter; // m_InteractLayer only
 
-    // ─── Unity Lifecycle ────────────────────────────────────────────────────────
+    // --- Unity Lifecycle --------------------------------------------------------
 
     private void Awake()
     {
@@ -539,7 +539,7 @@ public class PlayerController : MonoBehaviour
             if (m_PassiveFallDistance > m_GroundPoundDropDistance) m_IsGroundPounding = true;
         }
 
-        // A surface stopped the fall short of the full step → landed. Settle on the cell.
+        // A surface stopped the fall short of the full step ? landed. Settle on the cell.
         if (drop < step)
         {
             m_PassiveFallSpeed = 0f;
@@ -581,7 +581,7 @@ public class PlayerController : MonoBehaviour
         AudioManager.Instance?.SetWalking(m_IsWalking && !m_IsAirborne);
     }
 
-    // ─── Public API ─────────────────────────────────────────────────────────────
+    // --- Public API -------------------------------------------------------------
 
     /// <summary>
     /// Starts the execution turn. Called by <see cref="GameManager.OnPlayClicked"/>.
@@ -591,7 +591,7 @@ public class PlayerController : MonoBehaviour
     {
         if (SequenceManager.Instance == null || !SequenceManager.Instance.CanExecute)
         {
-            Debug.LogError("[PlayerController] Cannot start � no sequence source or sequence is empty.", this);
+            Debug.LogError("[PlayerController] Cannot start ? no sequence source or sequence is empty.", this);
             return;
         }
 
@@ -623,7 +623,7 @@ public class PlayerController : MonoBehaviour
         m_IsHazardable = true;
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
-        // Do NOT update m_StartPosition � death and turn-end still reset to the
+        // Do NOT update m_StartPosition ? death and turn-end still reset to the
         // original spawn. The checkpoint only repositions the player for this turn.
         // Snapped, because the checkpoint is an authored scene transform and nothing
         // guarantees the designer placed it exactly on a cell. Dropping the player onto a
@@ -744,7 +744,7 @@ public class PlayerController : MonoBehaviour
         EndTurn();
     }
 
-    // ─── External Ride ───────────────────────────────────────────────────────────
+    // --- External Ride -----------------------------------------------------------
     //
     // The waypoint transports above walk the player along a path the player itself owns.
     // A ride is the other arrangement: the body is handed over, and something in the world
@@ -853,7 +853,7 @@ public class PlayerController : MonoBehaviour
         m_RideInterruptedTurn = false;
     }
 
-    // ─── Cannon ─────────────────────────────────────────────────────────────────
+    // --- Cannon -----------------------------------------------------------------
 
     /// <summary>
     /// Hands the player to <paramref name="cannon"/>: the turn is interrupted, the body is
@@ -912,7 +912,7 @@ public class PlayerController : MonoBehaviour
         m_IsAirborne = true;
         AudioManager.Instance?.SetWalking(false);
 
-        // ── Load ────────────────────────────────────────────────────────────────
+        // -- Load ----------------------------------------------------------------
         // Read once, up front: the barrel re-aims itself every frame, and sampling the
         // muzzle again after the wind-up would fire from a slightly different place than
         // the one the body was drawn to.
@@ -928,7 +928,7 @@ public class PlayerController : MonoBehaviour
         if (cannon.WindUpDuration > 0f)
             yield return new WaitForSeconds(cannon.WindUpDuration);
 
-        // ── Fire ────────────────────────────────────────────────────────────────
+        // -- Fire ----------------------------------------------------------------
         // The shot goes off: the barrel plays its recoil animation and the fire feel kicks.
         // The player is still inside it and still hidden — the body does not leave on the
         // frame the cannon goes off, it leaves part way through the blast.
@@ -941,7 +941,7 @@ public class PlayerController : MonoBehaviour
         if (cannon.LaunchDelay > 0f)
             yield return new WaitForSecondsRealtime(cannon.LaunchDelay);
 
-        // ── Launch ──────────────────────────────────────────────────────────────
+        // -- Launch --------------------------------------------------------------
         if (m_SpriteRenderer != null) m_SpriteRenderer.enabled = true;
 
         // Facing is taken from the shot, not from the way the player walked in: fired left
@@ -969,7 +969,7 @@ public class PlayerController : MonoBehaviour
         m_JumpFeel.Play(muzzle, transform, Vector2.up);
         SpawnParticleEffect(m_JumpStartDust, muzzle, 1f);
 
-        // ── Flight ──────────────────────────────────────────────────────────────
+        // -- Flight --------------------------------------------------------------
         // Driven by ACCUMULATED TIME, re-reading fixedDeltaTime every step, rather than by a
         // step count worked out up front.
         //
@@ -1007,7 +1007,7 @@ public class PlayerController : MonoBehaviour
             yield return new WaitForFixedUpdate();
         }
 
-        // ── Land ────────────────────────────────────────────────────────────────
+        // -- Land ----------------------------------------------------------------
         // Upright again. The loop's last step already lands on a whole number of turns, but
         // an arc cut short by anything at all would leave the body lying on its side for
         // the rest of the level, so the pose is put back rather than assumed.
@@ -1038,7 +1038,7 @@ public class PlayerController : MonoBehaviour
         m_IsRidingCannon = false;
         cannon.OnPlayerLanded(GridWorld.SnapToCell(m_Rigidbody.position));
 
-        // ── Resume ──────────────────────────────────────────────────────────────
+        // -- Resume --------------------------------------------------------------
         // The interrupted command is spent on the flight, so the turn picks up at the one
         // after it — through the same helper the waypoint routes and the lift release use,
         // so every way of taking the player away from their turn hands it back on identical
@@ -1079,7 +1079,7 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.position = muzzle;
     }
 
-    // ─── Execution Loop ─────────────────────────────────────────────────────────
+    // --- Execution Loop ---------------------------------------------------------
 
     // Iterates through each beat slot, executing one command per beat.
     private IEnumerator ExecutionLoop(int startIndex = 0)
@@ -1130,7 +1130,7 @@ public class PlayerController : MonoBehaviour
         m_ExecutionCoroutine = null;
     }
 
-    // ─── Public Command Methods ──────────────────────────────────────────────────
+    // --- Public Command Methods --------------------------------------------------
 
     /// <summary>Moves exactly <see cref="m_MoveDistancePerCommand"/> units to the left.</summary>
     public IEnumerator MoveLeftCommand() => MoveHorizontal(-m_MoveDistancePerCommand);
@@ -1148,7 +1148,7 @@ public class PlayerController : MonoBehaviour
     public IEnumerator JumpLeftCommand() => PerformJump(-m_JumpForwardDistance);
 
 
-    // ─── Movement Logic ──────────────────────────────────────────────────────────
+    // --- Movement Logic ----------------------------------------------------------
 
     /// <summary>
     /// Duration of ONE cell of a Left/Right command — the walk's actual unit of motion.
@@ -1444,7 +1444,7 @@ public class PlayerController : MonoBehaviour
         SnapToGrid();
     }
 
-    // ─── Jump Logic ──────────────────────────────────────────────────────────────
+    // --- Jump Logic --------------------------------------------------------------
 
     // Performs a jump with deterministic height and optional horizontal distance.
     //
@@ -1656,7 +1656,7 @@ public class PlayerController : MonoBehaviour
         ParticleEffectSpawner.Spawn(
             prefab, new Vector3(position.x, position.y, transform.position.z), scale);
 
-    // ─── Portal Spawn / Exit Animation ───────────────────────────────────────────
+    // --- Portal Spawn / Exit Animation -------------------------------------------
 
     /// <summary>
     /// The player's arrival, called by <see cref="LevelEntryDoor"/> once its door has opened:
@@ -1906,7 +1906,7 @@ public class PlayerController : MonoBehaviour
         return m_OriginalScale.x < 0f ? -1f : 1f;
     }
 
-    // ─── Interact Command ────────────────────────────────────────────────────────
+    // --- Interact Command --------------------------------------------------------
 
     // Triggers interaction and holds for m_MoveDuration so it occupies the same
     // time slot as a movement command, keeping beat rhythm consistent.
@@ -1930,7 +1930,7 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-    // ─── Ground Check & Animation ────────────────────────────────────────────────
+    // --- Ground Check & Animation ------------------------------------------------
 
     // Continuous spike check — covers moving spikes that slide into the player via
     // transform.position, which don’t reliably fire OnTriggerEnter2D without a Rigidbody2D.
@@ -2204,7 +2204,7 @@ public class PlayerController : MonoBehaviour
         m_Rigidbody.position = GridWorld.SnapToCell(m_Rigidbody.position);
     }
 
-    // ─── Turn End / Abort ────────────────────────────────────────────────────────
+    // --- Turn End / Abort --------------------------------------------------------
 
     private void EndTurn()
     {
@@ -2355,7 +2355,7 @@ public class PlayerController : MonoBehaviour
         DeviceInputProvider.Instance?.SetEnabled(true);
     }
 
-    // ─── Collision ───────────────────────────────────────────────────────────────
+    // --- Collision ---------------------------------------------------------------
 
     private void OnTriggerEnter2D(Collider2D other)
     {
@@ -2392,6 +2392,35 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator WinRoutine(Collider2D door)
     {
+        // Immediately persist level completion and next unlock on win
+        int currentLevelIndex = (LevelContext.Instance != null && LevelContext.Instance.CurrentLevel > 0)
+            ? LevelContext.Instance.CurrentLevel
+            : UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+
+        if (currentLevelIndex <= 0)
+        {
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            var match = System.Text.RegularExpressions.Regex.Match(sceneName, @"\d+");
+            if (match.Success && int.TryParse(match.Value, out int parsed))
+            {
+                currentLevelIndex = parsed;
+            }
+            else
+            {
+                currentLevelIndex = 1;
+            }
+        }
+
+        ModernLevelSelection.SaveManager.SetCompleted(currentLevelIndex);
+        int nextLevelIndex = currentLevelIndex + 1;
+        if (ModernLevelSelection.SaveManager.GetHighestUnlocked() < nextLevelIndex)
+        {
+            ModernLevelSelection.SaveManager.SetHighestUnlocked(nextLevelIndex);
+        }
+
+        if (ModernLevelSelection.LevelManager.Instance != null)
+            ModernLevelSelection.LevelManager.Instance.CompleteLevel(currentLevelIndex, 0);
+
         // The level is won — don't let a hazard kill the player during the entry or
         // the fade out.
         m_IsHazardable = false;
@@ -2466,13 +2495,6 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.2f);
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
-        // Recorded BEFORE the scene load is requested, and null-guarded: LevelManager is a
-        // menu-scene singleton, so it simply doesn't exist when a level scene is played
-        // directly. Unguarded and ordered the other way round, this threw a
-        // NullReferenceException on every win and the completion was never saved.
-        if (LevelManager.Instance != null)
-            LevelManager.Instance.CompleteLevel(SceneManager.GetActiveScene().buildIndex, 0);
-
         GameManager.Instance.LoadNextLevel();
     }
 
@@ -2584,7 +2606,7 @@ public class PlayerController : MonoBehaviour
             yield return EvilDoctorAnimationController.Instance.RegisterFailureRoutine();
 
         // Reset the level in place instead of reloading the scene, so the per-scene
-        // failure tally survives: fade out → reset → fade back in.
+        // failure tally survives: fade out ? reset ? fade back in.
         if (UIManager.Instance != null)
             yield return StartCoroutine(UIManager.Instance.FadeRoutine(0f, 1f));
 

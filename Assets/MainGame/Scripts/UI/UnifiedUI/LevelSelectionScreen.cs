@@ -2,68 +2,170 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using LevelSelection;
+using MainGame.UI.PauseMenu;
 
 namespace MainGame.UI.Unified
 {
     /// <summary>
-    /// Unified Level Selection Screen controller with procedural Map Network Activation entrance
-    /// synchronized with the runtime level generator.
+    /// Unified Level Selection Screen controller for the paginated grid design.
+    /// Synchronizes screen transitions, back button handling, and EventSystem focus with GridLevelGenerator.
     /// </summary>
     [DisallowMultipleComponent]
     public class LevelSelectionScreen : UIScreen
     {
+        #region Inspector Fields
+
         [Header("Controls")]
         [SerializeField] private Button m_BackButton;
 
         [Header("References")]
-        [Tooltip("Manager that generates the arc pages. Resolved from this object or its children when left empty.")]
-        [SerializeField] private LevelSelection.LevelSelectionManager m_LevelSelectionManager;
+        [Tooltip("The generator managing paginated level buttons in the grid.")]
+        [SerializeField] private GridLevelGenerator m_GridLevelGenerator;
 
         [Header("Animator Reference")]
         [SerializeField] private LevelSelectionScreenAnimator m_Animator;
 
-        protected override void Awake()
-        {
-            base.Awake();
+        [Header("Legacy Fallback (Optional)")]
+        [Tooltip("Legacy coordinator reference for backwards compatibility.")]
+        [SerializeField] private LevelSelectionManager m_LevelSelectionManager;
 
-            if (m_LevelSelectionManager == null)
-            {
-                m_LevelSelectionManager = GetComponent<LevelSelection.LevelSelectionManager>();
-            }
-            if (m_LevelSelectionManager == null)
-            {
-                m_LevelSelectionManager = GetComponentInChildren<LevelSelection.LevelSelectionManager>(true);
-            }
+        #endregion
 
-            if (m_Animator == null)
-            {
-                m_Animator = GetComponent<LevelSelectionScreenAnimator>();
-            }
-            if (m_Animator == null)
-            {
-                m_Animator = GetComponentInChildren<LevelSelectionScreenAnimator>(true);
-            }
-        }
+        private bool m_IsExiting = false;
+
+        #region Public Properties
 
         public override GameObject DefaultSelectedObject
         {
             get
             {
-                GameObject selectTarget = m_LevelSelectionManager != null
-                    ? m_LevelSelectionManager.GetCurrentUnlockedLevelNodeObject()
-                    : null;
+                if (m_GridLevelGenerator != null)
+                {
+                    GridLevelButton targetBtn = m_GridLevelGenerator.GetFocusedOrFirstButton();
+                    if (targetBtn != null) return targetBtn.gameObject;
+                }
 
-                return selectTarget != null ? selectTarget : base.DefaultSelectedObject;
+                if (m_LevelSelectionManager != null)
+                {
+                    GameObject legacyTarget = m_LevelSelectionManager.GetCurrentUnlockedLevelNodeObject();
+                    if (legacyTarget != null) return legacyTarget;
+                }
+
+                return m_BackButton != null ? m_BackButton.gameObject : base.DefaultSelectedObject;
             }
         }
 
-        public override void Open()
+        #endregion
+
+        #region Unity Lifecycle
+
+        protected override void Awake()
         {
-            base.Open();
+            base.Awake();
+            AutoWireComponents();
         }
+
+        private void OnEnable()
+        {
+            if (m_BackButton != null)
+            {
+                m_BackButton.onClick.RemoveListener(HandleBackClicked);
+                m_BackButton.onClick.AddListener(HandleBackClicked);
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (m_BackButton != null)
+            {
+                m_BackButton.onClick.RemoveListener(HandleBackClicked);
+            }
+        }
+
+        private void Update()
+        {
+            if (!gameObject.activeInHierarchy) return;
+
+            bool backPressed = false;
+
+            // 1. New Input System Keyboard B, Backspace, Escape
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.bKey.wasPressedThisFrame ||
+                    Keyboard.current.backspaceKey.wasPressedThisFrame ||
+                    Keyboard.current.escapeKey.wasPressedThisFrame)
+                {
+                    backPressed = true;
+                }
+            }
+
+            // 2. New Input System Gamepad B (buttonEast)
+            if (Gamepad.current != null && (Gamepad.current.buttonEast.wasPressedThisFrame || Gamepad.current.bButton.wasPressedThisFrame))
+            {
+                backPressed = true;
+            }
+
+            // 3. Legacy Input Manager fallback
+            if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Backspace) ||
+                Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.JoystickButton1))
+            {
+                backPressed = true;
+            }
+
+            if (backPressed)
+            {
+                HandleBackClicked();
+            }
+        }
+
+        #endregion
+
+        #region Auto-Wiring
+
+        private void AutoWireComponents()
+        {
+            if (m_GridLevelGenerator == null)
+            {
+                m_GridLevelGenerator = GetComponent<GridLevelGenerator>() ?? GetComponentInChildren<GridLevelGenerator>(true);
+            }
+
+            if (m_Animator == null)
+            {
+                m_Animator = GetComponent<LevelSelectionScreenAnimator>() ?? GetComponentInChildren<LevelSelectionScreenAnimator>(true);
+            }
+
+            if (m_BackButton == null)
+            {
+                Transform backTrans = transform.Find("Holder/B Back") ?? transform.Find("B Back");
+                if (backTrans != null)
+                {
+                    m_BackButton = backTrans.GetComponent<Button>();
+                }
+                else
+                {
+                    var buttons = GetComponentsInChildren<Button>(true);
+                    foreach (var b in buttons)
+                    {
+                        if (b.name.Equals("B Back", StringComparison.OrdinalIgnoreCase) ||
+                            b.name.Equals("Back", StringComparison.OrdinalIgnoreCase))
+                        {
+                            m_BackButton = b;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        #region Screen Transitions
 
         public override void PlayEnterTransition(Action onComplete)
         {
+            m_IsExiting = false;
             base.Open();
 
             // Clear any remembered selection so we always focus the current unlocked level on panel open
@@ -72,43 +174,24 @@ namespace MainGame.UI.Unified
                 UINavigationManager.Instance.ClearSelectionMemory(this);
             }
 
-            if (m_LevelSelectionManager != null && m_Animator != null)
+            // Refresh or navigate generator to highest unlocked level
+            if (m_GridLevelGenerator != null)
             {
-                // 1. Reset manager to current unlocked level and its corresponding arc
-                m_LevelSelectionManager.ResetToCurrentUnlockedLevel();
-
-                // 2. Synchronously set initial hidden state at frame 0 to prevent 1-frame glitches
-                m_Animator.PrepareEntranceState();
-
-                // 3. Synchronize entrance with runtime level generation completion
-                Action<List<LevelSelection.LevelNodeUI>, List<LevelSelection.UIPathSegment>, int> onReadyHandler = null;
-                onReadyHandler = (nodes, segments, highestUnlockedLevel) =>
-                {
-                    m_LevelSelectionManager.OnArcReady -= onReadyHandler;
-
-                    // 4. Play the coordinated Map Network Activation cinematic with active arc sprite
-                    Sprite arcSprite = m_LevelSelectionManager.GetCurrentArcSprite();
-                    m_Animator.PlayMapEntrance(nodes, segments, highestUnlockedLevel, () =>
-                    {
-                        // 5. Restore EventSystem focus and unlock controller navigation only after marker settles
-                        m_LevelSelectionManager.FocusCurrentLevelNode();
-                        onComplete?.Invoke();
-                    }, arcSprite, focusTargetNodeIndex: LevelSelection.LevelSelectionManager.FocusCurrentLevel);
-                };
-
-                m_LevelSelectionManager.OnArcReady += onReadyHandler;
-                m_LevelSelectionManager.RequestArcData(-1, forceRegenerate: false);
+                int highest = ModernLevelSelection.SaveManager.GetHighestUnlocked();
+                m_GridLevelGenerator.JumpToLevel(highest, selectInEventSystem: false);
             }
-            else if (m_Animator != null)
+
+            if (m_Animator != null)
             {
-                m_Animator.PlayEntrance(onComplete);
+                m_Animator.PlayEntrance(() =>
+                {
+                    FocusCurrentSelection();
+                    onComplete?.Invoke();
+                });
             }
             else
             {
-                if (m_LevelSelectionManager != null)
-                {
-                    m_LevelSelectionManager.InitializeAndFocusCurrentLevel();
-                }
+                FocusCurrentSelection();
                 onComplete?.Invoke();
             }
         }
@@ -120,17 +203,9 @@ namespace MainGame.UI.Unified
                 UINavigationManager.Instance.ClearSelectionMemory(this);
             }
 
-            if (m_LevelSelectionManager != null)
-            {
-                m_LevelSelectionManager.CancelActiveTransition();
-            }
-
             if (m_Animator != null)
             {
-                var nodes = m_LevelSelectionManager != null ? m_LevelSelectionManager.LevelNodes : null;
-                var segments = m_LevelSelectionManager != null ? m_LevelSelectionManager.PathSegments : null;
-
-                m_Animator.PlayMapExit(nodes, segments, () =>
+                m_Animator.PlayExit(() =>
                 {
                     Close();
                     onComplete?.Invoke();
@@ -143,44 +218,64 @@ namespace MainGame.UI.Unified
             }
         }
 
-        private void OnEnable()
+        private void FocusCurrentSelection()
         {
-            if (m_BackButton != null) m_BackButton.onClick.AddListener(HandleBackClicked);
+            GameObject target = DefaultSelectedObject;
+            if (target != null && UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(target);
+            }
         }
 
-        private void OnDisable()
+        #endregion
+
+        #region Navigation & Back Button
+
+        /// <summary>
+        /// True if this level selection screen is active in hierarchy.
+        /// </summary>
+        public bool IsOpen => gameObject.activeSelf;
+
+        /// <summary>
+        /// Public trigger for back navigation.
+        /// </summary>
+        public void HandleBack()
         {
-            if (m_BackButton != null) m_BackButton.onClick.RemoveListener(HandleBackClicked);
+            HandleBackClicked();
         }
 
         private void HandleBackClicked()
         {
-            if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
+            if (m_IsExiting) return;
+
+            Action executeBack = () =>
             {
-                return;
-            }
+                if (UINavigationManager.Instance != null)
+                {
+                    UINavigationManager.Instance.PopScreen();
+                }
+                else if (PauseMenuController.Instance != null && PauseMenuController.Instance.CurrentState == PauseState.LevelSelection)
+                {
+                    PauseMenuController.Instance.BackFromLevelSelection();
+                }
+            };
+
+            m_IsExiting = true;
 
             if (m_BackButton != null)
             {
                 UIAnimatedButton animBtn = m_BackButton.GetComponent<UIAnimatedButton>();
                 if (animBtn != null)
                 {
-                    animBtn.PlayConfirmPunch(() =>
-                    {
-                        if (UINavigationManager.Instance != null)
-                        {
-                            UINavigationManager.Instance.PopScreen();
-                        }
-                    });
+                    animBtn.PlayConfirmPunch(executeBack);
                     return;
                 }
             }
 
             AudioManager.Instance?.PlayButton();
-            if (UINavigationManager.Instance != null)
-            {
-                UINavigationManager.Instance.PopScreen();
-            }
+            executeBack();
         }
+
+        #endregion
     }
 }

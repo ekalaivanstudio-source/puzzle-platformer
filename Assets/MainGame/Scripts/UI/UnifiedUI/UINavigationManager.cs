@@ -59,7 +59,7 @@ namespace MainGame.UI.Unified
         // the rest of the session -- which silently swallows every button click and leaves
         // EventSystem.sendNavigationEvents off, so the menu looks alive but responds to
         // nothing. Transitions run on unscaled time, so this is a wall-clock budget.
-        private const float k_MaxTransitionDuration = 8f;
+        private const float k_MaxTransitionDuration = 0.50f;
 
         public bool IsTransitioning => m_IsTransitioning;
 
@@ -451,7 +451,8 @@ namespace MainGame.UI.Unified
             newScreen.PlayEnterTransition(() => newEnterFinished = true);
 
             float waited = 0f;
-            while ((!newEnterFinished || !oldExitFinished) && waited < k_MaxTransitionDuration)
+            float maxWait = 0.30f;
+            while ((!newEnterFinished || !oldExitFinished) && waited < maxWait)
             {
                 waited += Time.unscaledDeltaTime;
                 yield return null;

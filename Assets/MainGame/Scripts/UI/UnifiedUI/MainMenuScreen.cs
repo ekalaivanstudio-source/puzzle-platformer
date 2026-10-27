@@ -80,6 +80,11 @@ namespace MainGame.UI.Unified
             {
                 m_HomeScreenAnimator = GetComponentInChildren<HomeScreenAnimator>(true);
             }
+
+            if (m_LevelSelectionScreen == null)
+            {
+                m_LevelSelectionScreen = FindAnyObjectByType<LevelSelectionScreen>(FindObjectsInactive.Include);
+            }
         }
 
         public override void Open()
@@ -132,9 +137,10 @@ namespace MainGame.UI.Unified
         {
             if (m_ContinueButton == null) return;
 
-            bool hasSave = ModernLevelSelection.SaveManager.HasSaveData();
-            m_ContinueButton.gameObject.SetActive(hasSave);
-            m_ContinueButton.interactable = hasSave;
+            // In our design, Continue opens the Level Selection screen.
+            // Ensure button is active and interactable so player can access levels.
+            m_ContinueButton.gameObject.SetActive(true);
+            m_ContinueButton.interactable = true;
 
             if (m_NavigationLinker != null)
             {
@@ -144,6 +150,11 @@ namespace MainGame.UI.Unified
 
         private void Start()
         {
+            if (m_LevelSelectionScreen == null)
+            {
+                m_LevelSelectionScreen = FindAnyObjectByType<LevelSelectionScreen>(FindObjectsInactive.Include);
+            }
+
             RefreshContinueButtonState();
 
             if (PauseMenuScreen.AutoOpenLevelSelection)
@@ -170,6 +181,11 @@ namespace MainGame.UI.Unified
         private IEnumerator OpenLevelSelectionNextFrame()
         {
             yield return null;
+
+            if (m_LevelSelectionScreen == null)
+            {
+                m_LevelSelectionScreen = FindAnyObjectByType<LevelSelectionScreen>(FindObjectsInactive.Include);
+            }
 
             if (m_LevelSelectionScreen != null && UINavigationManager.Instance != null)
             {
@@ -201,6 +217,7 @@ namespace MainGame.UI.Unified
         {
             if (UINavigationManager.Instance != null && UINavigationManager.Instance.IsTransitioning)
             {
+                Debug.LogWarning("[MainMenuScreen] Button clicked while UINavigationManager is transitioning. Ignoring click.");
                 return;
             }
 
@@ -229,7 +246,19 @@ namespace MainGame.UI.Unified
             m_LastClickedButtonIndex = 0;
             TriggerWithPunch(m_ContinueButton, () =>
             {
-                PushScreen(m_LevelSelectionScreen);
+                if (m_LevelSelectionScreen == null)
+                {
+                    m_LevelSelectionScreen = FindAnyObjectByType<LevelSelectionScreen>(FindObjectsInactive.Include);
+                }
+
+                if (m_LevelSelectionScreen != null)
+                {
+                    PushScreen(m_LevelSelectionScreen);
+                }
+                else
+                {
+                    Debug.LogWarning("[MainMenuScreen] LevelSelectionScreen reference is null and could not be found!");
+                }
             });
         }
 

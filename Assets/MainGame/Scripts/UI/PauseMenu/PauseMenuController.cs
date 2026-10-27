@@ -47,7 +47,8 @@ namespace MainGame.UI.PauseMenu
         [SerializeField] private PauseAudioController m_Audio;
         [SerializeField] private PauseNavigationController m_Navigation;
         [SerializeField] private PauseConfirmationController m_Confirmation;
-        [SerializeField] private PauseLevelSelectionController m_LevelSelection;
+        [SerializeField] private LevelSelectionScreen m_LevelSelection;
+        [SerializeField] private PauseLevelSelectionController m_LegacyLevelSelection;
         [SerializeField] private PauseInputController m_Input;
         [SerializeField] private PauseMenuAnimator m_Animator;
 
@@ -169,12 +170,12 @@ namespace MainGame.UI.PauseMenu
 
             if (m_LevelSelection == null)
             {
-                m_LevelSelection = GetComponentInChildren<PauseLevelSelectionController>(true);
-                if (m_LevelSelection == null)
-                {
-                    Transform ls = transform.Find("Pause screen/Level Selection") ?? transform.Find("Level Selection");
-                    if (ls != null) m_LevelSelection = ls.gameObject.AddComponent<PauseLevelSelectionController>();
-                }
+                m_LevelSelection = GetComponentInChildren<LevelSelectionScreen>(true);
+            }
+
+            if (m_LegacyLevelSelection == null)
+            {
+                m_LegacyLevelSelection = GetComponentInChildren<PauseLevelSelectionController>(true);
             }
 
             if (m_Animator == null)
@@ -189,7 +190,7 @@ namespace MainGame.UI.PauseMenu
             if (m_LevelsButton == null) Debug.LogError("[PauseMenuController] LEVEL button not found in hierarchy!", this);
             if (m_ExitButton == null) Debug.LogError("[PauseMenuController] EXIT button not found in hierarchy!", this);
             if (m_Confirmation == null) Debug.LogError("[PauseMenuController] Confirmation panel not found!", this);
-            if (m_LevelSelection == null) Debug.LogWarning("[PauseMenuController] Level Selection panel not found!", this);
+            if (m_LevelSelection == null && m_LegacyLevelSelection == null) Debug.LogWarning("[PauseMenuController] Level Selection panel not found!", this);
         }
 
         private void InitializeSubControllers()
@@ -267,6 +268,7 @@ namespace MainGame.UI.PauseMenu
             // Isolate modal panels
             if (m_Confirmation != null && m_Confirmation.gameObject.activeSelf) m_Confirmation.gameObject.SetActive(false);
             if (m_LevelSelection != null && m_LevelSelection.gameObject.activeSelf) m_LevelSelection.gameObject.SetActive(false);
+            if (m_LegacyLevelSelection != null && m_LegacyLevelSelection.gameObject.activeSelf) m_LegacyLevelSelection.gameObject.SetActive(false);
 
             if (m_Audio != null) m_Audio.PlayPauseOpen();
 
@@ -339,6 +341,7 @@ namespace MainGame.UI.PauseMenu
                 // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
                 SetPauseMainVisible(false);
                 if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
+                if (m_LegacyLevelSelection != null) m_LegacyLevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -364,6 +367,7 @@ namespace MainGame.UI.PauseMenu
                 // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
                 SetPauseMainVisible(false);
                 if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
+                if (m_LegacyLevelSelection != null) m_LegacyLevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -389,6 +393,7 @@ namespace MainGame.UI.PauseMenu
                 // Isolate confirmation modal: suppress Main Pause and ensure Level Selection is inactive
                 SetPauseMainVisible(false);
                 if (m_LevelSelection != null) m_LevelSelection.gameObject.SetActive(false);
+                if (m_LegacyLevelSelection != null) m_LegacyLevelSelection.gameObject.SetActive(false);
 
                 ConfirmationRequest request = new ConfirmationRequest
                 {
@@ -433,7 +438,7 @@ namespace MainGame.UI.PauseMenu
         {
             Debug.Log("[PauseMenuController] Levels confirmed. Opening embedded Level Selection...");
 
-            if (m_LevelSelection == null)
+            if (m_LevelSelection == null && m_LegacyLevelSelection == null)
             {
                 // Fallback if level selection panel was omitted: load HomeScreen with autoOpenLevelSelection flag
                 Time.timeScale = 1f;
@@ -451,16 +456,41 @@ namespace MainGame.UI.PauseMenu
 
             if (m_Audio != null) m_Audio.PlayLevelSelectionOpen();
 
-            m_LevelSelection.Open(onBackToMainPause: BackFromLevelSelection);
+            if (m_LevelSelection != null)
+            {
+                m_LevelSelection.gameObject.SetActive(true);
+                m_LevelSelection.PlayEnterTransition(null);
+            }
+            else if (m_LegacyLevelSelection != null)
+            {
+                m_LegacyLevelSelection.Open(onBackToMainPause: BackFromLevelSelection);
+            }
         }
+
+        private bool m_IsExitingLevelSelection;
 
         public void BackFromLevelSelection()
         {
             if (m_CurrentState != PauseState.LevelSelection) return;
+            if (m_IsExitingLevelSelection) return;
 
-            if (m_LevelSelection != null && m_LevelSelection.IsOpen)
+            if (m_LevelSelection != null && m_LevelSelection.gameObject.activeSelf)
             {
-                m_LevelSelection.HandleBack();
+                m_IsExitingLevelSelection = true;
+                m_LevelSelection.PlayExitTransition(() =>
+                {
+                    m_IsExitingLevelSelection = false;
+                    m_LevelSelection.gameObject.SetActive(false);
+                    m_CurrentState = PauseState.MainPause;
+                    SetPauseMainVisible(true);
+                    m_Navigation?.RestoreLastSelection();
+                });
+                return;
+            }
+
+            if (m_LegacyLevelSelection != null && m_LegacyLevelSelection.IsOpen)
+            {
+                m_LegacyLevelSelection.HandleBack();
                 return;
             }
 

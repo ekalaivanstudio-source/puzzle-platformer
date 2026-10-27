@@ -78,7 +78,7 @@ namespace MainGame.UI.Unified
         // Backstop for the sub-animation handshakes below. They are guaranteed to report in,
         // but a future animator wired into this screen might not be, and an unbounded wait
         // here latches UINavigationManager.IsTransitioning and kills every menu button.
-        private const float k_SubAnimationTimeout = 5f;
+        private const float k_SubAnimationTimeout = 0.35f;
         private readonly List<Coroutine> m_ChildCoroutines = new List<Coroutine>(16);
         private bool m_HasCapturedRest = false;
 
