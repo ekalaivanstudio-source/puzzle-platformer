@@ -475,11 +475,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -8.05
+      value: -8.97
       objectReference: {fileID: 0}
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 4.52
+      value: 3.84
       objectReference: {fileID: 0}
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -516,14 +516,6 @@ PrefabInstance:
     - target: {fileID: 1014215684382388482, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_Name
       value: LeafParticle
-      objectReference: {fileID: 0}
-    - target: {fileID: 5370102517923652218, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: RotationBySpeedModule.enabled
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5370102517923652218, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
-      propertyPath: InitialModule.startLifetime.scalar
-      value: 9.28
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1477,7 +1469,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 3ece071d0624d1d439647274e554233d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -29244,11 +29236,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 4.77
+      value: 4.52
       objectReference: {fileID: 0}
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 7.08
+      value: 6.8
       objectReference: {fileID: 0}
     - target: {fileID: 683771265525006019, guid: 1b736309fcde10149b45b2fa797f6ac0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -31818,7 +31810,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -2.65
+      value: -2.93
       objectReference: {fileID: 0}
     - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
       propertyPath: m_LocalPosition.z
@@ -32272,7 +32264,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1220065415}
   - {fileID: 880839834}
   - {fileID: 972128170}
   - {fileID: 1912037558}
@@ -32798,76 +32789,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1220065414
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1027238386}
-    m_Modifications:
-    - target: {fileID: 1574953722860812573, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_Name
-      value: LightParticles (2)
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -2.28
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0.05
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.70710784
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0.70710576
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 8715191640032235085, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: ShapeModule.m_Scale.x
-      value: 20.280209
-      objectReference: {fileID: 0}
-    - target: {fileID: 8715191640032235085, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-      propertyPath: ShapeModule.m_Scale.y
-      value: 38.537113
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
---- !u!4 &1220065415 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1583965872908037562, guid: 0f6d45de7f3a3fc4f940ad7cc9c64e10, type: 3}
-  m_PrefabInstance: {fileID: 1220065414}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1223068752
 GameObject:
   m_ObjectHideFlags: 0
@@ -36001,7 +35922,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 3ece071d0624d1d439647274e554233d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
