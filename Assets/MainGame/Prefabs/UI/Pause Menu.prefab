@@ -439,7 +439,7 @@ MonoBehaviour:
   m_Audio: {fileID: 1254327794437873091}
   m_Navigation: {fileID: 1254327794437873092}
   m_Confirmation: {fileID: 8225018092391710810}
-  m_LevelSelection: {fileID: 7412975309318355267}
+  m_LevelSelection: {fileID: 0}
   m_LegacyLevelSelection: {fileID: 0}
   m_Input: {fileID: 1254327794437873093}
   m_Animator: {fileID: 8100000000000000001}
@@ -1574,6 +1574,7 @@ GameObject:
   - component: {fileID: 3867701787708354324}
   - component: {fileID: 8563086769504756671}
   - component: {fileID: 7412975309318355267}
+  - component: {fileID: 2488575307787875961}
   m_Layer: 0
   m_Name: Level Selection
   m_TagString: Untagged
@@ -1701,6 +1702,22 @@ MonoBehaviour:
   m_GridLevelGenerator: {fileID: 8563086769504756671}
   m_Animator: {fileID: 3867701787708354324}
   m_LevelSelectionManager: {fileID: 0}
+--- !u!114 &2488575307787875961
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4416508167920215867}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f20d6aa1b394523aa0cbbef123a9d81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainGame.UI.PauseMenu.PauseLevelSelectionController
+  m_CanvasGroup: {fileID: 6251618135284275022}
+  m_LevelSelectionManager: {fileID: 0}
+  m_Animator: {fileID: 3867701787708354324}
+  m_BackButton: {fileID: 4428889987388310321}
 --- !u!1 &4518936259825847503
 GameObject:
   m_ObjectHideFlags: 0
