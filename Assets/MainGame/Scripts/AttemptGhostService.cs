@@ -23,7 +23,7 @@ using UnityEngine.InputSystem;
 ///
 /// Two kinds of marker, one per attempt:
 ///   • <see cref="RecordStop"/>  — the sequence ran out and the body was pulled back to
-///     spawn. The whole body is left behind, in the pose and facing it stopped in.
+///     spawn. A powered-down Byte (the dead icon) is left behind, in the facing it stopped in.
 ///   • <see cref="RecordBlast"/> — a hazard killed the player. The death debris' pieces are
 ///     read off the particle systems where they came to rest and left lying there, so the
 ///     wreckage of each death stays on the floor exactly where it landed.
@@ -64,6 +64,12 @@ public class AttemptGhostService : MonoBehaviour
              "the same moment the body is yanked back to spawn, and popping in at full " +
              "opacity there reads as the player having split in two. Zero places it instantly.")]
     [SerializeField] private float m_FadeInDuration = 0.25f;
+
+    [Tooltip("Sprite a stop marker is drawn with, in place of whatever frame the body was on " +
+             "when the sequence ran out — Byte powered down rather than caught mid-stride. " +
+             "Left empty, it is loaded from Resources/" + k_StopSpriteResource + ", and if " +
+             "that is missing too the body's own frame is copied as before.")]
+    [SerializeField] private Sprite m_StopSprite;
 
     [Header("Sorting")]
     [Tooltip("Added to the sorting order of the renderer being copied, so a marker draws " +
@@ -208,6 +214,9 @@ public class AttemptGhostService : MonoBehaviour
 
     private const string k_ShaderResource = "SpriteGhost";
     private const string k_ShaderName = "MainGame/Sprite Ghost";
+    private const string k_StopSpriteResource = "Byte Dead Icon";
+
+    private bool m_StopSpriteResolved;
 
     private Material m_Material;
     private Material m_HoverMaterial;
@@ -284,7 +293,7 @@ public class AttemptGhostService : MonoBehaviour
         if (IsWithinMergeDistance(position, spawnPosition)) return;
 
         Mark mark = BeginMark(position);
-        AddBodyGhost(mark.Root.transform, body, position);
+        AddBodyGhost(mark.Root.transform, body, position, StopSprite);
         mark.CacheRenderers();
         StartFadeIn(mark.Root.transform);
     }
@@ -413,12 +422,14 @@ public class AttemptGhostService : MonoBehaviour
 
     // ─── Ghost construction ───────────────────────────────────────────────────
 
-    private void AddBodyGhost(Transform mark, SpriteRenderer body, Vector3 position)
+    private void AddBodyGhost(
+        Transform mark, SpriteRenderer body, Vector3 position, Sprite sprite = null)
     {
         // lossyScale, not localScale: the player's facing is a sign flip on the transform's
         // scale, and copying the world value carries that over without having to know it.
         SpriteRenderer ghost = CreateGhost(
-            mark, body.sprite, position, body.transform.rotation, body.transform.lossyScale, body);
+            mark, sprite != null ? sprite : body.sprite, position,
+            body.transform.rotation, body.transform.lossyScale, body);
 
         // Carried over as well, in case a sprite is ever mirrored through the renderer rather
         // than through the transform.
@@ -450,6 +461,21 @@ public class AttemptGhostService : MonoBehaviour
         renderer.color = color;
 
         return renderer;
+    }
+
+    // The stop marker's art: the inspector value, else the copy kept in Resources (the
+    // service is usually created at runtime with nothing assigned). Looked up once either way.
+    private Sprite StopSprite
+    {
+        get
+        {
+            if (m_StopSprite == null && !m_StopSpriteResolved)
+            {
+                m_StopSpriteResolved = true;
+                m_StopSprite = Resources.Load<Sprite>(k_StopSpriteResource);
+            }
+            return m_StopSprite;
+        }
     }
 
     // The greyscale material, built once from the shader kept in Resources. Null when the

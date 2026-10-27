@@ -463,12 +463,7 @@ public sealed class LightFadeWave : ILevelBuildWave
     private readonly float[] m_VolumeIntensities;
     private readonly float[] m_LightDelays;     // seconds into the wave, 0..spread
 
-    private readonly ParticleSystem[] m_Effects;
-    private readonly float[] m_EffectDelays;
-
-    // Set when the outro stopped an effect's emission, so finishing the outro lets what is
-    // already in the air live out its lifetime instead of clearing it mid-flight.
-    private readonly bool[] m_EffectFading;
+    private readonly ParticlePlayWave m_Effects;
 
     private readonly float m_Spread;
     private readonly float m_ItemDuration;
@@ -508,19 +503,10 @@ public sealed class LightFadeWave : ILevelBuildWave
             m_LightDelays[i] = DelayAt(lightDelays, i);
         }
 
-        int effectCount = effects != null ? effects.Count : 0;
-        m_Effects = new ParticleSystem[effectCount];
-        m_EffectDelays = new float[effectCount];
-        m_EffectFading = new bool[effectCount];
-
-        for (int i = 0; i < effectCount; i++)
-        {
-            m_Effects[i] = effects[i];
-            m_EffectDelays[i] = DelayAt(effectDelays, i);
-        }
+        m_Effects = new ParticlePlayWave(effects, effectDelays, spread);
     }
 
-    public int Count => m_Lights.Length + m_Effects.Length;
+    public int Count => m_Lights.Length + m_Effects.Count;
 
     public float Duration => m_Spread + m_ItemDuration;
 
@@ -540,25 +526,7 @@ public sealed class LightFadeWave : ILevelBuildWave
             SetLevel(i, level);
         }
 
-        for (int i = 0; i < m_Effects.Length; i++)
-        {
-            ParticleSystem effect = m_Effects[i];
-            if (effect == null) continue;
-
-            float delay = building ? m_EffectDelays[i] : m_Spread - m_EffectDelays[i];
-            if (elapsed < delay) continue;
-
-            if (building && !effect.isEmitting)
-            {
-                m_EffectFading[i] = false;
-                effect.Play(true);
-            }
-            else if (!building && !m_EffectFading[i])
-            {
-                m_EffectFading[i] = true;
-                effect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            }
-        }
+        m_Effects.Apply(elapsed, building);
     }
 
     public void Finish(bool built)
@@ -568,22 +536,7 @@ public sealed class LightFadeWave : ILevelBuildWave
             if (m_Lights[i] != null) SetLevel(i, built ? 1f : 0f);
         }
 
-        for (int i = 0; i < m_Effects.Length; i++)
-        {
-            ParticleSystem effect = m_Effects[i];
-            if (effect == null) continue;
-
-            if (built)
-            {
-                m_EffectFading[i] = false;
-                effect.Play(true);
-            }
-            else if (!m_EffectFading[i])
-            {
-                // Hidden before the level has been seen: nothing in the air is worth keeping.
-                effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            }
-        }
+        m_Effects.Finish(built);
     }
 
     // A flicker that is deterministic per light, so no two lights stutter in step and the
@@ -608,4 +561,180 @@ public sealed class LightFadeWave : ILevelBuildWave
 
     private float DelayAt(IReadOnlyList<float> delays, int index) =>
         (delays != null && index < delays.Count ? Mathf.Clamp01(delays[index]) : 0f) * m_Spread;
+}
+
+/// <summary>
+/// Particle effects switched on one after another — the leaves drifting over the scenery, and
+/// the glows hanging in the lights. An effect is not scaled: it starts emitting when its slot
+/// in the wave comes up, and on the way out it stops emitting and lets the particles it has
+/// already shed die out rather than vanishing mid-air.
+/// </summary>
+public sealed class ParticlePlayWave : ILevelBuildWave
+{
+    private readonly ParticleSystem[] m_Effects;
+    private readonly float[] m_Delays;      // seconds into the wave, 0..spread
+    private readonly float m_Spread;
+
+    // Set when the outro stopped an effect's emission, so finishing the outro lets what is
+    // already in the air live out its lifetime instead of clearing it mid-flight.
+    private readonly bool[] m_Fading;
+
+    /// <param name="effects">Root particle systems, already in the order they should start.</param>
+    /// <param name="normalisedDelays">Each effect's place in the wave, 0..1.</param>
+    /// <param name="spread">Seconds between the first effect starting and the last.</param>
+    public ParticlePlayWave(
+        IReadOnlyList<ParticleSystem> effects,
+        IReadOnlyList<float> normalisedDelays,
+        float spread)
+    {
+        m_Spread = Mathf.Max(0f, spread);
+
+        int count = effects != null ? effects.Count : 0;
+        m_Effects = new ParticleSystem[count];
+        m_Delays = new float[count];
+        m_Fading = new bool[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            m_Effects[i] = effects[i];
+
+            float normalised = normalisedDelays != null && i < normalisedDelays.Count
+                ? Mathf.Clamp01(normalisedDelays[i])
+                : 0f;
+            m_Delays[i] = normalised * m_Spread;
+        }
+    }
+
+    public int Count => m_Effects.Length;
+
+    // An effect starts at its slot and is done — there is no motion of its own to wait out.
+    public float Duration => m_Spread;
+
+    public void Apply(float elapsed, bool building)
+    {
+        for (int i = 0; i < m_Effects.Length; i++)
+        {
+            ParticleSystem effect = m_Effects[i];
+            if (effect == null) continue;
+
+            float delay = building ? m_Delays[i] : m_Spread - m_Delays[i];
+            if (elapsed < delay) continue;
+
+            if (building && !effect.isEmitting)
+            {
+                m_Fading[i] = false;
+                effect.Play(true);
+            }
+            else if (!building && !m_Fading[i])
+            {
+                m_Fading[i] = true;
+                effect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+        }
+    }
+
+    public void Finish(bool built)
+    {
+        for (int i = 0; i < m_Effects.Length; i++)
+        {
+            ParticleSystem effect = m_Effects[i];
+            if (effect == null) continue;
+
+            if (built)
+            {
+                m_Fading[i] = false;
+                effect.Play(true);
+            }
+            else if (!m_Fading[i])
+            {
+                // Hidden before the level has been seen: nothing in the air is worth keeping.
+                effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Sprites faded in one after another — the level's background and its fog. These are the
+/// big sheets the level is built against, so they are faded rather than popped: scaling a
+/// screen-wide backdrop up from nothing reads as the whole picture zooming, not as a layer
+/// arriving. Only the alpha is touched, so the authored tint comes back exactly.
+/// </summary>
+public sealed class SpriteFadeWave : ILevelBuildWave
+{
+    private readonly SpriteRenderer[] m_Sprites;
+    private readonly Color[] m_Colors;
+    private readonly float[] m_Delays;      // seconds into the wave, 0..spread
+    private readonly float m_Spread;
+    private readonly float m_ItemDuration;
+
+    /// <param name="sprites">The sprites, already in the order they should appear.</param>
+    /// <param name="normalisedDelays">Each sprite's place in the wave, 0..1.</param>
+    /// <param name="spread">Seconds between the first sprite starting and the last.</param>
+    /// <param name="itemDuration">Seconds one sprite takes to fade fully in.</param>
+    public SpriteFadeWave(
+        IReadOnlyList<SpriteRenderer> sprites,
+        IReadOnlyList<float> normalisedDelays,
+        float spread,
+        float itemDuration)
+    {
+        m_Spread = Mathf.Max(0f, spread);
+        m_ItemDuration = Mathf.Max(0.01f, itemDuration);
+
+        int count = sprites != null ? sprites.Count : 0;
+        m_Sprites = new SpriteRenderer[count];
+        m_Colors = new Color[count];
+        m_Delays = new float[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            m_Sprites[i] = sprites[i];
+            m_Colors[i] = sprites[i] != null ? sprites[i].color : Color.white;
+
+            float normalised = normalisedDelays != null && i < normalisedDelays.Count
+                ? Mathf.Clamp01(normalisedDelays[i])
+                : 0f;
+            m_Delays[i] = normalised * m_Spread;
+        }
+    }
+
+    public int Count => m_Sprites.Length;
+
+    public float Duration => m_Spread + m_ItemDuration;
+
+    public void Apply(float elapsed, bool building)
+    {
+        for (int i = 0; i < m_Sprites.Length; i++)
+        {
+            if (m_Sprites[i] == null) continue;
+
+            float delay = building ? m_Delays[i] : m_Spread - m_Delays[i];
+            float local = Mathf.Clamp01((elapsed - delay) / m_ItemDuration);
+            float level = building
+                ? LevelBuildEase.OutCubic(local)
+                : 1f - LevelBuildEase.OutCubic(local);
+
+            SetLevel(i, level);
+        }
+    }
+
+    // Writes the captured colour straight back when built, so a finished fade leaves the
+    // sprite bit for bit as authored.
+    public void Finish(bool built)
+    {
+        for (int i = 0; i < m_Sprites.Length; i++)
+        {
+            if (m_Sprites[i] == null) continue;
+
+            if (built) m_Sprites[i].color = m_Colors[i];
+            else SetLevel(i, 0f);
+        }
+    }
+
+    private void SetLevel(int index, float level)
+    {
+        Color color = m_Colors[index];
+        color.a *= Mathf.Clamp01(level);
+        m_Sprites[index].color = color;
+    }
 }

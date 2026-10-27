@@ -81,18 +81,10 @@ namespace Collectables
             _databaseLookupDone = false;
         }
 
-        /// <summary>One frame of the shard's spin by 0-based index, or null when there is no art.
-        /// Frame 0 is the front-facing one — the still to use for an icon.</summary>
+        /// <summary>A shard sprite by 0-based index, or null when there is no art.
+        /// Index 0 is the one to use for an icon.</summary>
         public static Sprite GetShardSprite(int variantIndex) =>
             Database != null ? Database.GetShardSprite(variantIndex) : null;
-
-        /// <summary>
-        /// The shard's spin, frame by frame. Empty when there is no art. What the pickup feeds
-        /// its <see cref="SpriteSheetAnimator"/>, so changing the art in the database changes
-        /// every shard in the game without rebuilding a prefab.
-        /// </summary>
-        public static Sprite[] ShardFrames =>
-            Database != null ? Database.ShardFrames : new Sprite[0];
 
         // ─── Shard queries ────────────────────────────────────────────────────────
 

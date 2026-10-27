@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Collectables;
 using MainGame.UI.Unified;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
@@ -12,20 +13,24 @@ using UnityEngine.UI;
 /// they leave — one system, one component, one per level scene.
 ///
 /// ─── The sequence ────────────────────────────────────────────────────────────────────────
-/// The screen fades up on an empty level (only the far background is left standing), and then:
+/// The screen fades up on an empty level, and then:
 ///
 ///   1. the GROUND lays itself in, tile by tile, on a wave that sweeps across the level,
-///   2. the SCENERY and props pop in behind it, on the same sweep,
-///   3. the EXIT DOOR grows up out of the floor, and only once it is standing is it allowed
-///      to light its doorway effect — see <see cref="LevelExitDoor.SetStanding"/>,
-///   4. the PIPE run appears piece by piece, from the socket to that door,
-///   5. the HUD pops in over the top of it, an element at a time and a CANVAS at a time —
-///      the tutorial prompt waits for the input row under it to finish arriving,
-///   6. the ENTRY DOOR grows up out of the floor — and <see cref="LevelEntryDoor"/> takes it
-///      from there: the door opens, the player spins out of it, the door shuts behind them,
-///      and the doorway sinks back into the floor, leaving the level clean to play on,
-///   7. the LIGHTS come on last — the god rays flicker up one after another and the glow
-///      effects in them start drifting, so the level is lit only once it is whole.
+///   2. the BACKGROUND fades in behind it — every sprite on a backdrop sorting layer,
+///   3. the FOG fades in over that,
+///   4. the SCENERY pops in on the same sweep — grass, spikes, the mid- and foreground
+///      dressing — and the leaf particles start drifting through it,
+///   5. the EXIT DOOR grows up out of the floor while the COLLECTABLES pop in, and only once
+///      the door is standing is it allowed to light its doorway effect — see
+///      <see cref="LevelExitDoor.SetStanding"/>; the PIPE run then appears piece by piece from
+///      the socket to that door, and the HUD pops in over the top of it, an element at a time
+///      and a CANVAS at a time,
+///   6. the ENTRY DOOR grows up out of the floor,
+///   7. the LIGHTS come on — the god rays flicker up one after another and the glow effects in
+///      them start drifting, so the level is lit only once it is whole,
+///   8. and only then does <see cref="LevelEntryDoor"/> deliver the PLAYER: the door opens, the
+///      player spins out of it, the door shuts behind them, and the doorway sinks back into
+///      the floor, leaving the level clean to play on.
 ///
 /// That door beat is a doorway, not a one-off: every later arrival plays it again. A death
 /// respawns the player through it — the doorway rises, opens, hands them back out and sinks
@@ -44,8 +49,9 @@ using UnityEngine.UI;
 /// run are the components that own them, and the scenery is everything else in the scene that
 /// draws something — collected as the TOPMOST object carrying a renderer, so a bush is one
 /// item and the prefab of forty bushes is forty. Anything already switched off in the scene is
-/// left alone, and so is anything drawing on a background sorting layer, so the backdrop the
-/// level is built against does not pop in with it. The HUD is found the same way — every
+/// left alone. Out of what is collected, a sprite drawing on a backdrop sorting layer is the
+/// background, anything under an object named for fog is the fog, and the pickups (memory
+/// shards, robot parts, the key) are the collectables. The HUD is found the same way — every
 /// canvas in the scene, walked down to the elements that draw — minus the two things a build
 /// must never scale: a SCREEN, which opens and closes itself, and a full-screen VEIL like the
 /// fade or the brightness sheet, which would read as the whole picture shrinking. Each canvas
@@ -107,34 +113,42 @@ public class LevelBuildDirector : MonoBehaviour
     [Tooltip("The tilemaps laid in during phase 1. Empty: every tilemap in the open scene.")]
     [SerializeField] private Tilemap[] m_GroundTilemaps;
 
-    [Tooltip("Roots the scenery is collected from during phase 2. Empty: every root object " +
-             "in the open scene, minus the ground, the doorways, the pipe run, the player " +
-             "and the exclusions below.")]
+    [Tooltip("Roots the background, fog and scenery are collected from. Empty: every root " +
+             "object in the open scene, minus the ground, the doorways, the pipe run, the " +
+             "collectables, the player and the exclusions below.")]
     [SerializeField] private Transform[] m_SceneryRoots;
 
     [Tooltip("Objects the build must never touch, with everything under them. Use this for " +
              "anything that has to be visible or running from the first frame.")]
     [SerializeField] private Transform[] m_Excluded;
 
-    [Tooltip("Sorting layers whose renderers are left standing — the backdrop the level is " +
-             "built against, which should be there before the first tile lands.")]
+    [Tooltip("Sorting layers that make up the background, faded in right after the ground.")]
     [SerializeField] private string[] m_BackdropSortingLayers = { "Bg1", "Bg2" };
 
-    [Tooltip("The run of pipe generated in phase 4. Empty: the PipeConnection in the scene.")]
+    [Tooltip("Name fragments that mark a sprite as fog — on the sprite itself or any object " +
+             "above it — matched ignoring case. Fog fades in after the background, whatever " +
+             "sorting layer it draws on.")]
+    [SerializeField] private string[] m_FogNames = { "Fog" };
+
+    [Tooltip("Name fragments that mark a particle effect as part of the scenery, matched " +
+             "ignoring case — started with the scenery rather than playing from the first frame.")]
+    [SerializeField] private string[] m_SceneryEffectNames = { "Leaf" };
+
+    [Tooltip("The run of pipe, laid after the exit door. Empty: the PipeConnection in the scene.")]
     [SerializeField] private PipeConnection m_Pipes;
 
-    [Tooltip("The doorway raised in phase 3. Empty: the LevelExitDoor in the scene.")]
+    [Tooltip("The doorway raised with the collectables. Empty: the LevelExitDoor in the scene.")]
     [SerializeField] private LevelExitDoor m_ExitDoor;
 
-    [Tooltip("The canvases the HUD is collected from during phase 5, each popped as its " +
-             "own group in this order. Empty: every canvas in the open scene, in scene order.")]
+    [Tooltip("The canvases the HUD is collected from, each popped as its own group in this " +
+             "order. Empty: every canvas in the open scene, in scene order.")]
     [SerializeField] private RectTransform[] m_UIRoots;
 
-    [Tooltip("The doorway raised in phase 6, which then opens and lets the player in. " +
+    [Tooltip("The doorway raised before the lights, which then opens and lets the player in. " +
              "Empty: the LevelEntryDoor in the scene.")]
     [SerializeField] private LevelEntryDoor m_EntryDoor;
 
-    [Tooltip("The lights switched on in phase 7, and off first when the level ends. Empty: " +
+    [Tooltip("The lights switched on after the entry door, and off first when the level ends. Empty: " +
              "every 2D light in the open scene except the GLOBAL ones, which light the whole " +
              "level and must stay on.")]
     [SerializeField] private Light2D[] m_Lights;
@@ -156,7 +170,13 @@ public class LevelBuildDirector : MonoBehaviour
     [SerializeField] private float m_SweepAngle = 20f;
 
     [SerializeField] private PhaseTiming m_GroundTiming = new PhaseTiming(0.45f, 0.26f, 0.15f);
+    [SerializeField] private PhaseTiming m_BackdropTiming = new PhaseTiming(0.15f, 0.35f, 0.15f);
+    [SerializeField] private PhaseTiming m_FogTiming = new PhaseTiming(0.25f, 0.40f, 0.20f);
     [SerializeField] private PhaseTiming m_SceneryTiming = new PhaseTiming(0.30f, 0.24f, 0.12f);
+
+    // Played alongside the exit door rising, so only the spread and duration are used.
+    [SerializeField] private PhaseTiming m_CollectableTiming = new PhaseTiming(0.20f, 0.26f, 0f);
+
     [SerializeField] private PhaseTiming m_PipeTiming = new PhaseTiming(0.30f, 0.20f, 0.08f);
 
     // Spread and duration are PER CANVAS, since the canvases queue behind each other. The
@@ -242,7 +262,10 @@ public class LevelBuildDirector : MonoBehaviour
     private State m_State = State.Hidden;
 
     private ILevelBuildWave m_GroundWave;
+    private ILevelBuildWave m_BackdropWave;
+    private ILevelBuildWave m_FogWave;
     private ILevelBuildWave m_SceneryWave;
+    private ILevelBuildWave m_CollectableWave;
     private ILevelBuildWave m_PipeWave;
     private ILevelBuildWave m_ExitDoorWave;
     private ILevelBuildWave m_EntryDoorWave;
@@ -314,7 +337,8 @@ public class LevelBuildDirector : MonoBehaviour
     // ─── Public API ───────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Builds the level: ground, scenery, exit door, pipe run, entry door. Awaited by
+    /// Builds the level: ground, background, fog, scenery, exit door and collectables, pipe
+    /// run, HUD, entry door, lights. Awaited by
     /// <see cref="LevelEntryDoor"/> before it opens itself, and by
     /// <see cref="PlayerController"/> in a level with no entry door.
     ///
@@ -337,7 +361,13 @@ public class LevelBuildDirector : MonoBehaviour
         m_Running.Clear();
 
         yield return PlayPhase(m_GroundWave, m_GroundTiming, building: true, onDone: OnGroundSettled);
+        yield return PlayPhase(m_BackdropWave, m_BackdropTiming, building: true, onDone: null);
+        yield return PlayPhase(m_FogWave, m_FogTiming, building: true, onDone: null);
         yield return PlayPhase(m_SceneryWave, m_SceneryTiming, building: true, onDone: null);
+
+        // The pickups pop in while the exit door rises — the two things the player is heading
+        // for arrive as one beat. Started rather than awaited: the door sets the pace.
+        StartWave(m_CollectableWave, building: true, onDone: null);
         yield return PlayDoor(m_ExitDoorWave, m_ExitDoor != null ? m_ExitDoor.transform : null,
                               rising: true, onLanded: () => SetExitDoorStanding(true));
         yield return PlayPhase(m_PipeWave, m_PipeTiming, building: true, onDone: OnPipesReady);
@@ -468,7 +498,10 @@ public class LevelBuildDirector : MonoBehaviour
         m_Running.Clear();
 
         m_GroundWave?.Finish(true);
+        m_BackdropWave?.Finish(true);
+        m_FogWave?.Finish(true);
         m_SceneryWave?.Finish(true);
+        m_CollectableWave?.Finish(true);
         m_PipeWave?.Finish(true);
         foreach (ILevelBuildWave wave in m_UIWaves) wave.Finish(true);
         m_ExitDoorWave?.Finish(true);
@@ -706,7 +739,8 @@ public class LevelBuildDirector : MonoBehaviour
             m_GroundTilemaps = SceneObjects.FindAllInActiveScene<Tilemap>().ToArray();
 
         BuildGroundWaves();
-        BuildSceneryWave();
+        BuildSceneryWaves();
+        BuildCollectableWave();
         BuildPipeWave();
         BuildUIWaves();
         BuildLightWave();
@@ -724,7 +758,9 @@ public class LevelBuildDirector : MonoBehaviour
         foreach (ILevelBuildWave wave in m_UIWaves) hud += wave.Count;
 
         Debug.Log($"[LevelBuildDirector] ground {(m_GroundWave?.Count ?? 0)} tiles across " +
-                  $"{m_GroundWaves.Count} tilemap(s), scenery {(m_SceneryWave?.Count ?? 0)}, " +
+                  $"{m_GroundWaves.Count} tilemap(s), background {(m_BackdropWave?.Count ?? 0)}, " +
+                  $"fog {(m_FogWave?.Count ?? 0)}, scenery {(m_SceneryWave?.Count ?? 0)}, " +
+                  $"collectables {(m_CollectableWave?.Count ?? 0)}, " +
                   $"pipe {(m_PipeWave?.Count ?? 0)}, " +
                   $"HUD {hud} across {m_UIWaves.Count} canvas(es), " +
                   $"exit door {(m_ExitDoorWave != null ? "yes" : "no")}, " +
@@ -769,7 +805,7 @@ public class LevelBuildDirector : MonoBehaviour
             {
                 if (effect == null || !effect.gameObject.activeInHierarchy) continue;
                 if (IsOwnedElsewhere(effect.transform)) continue;
-                if (!IsLightEffect(effect)) continue;
+                if (!IsRootEffectNamed(effect, m_LightEffectNames)) continue;
                 effects.Add(effect);
             }
         }
@@ -810,14 +846,19 @@ public class LevelBuildDirector : MonoBehaviour
 
     // Only the ROOT of an effect is taken — Play and Stop already reach the systems under it,
     // and driving each child on its own would restart them out of step.
-    private bool IsLightEffect(ParticleSystem effect)
+    private static bool IsRootEffectNamed(ParticleSystem effect, string[] fragments)
     {
         Transform parent = effect.transform.parent;
         if (parent != null && parent.GetComponentInParent<ParticleSystem>() != null) return false;
-        if (m_LightEffectNames == null) return false;
 
-        string name = effect.gameObject.name;
-        foreach (string fragment in m_LightEffectNames)
+        return NameMatches(effect.gameObject.name, fragments);
+    }
+
+    private static bool NameMatches(string name, string[] fragments)
+    {
+        if (fragments == null) return false;
+
+        foreach (string fragment in fragments)
         {
             if (!string.IsNullOrEmpty(fragment) &&
                 name.IndexOf(fragment, System.StringComparison.OrdinalIgnoreCase) >= 0)
@@ -884,7 +925,9 @@ public class LevelBuildDirector : MonoBehaviour
             : new CompositeWave(m_GroundWaves);
     }
 
-    private void BuildSceneryWave()
+    // Everything that draws is collected in one walk and then split three ways — background,
+    // fog and scenery — so each object lands in exactly one phase however the level nests it.
+    private void BuildSceneryWaves()
     {
         var items = new List<Transform>();
 
@@ -902,16 +945,117 @@ public class LevelBuildDirector : MonoBehaviour
             }
         }
 
+        var backdrop = new List<SpriteRenderer>();
+        var fog = new List<SpriteRenderer>();
+        var scenery = new List<Transform>();
+
+        foreach (Transform item in items)
+        {
+            // A backdrop that is not a sprite has no colour to fade, and it is not scenery to
+            // pop either — it is left standing, as the whole backdrop used to be.
+            bool onBackdrop = IsOnBackdropLayer(item.GetComponent<Renderer>());
+            item.TryGetComponent(out SpriteRenderer sprite);
+
+            if (sprite != null && IsFog(item)) fog.Add(sprite);
+            else if (onBackdrop && sprite != null) backdrop.Add(sprite);
+            else if (!onBackdrop) scenery.Add(item);
+        }
+
+        if (backdrop.Count > 0)
+            m_BackdropWave = new SpriteFadeWave(
+                backdrop, SweepDelays(backdrop),
+                m_BackdropTiming.Spread, m_BackdropTiming.ItemDuration);
+
+        if (fog.Count > 0)
+            m_FogWave = new SpriteFadeWave(
+                fog, SweepDelays(fog),
+                m_FogTiming.Spread, m_FogTiming.ItemDuration);
+
+        var sceneryWaves = new List<ILevelBuildWave>();
+
+        if (scenery.Count > 0)
+            sceneryWaves.Add(new TransformPopWave(
+                scenery, SweepDelays(scenery),
+                m_SceneryTiming.Spread, m_SceneryTiming.ItemDuration, m_ScenerySpin,
+                manageColliders: true));
+
+        // The leaves start drifting on the same sweep the scenery pops in on, rather than
+        // blowing across an empty level from the first frame.
+        var effects = new List<ParticleSystem>();
+        foreach (ParticleSystem effect in SceneObjects.FindAllInActiveScene<ParticleSystem>())
+        {
+            if (effect == null || !effect.gameObject.activeInHierarchy) continue;
+            if (IsOwnedElsewhere(effect.transform)) continue;
+            if (!IsRootEffectNamed(effect, m_SceneryEffectNames)) continue;
+            if (IsRootEffectNamed(effect, m_LightEffectNames)) continue;   // the lights own it
+            effects.Add(effect);
+        }
+
+        if (effects.Count > 0)
+            sceneryWaves.Add(new ParticlePlayWave(effects, SweepDelays(effects), m_SceneryTiming.Spread));
+
+        if (sceneryWaves.Count > 0)
+            m_SceneryWave = sceneryWaves.Count == 1 ? sceneryWaves[0] : new CompositeWave(sceneryWaves);
+    }
+
+    // The pickups — memory shards, robot parts and the key — popped in on the sweep while the
+    // exit door rises. A pickup a level has no use for switches itself off in its own Start;
+    // that is after this, and scaling an object that is about to go dark costs nothing.
+    private void BuildCollectableWave()
+    {
+        var items = new List<Transform>();
+        AddCollectables(SceneObjects.FindAllInActiveScene<MemoryShardPickup>(), items);
+        AddCollectables(SceneObjects.FindAllInActiveScene<RobotPartPickup>(), items);
+        AddCollectables(SceneObjects.FindAllInActiveScene<PlaceableKey>(), items);
+
         if (items.Count == 0) return;
 
+        m_CollectableWave = new TransformPopWave(
+            items, SweepDelays(items),
+            m_CollectableTiming.Spread, m_CollectableTiming.ItemDuration, spin: 0f,
+            manageColliders: true);
+    }
+
+    private void AddCollectables<T>(List<T> found, List<Transform> into) where T : Component
+    {
+        foreach (T pickup in found)
+        {
+            if (pickup == null || !pickup.gameObject.activeInHierarchy) continue;
+            if (IsManuallyExcluded(pickup.transform)) continue;
+            into.Add(pickup.transform);
+        }
+    }
+
+    // Fog by name, on the sprite or anywhere above it — the levels group their fog sheets
+    // under a "Fog" object, and the sheets themselves draw on whichever layer suits them.
+    private bool IsFog(Transform item)
+    {
+        for (Transform t = item; t != null; t = t.parent)
+        {
+            if (NameMatches(t.name, m_FogNames)) return true;
+        }
+
+        return false;
+    }
+
+    private bool IsOnBackdropLayer(Renderer renderer)
+    {
+        if (renderer == null || m_BackdropSortingLayers == null) return false;
+
+        foreach (string layer in m_BackdropSortingLayers)
+        {
+            if (!string.IsNullOrEmpty(layer) && renderer.sortingLayerName == layer) return true;
+        }
+
+        return false;
+    }
+
+    private List<float> SweepDelays<T>(List<T> items) where T : Component
+    {
         Vector2 sweep = SweepDirection();
         var keys = new List<float>(items.Count);
-        foreach (Transform item in items) keys.Add(Vector2.Dot(ItemCentre(item), sweep));
-
-        m_SceneryWave = new TransformPopWave(
-            items, Normalise(keys),
-            m_SceneryTiming.Spread, m_SceneryTiming.ItemDuration, m_ScenerySpin,
-            manageColliders: true);
+        foreach (T item in items) keys.Add(Vector2.Dot(ItemCentre(item.transform), sweep));
+        return new List<float>(Normalise(keys));
     }
 
     // The pipe is the one group that is NOT swept: its pieces run in a line from the battery
@@ -999,8 +1143,11 @@ public class LevelBuildDirector : MonoBehaviour
     // Walks a canvas down to the things that actually draw, exactly as the scenery is
     // collected: a button is one item, and the panel of six buttons is six.
     //
-    // Two kinds are stepped over on the way. A SCREEN — the pause menu, a confirmation popup —
+    // Three kinds are stepped over on the way. A SCREEN — the pause menu, a confirmation popup —
     // opens and closes itself, and must never be found sitting at zero scale when it does. A
+    // PRESENTER — the doctor, sliding up to react — is the same: it brings itself on screen,
+    // and the win reaction plays straight AFTER the teardown has scaled the HUD to nothing,
+    // so owning it here left the doctor invisible while his voice line played. A
     // VEIL — anything stretched edge to edge over its canvas, which is the screen fade, the
     // brightness sheet and every other full-screen sheet — is not a HUD element at all:
     // popping one in scales the whole picture. The veil is stepped THROUGH rather than
@@ -1010,6 +1157,7 @@ public class LevelBuildDirector : MonoBehaviour
         if (branch == null || !branch.gameObject.activeSelf) return;
         if (IsManuallyExcluded(branch)) return;
         if (branch.GetComponent<UIScreen>() != null) return;
+        if (branch.GetComponent<UIFloatEffect>() != null) return;
 
         if (IsDrawnUI(branch) && !CoversCanvas(branch as RectTransform))
         {
@@ -1040,7 +1188,8 @@ public class LevelBuildDirector : MonoBehaviour
             CollectBranch(branch.GetChild(i), into, ignoreExclusions);
     }
 
-    // Everything the build must not own: what has its own phase (ground, doorways, pipe), what
+    // Everything the build must not own: what has its own phase (ground, doorways, pipe,
+    // collectables), what
     // has its own opening (the player), what is not part of the level at all (cameras, UI), and
     // whatever the level listed by hand.
     private bool IsExcluded(Transform candidate)
@@ -1051,6 +1200,9 @@ public class LevelBuildDirector : MonoBehaviour
         if (candidate.GetComponent<Tilemap>() != null) return true;
         if (candidate.GetComponent<PipeConnection>() != null) return true;
         if (candidate.GetComponent<KeySlot>() != null) return true;
+        if (candidate.GetComponent<MemoryShardPickup>() != null) return true;
+        if (candidate.GetComponent<RobotPartPickup>() != null) return true;
+        if (candidate.GetComponent<PlaceableKey>() != null) return true;
         if (candidate.GetComponent<LevelEntryDoor>() != null) return true;
         if (candidate.GetComponent<LevelExitDoor>() != null) return true;
         if (candidate.GetComponent<PlayerController>() != null) return true;
@@ -1076,27 +1228,15 @@ public class LevelBuildDirector : MonoBehaviour
 
     // A renderer that actually puts something on screen this frame — and not one of the two
     // kinds this system drives another way (tilemaps have their own wave) or must not drive at
-    // all (a particle system scaled to nothing plays its burst into a point). The backdrop
-    // sorting layers are skipped so the level builds AGAINST the background rather than
-    // building it too.
-    private bool IsDrawn(Transform candidate)
+    // all (a particle system scaled to nothing plays its burst into a point). Which phase a
+    // drawn object belongs to — background, fog or scenery — is decided after the walk.
+    private static bool IsDrawn(Transform candidate)
     {
         if (!candidate.TryGetComponent(out Renderer renderer)) return false;
         if (!renderer.enabled) return false;
         if (renderer is TilemapRenderer || renderer is ParticleSystemRenderer) return false;
 
-        if (renderer is SpriteRenderer sprite && sprite.sprite == null) return false;
-
-        if (m_BackdropSortingLayers != null)
-        {
-            foreach (string layer in m_BackdropSortingLayers)
-            {
-                if (!string.IsNullOrEmpty(layer) && renderer.sortingLayerName == layer)
-                    return false;
-            }
-        }
-
-        return true;
+        return !(renderer is SpriteRenderer sprite && sprite.sprite == null);
     }
 
     // The UI half of IsDrawn. An Image, a RawImage, a TMP label — every one of them a
@@ -1171,7 +1311,10 @@ public class LevelBuildDirector : MonoBehaviour
     private void HideAll()
     {
         m_GroundWave?.Finish(false);
+        m_BackdropWave?.Finish(false);
+        m_FogWave?.Finish(false);
         m_SceneryWave?.Finish(false);
+        m_CollectableWave?.Finish(false);
         m_PipeWave?.Finish(false);
         foreach (ILevelBuildWave wave in m_UIWaves) wave.Finish(false);
         m_ExitDoorWave?.Finish(false);

@@ -16,14 +16,10 @@ namespace Collectables
     public static class MemoryShardIds
     {
         /// <summary>
-        /// How many sprites are in <c>Sprites/Collectibles/memory shards/</c> (1.png … 5.png).
-        ///
-        /// They turned out to be the frames of one shard spinning rather than five different
-        /// shards, so in a level this is the length of the animation, and "variant" only means
-        /// "which frame a shard that cannot animate stands still on". Either way it is a count
-        /// of pictures, never of anything the player can reason about.
+        /// How many shard sprites there are — just <c>MEMORY SHARD.png</c>, shown as a still.
+        /// A count of pictures, never of anything the player can reason about.
         /// </summary>
-        public const int VariantCount = 5;
+        public const int VariantCount = 1;
 
         private const string Prefix = "shard_";
 
@@ -31,9 +27,8 @@ namespace Collectables
         public static string ShardKey(int levelNumber) => Prefix + Mathf.Max(0, levelNumber);
 
         /// <summary>
-        /// The frame a level's shard rests on when the level does not name one, spread across
-        /// consecutive levels. 0-based. Only reaches a shard with no animator — a spinning one
-        /// plays every frame regardless.
+        /// The sprite a level's shard wears when the level does not name one, spread across
+        /// consecutive levels. 0-based.
         /// </summary>
         public static int AutoVariantIndex(int levelNumber) =>
             ((Mathf.Max(0, levelNumber) - 1) % VariantCount + VariantCount) % VariantCount;

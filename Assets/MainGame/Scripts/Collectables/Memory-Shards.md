@@ -43,21 +43,16 @@ A shard's save id is the level it sits in — `shard_7` — and nothing else. Si
 hides at most one shard, the level number is a stable, collision-free id. Dragging the
 pickup around the scene, changing its sprite, or re-tuning every story never affects it.
 
-## The art is an animation, not five shards
+## The art is one still
 
-The five sprites in `Sprites/Collectibles/memory shards/` are **one shard turning on the
-spot** — front, three-quarter, edge-on (a thin sliver), three-quarter, front. Played in
-order at 10fps they are a half-second revolution, which is how the pickup shows them:
-a `SpriteSheetAnimator` on `MemoryShardPickup.prefab`, fed from the database at load.
+The shard is a single sprite, `Sprites/Collectibles/memory shards/MEMORY SHARD.png`, with
+no animation. The pickup, the HUD icon and the level-select icon all show it.
 
-They were first read as five interchangeable looks, and `Shard Variant` on the assignment
-is what is left of that. It now only decides which frame a shard with **no** animator
-stands still on — a spinning shard plays all five, so it changes nothing on a normal level.
-The HUD icon uses frame 1, the front-facing one, because a still should face the player.
+An earlier five-frame spin (`1.png` … `5.png`) has been removed. `Shard Variant` on the
+assignment is left over from it; with one sprite every value resolves to the same picture.
 
-> Frames are **discovered** from the folder and sorted numerically, so re-drawing the spin
-> or adding a frame is dropping files in and running `1. Build Database`. Nothing in the
-> level scenes or the prefab has to be touched — the pickup asks the database at load.
+> To re-draw the shard, replace `MEMORY SHARD.png` and run `1. Build Database`. The pickup
+> asks the database at load, so nothing in the level scenes has to be touched.
 
 ## Why the story waits for the end of the level
 
@@ -92,7 +87,6 @@ the level and the story is still waiting the next time any level is finished.
 | `MemoryShardCounterHUD.cs` | The in-level counter and the unlock toast. |
 | `MemoryStoryPresenter.cs` | Full-screen video player that drains the pending queue at the end of a level. |
 | `Editor/MemoryShardSetup.cs` | `Tools ▸ Memory Shards` — builds the database and prefabs, wires every scene, bulk assignment helpers. |
-| `Editor/MemoryShardAnimationBuilder.cs` | Puts the spin on the pickup prefab. `Rebuild Shard Animation` patches the prefab in place, so the level instances stay linked. |
 
 ## Setup
 
@@ -154,16 +148,12 @@ To change the effect, either drop different frames into that folder and re-run B
 or edit `MemoryShardCollectEffect.prefab` directly — the pickup only holds a reference, so
 retiming it (`Frames Per Second`, `Linger After Last Frame`) needs no code change.
 
-### The idle shine slot is still empty, and the spin is why
+### The idle shine slot is empty
 
 The pickup has a **Shine Effect** slot — an idle shimmer shown while the shard is
-uncollected — and nothing is in it. The robot parts fill theirs with a three-sparkle twinkle
-(`Editor/RobotPartShineBuilder.cs`), because a robot part is a still image lying in a room
-and needs something to catch the eye.
-
-A shard is already moving. It turns continuously, and the edge-on frame flashes past twice
-a second on its own, so a sparkle on top of it is two idles competing. The slot stays
-available: point it at any child object and the pickup will show and hide it with the shard.
+uncollected — and nothing is in it yet. The robot parts fill theirs with a three-sparkle
+twinkle (`Editor/RobotPartShineBuilder.cs`). Point the slot at any child object and the
+pickup will show and hide it with the shard.
 
 ## Authoring a story
 
@@ -193,9 +183,7 @@ before changing them.
   `BuildHudPrefab` in `MemoryShardSetup.cs`, then re-run steps 2 and 3.
 - **Collect burst frames and speed** → `Sprites/Effects/item_collection_effect/` and the
   `MemoryShardCollectEffect` prefab.
-- **Spin art and speed** → `Sprites/Collectibles/memory shards/` then `1. Build Database`
-  for the frames; `Frames Per Second` on the pickup prefab's `SpriteSheetAnimator` for the
-  speed (`Rebuild Shard Animation` resets it to 10).
+- **Shard art** → `Sprites/Collectibles/memory shards/MEMORY SHARD.png`, then `1. Build Database`.
 - **Skip, fades, video volume, music ducking** → the `MemoryStoryPresenter` prefab.
 
 ## Hooking up your own UI

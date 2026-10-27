@@ -82,7 +82,7 @@ public sealed class OneClickBuildWindow : EditorWindow
         m_Bump = (BumpKind)EditorPrefs.GetInt(PrefKey(nameof(m_Bump)), (int)BumpKind.Patch);
         m_Target = (TargetKind)EditorPrefs.GetInt(PrefKey(nameof(m_Target)), (int)DefaultTarget());
         m_OutputRoot = EditorPrefs.GetString(PrefKey(nameof(m_OutputRoot)), DefaultOutputRoot());
-        m_Development = EditorPrefs.GetBool(PrefKey(nameof(m_Development)), true);
+        m_Development = EditorPrefs.GetBool(PrefKey(nameof(m_Development)), false);
         m_ScriptDebugging = EditorPrefs.GetBool(PrefKey(nameof(m_ScriptDebugging)), false);
         m_AutoConnectProfiler = EditorPrefs.GetBool(PrefKey(nameof(m_AutoConnectProfiler)), false);
         m_CleanBuild = EditorPrefs.GetBool(PrefKey(nameof(m_CleanBuild)), false);

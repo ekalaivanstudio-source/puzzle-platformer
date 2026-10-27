@@ -176,9 +176,7 @@ namespace Collectables
         }
 
         /// <summary>
-        /// The icon for a memory shard: frame 1 of the spin, the front-facing one. A still shard
-        /// should face the player — the other frames are the edge-on sliver and the
-        /// three-quarter turns, which read as a different object at icon size.
+        /// The icon for a memory shard: the shard still (MEMORY SHARD.png).
         /// </summary>
         public static Sprite MemoryShardIcon() => MemoryShardService.GetShardSprite(0);
 

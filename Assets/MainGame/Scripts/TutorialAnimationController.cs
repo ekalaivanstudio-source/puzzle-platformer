@@ -188,15 +188,18 @@ public enum TutorialAnimType
     /// <summary>→ on its own. Queues <see cref="ActionTypeEnum.Right"/>.</summary>
     Right = 2,
 
-    /// <summary>↑ on its own. Queues <see cref="ActionTypeEnum.Jump"/>.</summary>
-    Up = 3,
+    /// <summary>Space on its own. Queues <see cref="ActionTypeEnum.Jump"/>.</summary>
+    Space = 3,
 
-    /// <summary>↑ held while → is pressed. Queues <see cref="ActionTypeEnum.JumpRight"/>.</summary>
+    /// <summary>Space + →. Queues <see cref="ActionTypeEnum.JumpRight"/>.</summary>
     JumpRight = 4,
 
     /// <summary>Byte shoving a brick — the move-brick hint, shown as a level intro.</summary>
     Push = 5,
 
     /// <summary>← on its own. Queues <see cref="ActionTypeEnum.Left"/>.</summary>
-    Left = 6
+    Left = 6,
+
+    /// <summary>Space + ←. Queues <see cref="ActionTypeEnum.JumpLeft"/>.</summary>
+    JumpLeft = 7
 }

@@ -68,7 +68,7 @@ part or running **Reset Progress** shows up the next time the map is drawn.
 | Icon | Sprite | Why |
 |---|---|---|
 | Robot part | `Collect sprite/Pixel-Shilloute.png`, the light PIXEL silhouette | See below. |
-| Memory shard | shard **frame 1** | The five shard sprites are one shard turning; frame 1 is the front-facing one, and a still should face the player. |
+| Memory shard | `MEMORY SHARD.png` | The shard's only sprite — database entry 0. |
 
 The part is drawn first, so on a level hiding both, the part is on the left and the shard on
 the right. A level hiding one draws it **centred** on the line instead — with no panel behind
