@@ -121,36 +121,43 @@ namespace Collectables
         /// </summary>
         private bool ResolveIdentity(out RobotId robot, out int partIndex)
         {
+            string source;
             if (m_OverrideAssignment)
             {
                 robot = m_Robot;
                 partIndex = Mathf.Clamp(m_PartNumber, 1, RobotIds.PartsPerRobot) - 1;
-                return true;
+                source = name + " (Override Assignment)";
             }
-
-            robot = RobotId.Echo;
-            partIndex = 0;
-
-            var context = LevelContext.Instance;
-            var config = context != null ? context.Config : null;
-            if (config == null)
+            else
             {
-                Debug.LogWarning("[RobotPartPickup] No LevelConfig for this scene; the pickup cannot " +
-                                 "know which part it is. Tick Override Assignment or assign a config.", this);
-                return false;
+                robot = RobotId.Echo;
+                partIndex = 0;
+
+                var context = LevelContext.Instance;
+                var config = context != null ? context.Config : null;
+                if (config == null)
+                {
+                    Debug.LogWarning("[RobotPartPickup] No LevelConfig for this scene; the pickup cannot " +
+                                     "know which part it is. Tick Override Assignment or assign a config.", this);
+                    return false;
+                }
+
+                var assignment = config.robotPart;
+                if (assignment == null || !assignment.placePart) return false;
+
+                robot = assignment.robot;
+                partIndex = assignment.PartIndex;
+                source = config.name;
             }
 
-            var assignment = config.robotPart;
-            if (assignment == null || !assignment.placePart) return false;
-
-            robot = assignment.robot;
-            partIndex = assignment.PartIndex;
-
-            // A parked robot's part still saves, but no HUD or collection tab counts it.
+            // A parked robot's part would save, but no HUD, collection tab or level-select card
+            // counts it — the player would collect it and see nothing change. Treat it the way
+            // LevelCollectableService does: this level hides nothing.
             if (System.Array.IndexOf(RobotIds.All, robot) < 0)
             {
-                Debug.LogWarning($"[RobotPartPickup] {config.name} places a {robot} part, but {robot} is " +
-                                 "not a live robot (RobotIds.All), so collecting it will not show in the UI.", this);
+                Debug.LogWarning($"[RobotPartPickup] {source} places a {robot} part, but {robot} is not a " +
+                                 "live robot (RobotIds.All), so the pickup is hidden. Assign a live robot.", this);
+                return false;
             }
             return true;
         }
