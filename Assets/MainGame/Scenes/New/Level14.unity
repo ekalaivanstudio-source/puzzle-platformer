@@ -1531,6 +1531,10 @@ MonoBehaviour:
   m_BackdropSortingLayers:
   - Bg1
   - Bg2
+  m_FogNames:
+  - Fog
+  m_SceneryEffectNames:
+  - Leaf
   m_Pipes: {fileID: 0}
   m_ExitDoor: {fileID: 0}
   m_UIRoots: []
@@ -1545,10 +1549,22 @@ MonoBehaviour:
     Spread: 0.45
     ItemDuration: 0.26
     Overlap: 0.15
+  m_BackdropTiming:
+    Spread: 0.15
+    ItemDuration: 0.35
+    Overlap: 0.15
+  m_FogTiming:
+    Spread: 0.25
+    ItemDuration: 0.4
+    Overlap: 0.2
   m_SceneryTiming:
     Spread: 0.3
     ItemDuration: 0.24
     Overlap: 0.12
+  m_CollectableTiming:
+    Spread: 0.2
+    ItemDuration: 0.26
+    Overlap: 0
   m_PipeTiming:
     Spread: 0.3
     ItemDuration: 0.2
@@ -12054,7 +12070,7 @@ Transform:
   m_GameObject: {fileID: 479498596}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5.3691, y: 1.0000005, z: 3.5}
+  m_LocalPosition: {x: 5.3691, y: 1.0000005, z: 0}
   m_LocalScale: {x: 5.4181194, y: 2.3947406, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14771,7 +14787,7 @@ Transform:
   m_GameObject: {fileID: 894404350}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 1, w: 0}
-  m_LocalPosition: {x: 6.5431, y: 1.9999998, z: 1}
+  m_LocalPosition: {x: 6.5431, y: 1.9999998, z: 0}
   m_LocalScale: {x: 4.443979, y: 2.3947406, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -17076,7 +17092,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.05490196, g: 0.043137256, b: 0.09411765, a: 0}
+  m_BackGroundColor: {r: 0, g: 0.003921569, b: 0.027450982, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -17787,7 +17803,7 @@ Transform:
   m_GameObject: {fileID: 1265189978}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 7.0442, y: -0.34, z: 6}
+  m_LocalPosition: {x: 7.0442, y: -0.34, z: 0}
   m_LocalScale: {x: 5.526219, y: 2.3947406, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -18584,7 +18600,7 @@ Transform:
   m_GameObject: {fileID: 1364184105}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.02, y: 6.89, z: 1}
+  m_LocalPosition: {x: 2.02, y: 6.89, z: 0}
   m_LocalScale: {x: 4.2921486, y: 3.1730313, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -21800,11 +21816,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5491127148996133710, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 9.7
+      value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 5491127148996133710, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.1
+      value: 7.4
       objectReference: {fileID: 0}
     - target: {fileID: 7638393339491262536, guid: 0113ad31562c22b4db49dc8487156d8b, type: 3}
       propertyPath: m_IsActive
