@@ -12,21 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d8da80d6bf68ad42923296be7aca135, type: 3}
   m_Name: Level3Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
-  levelNumber: 7
+  levelNumber: 3
   robotPart:
     placePart: 0
-    robot: 1
-    partNumber: 2
+    robot: 3
+    partNumber: 3
   memoryShard:
-    placeShard: 1
+    placeShard: 0
     shardVariant: 0
   cameraDeadZone:
     deadZoneX: 0.1
     deadZoneY: 0.1
     offset: {x: 0, y: 0}
     smoothTime: 1
-    minX: 1
-    maxX: 3
+    minX: -0.5
+    maxX: 1
     minY: 0
     maxY: 1
     followX: 1
@@ -34,8 +34,8 @@ MonoBehaviour:
   sequence:
     maxSequenceLength: 4
     requireFullSequence: 0
-    autoPlaySequence: 05000000010000000500000005000000i
+    autoPlaySequence: 05000000050000000200000001000000i
   tutorial:
-    showTutorial: 0
+    showTutorial: 1
     introHints: 
     introHintDuration: 3
