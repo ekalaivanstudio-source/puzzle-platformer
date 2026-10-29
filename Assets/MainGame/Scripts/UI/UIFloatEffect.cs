@@ -103,6 +103,8 @@ public class UIFloatEffect : MonoBehaviour
 
         m_Target.anchoredPosition = to;
     }
+    public float StayDuration => m_StayDuration;
+
     public void SetStayDuration(float duration)
     {
         m_StayDuration = duration;

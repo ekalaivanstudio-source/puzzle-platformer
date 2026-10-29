@@ -420,6 +420,9 @@ namespace Collectables.EditorTools
             else Debug.LogWarning($"[MemoryShards] No collect effect at {CollectEffectPrefabPath}; " +
                                   "the pickup will collect silently.");
 
+            // Shine sweep, glow, god rays and the breathing pulse.
+            MemoryShardShineBuilder.Build(root);
+
             EnsureFolder(PrefabFolder);
             PrefabUtility.SaveAsPrefabAsset(root, PickupPrefabPath);
             Object.DestroyImmediate(root);
@@ -460,33 +463,131 @@ namespace Collectables.EditorTools
             var countLabel = BuildLabel(counter.transform, "Count", "0", 34f, TextAlignmentOptions.Left);
             countLabel.rectTransform.sizeDelta = new Vector2(110f, 48f);
 
-            // Unlock toast, centred near the top and off by default.
-            var toast = NewUiObject("Toast", root.transform);
-            var toastRect = toast.GetComponent<RectTransform>();
-            toastRect.anchorMin = new Vector2(0.5f, 1f);
-            toastRect.anchorMax = new Vector2(0.5f, 1f);
-            toastRect.pivot = new Vector2(0.5f, 1f);
-            toastRect.anchoredPosition = new Vector2(0f, -110f);
-            toastRect.sizeDelta = new Vector2(720f, 72f);
-
-            var toastBackground = toast.AddComponent<Image>();
-            toastBackground.color = new Color(0f, 0f, 0f, 0.65f);
-
-            var toastLabel = BuildLabel(toast.transform, "Label", "New memory unlocked", 30f, TextAlignmentOptions.Center);
-            StretchToParent(toastLabel.rectTransform);
-
-            toast.SetActive(false);
+            var progressToast = BuildProgressToast(root.transform, sprites.Length > 0 ? sprites[0] : null);
 
             SetPrivateField(hud, "m_CountLabel", countLabel);
             SetPrivateField(hud, "m_Icon", icon);
-            SetPrivateField(hud, "m_ToastRoot", toast);
-            SetPrivateField(hud, "m_ToastLabel", toastLabel);
+            SetPrivateField(hud, "m_ProgressToast", progressToast);
 
             EnsureFolder(PrefabFolder);
             PrefabUtility.SaveAsPrefabAsset(root, HudPrefabPath);
             Object.DestroyImmediate(root);
 
             Debug.Log($"[MemoryShards] Built HUD prefab → {HudPrefabPath}");
+        }
+
+        /// <summary>
+        /// The card shown after every pickup — "Memory Shards 4 / 9, collect 5 more to unlock
+        /// memory clip" — centred near the top and off by default. Its animation, shine and
+        /// wording all live on <see cref="MemoryShardProgressToast"/>.
+        /// </summary>
+        private static MemoryShardProgressToast BuildProgressToast(Transform parent, Sprite shardSprite)
+        {
+            var rounded = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+
+            var toast = NewUiObject("ProgressToast", parent);
+            var toastRect = toast.GetComponent<RectTransform>();
+            toastRect.anchorMin = new Vector2(0.5f, 1f);
+            toastRect.anchorMax = new Vector2(0.5f, 1f);
+            toastRect.pivot = new Vector2(0.5f, 1f);
+            toastRect.anchoredPosition = new Vector2(0f, -110f);
+            toastRect.sizeDelta = new Vector2(800f, 170f);
+            toast.AddComponent<CanvasGroup>();
+            var component = toast.AddComponent<MemoryShardProgressToast>();
+
+            // The card is what pops and slides, so the root keeps its layout position.
+            var card = NewUiObject("Card", toast.transform);
+            var cardRect = card.GetComponent<RectTransform>();
+            StretchToParent(cardRect);
+            var cardImage = card.AddComponent<Image>();
+            cardImage.sprite = rounded;
+            cardImage.type = Image.Type.Sliced;
+            cardImage.color = new Color(0.06f, 0.08f, 0.17f, 0.92f);
+            cardImage.raycastTarget = false;
+            var outline = card.AddComponent<Outline>();
+            outline.effectColor = new Color(1f, 0.8f, 0.35f, 0.9f);
+            outline.effectDistance = new Vector2(3f, -3f);
+
+            // The shine band sits under its own mask, so only the band is clipped and the icon
+            // can still punch past the card edge.
+            var mask = NewUiObject("ShineMask", card.transform);
+            StretchToParent(mask.GetComponent<RectTransform>());
+            mask.AddComponent<RectMask2D>();
+
+            var band = NewUiObject("ShineBand", mask.transform);
+            var bandRect = band.GetComponent<RectTransform>();
+            bandRect.sizeDelta = new Vector2(140f, 320f);
+            bandRect.localRotation = Quaternion.Euler(0f, 0f, -20f);
+            var bandImage = band.AddComponent<Image>();
+            bandImage.color = new Color(1f, 1f, 1f, 0.35f);
+            bandImage.raycastTarget = false;
+            band.SetActive(false);
+
+            var iconObject = NewUiObject("Icon", card.transform);
+            var iconRect = iconObject.GetComponent<RectTransform>();
+            iconRect.anchorMin = iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = new Vector2(85f, 0f);
+            iconRect.sizeDelta = new Vector2(104f, 104f);
+            var icon = iconObject.AddComponent<Image>();
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            icon.sprite = shardSprite;
+
+            var title = (TextMeshProUGUI)BuildLabel(card.transform, "Title", "Memory Shards  1 / 9", 40f,
+                TextAlignmentOptions.Left);
+            PlaceTopLeft(title.rectTransform, new Vector2(165f, -20f), new Vector2(605f, 52f));
+            title.color = new Color(1f, 0.86f, 0.4f);
+            title.fontStyle = FontStyles.Bold;
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 24f;
+            title.fontSizeMax = 40f;
+
+            var hint = (TextMeshProUGUI)BuildLabel(card.transform, "Hint",
+                "Collect 8 more to unlock memory clip — Memory I", 26f, TextAlignmentOptions.Left);
+            PlaceTopLeft(hint.rectTransform, new Vector2(165f, -76f), new Vector2(605f, 40f));
+            hint.color = new Color(1f, 1f, 1f, 0.92f);
+            hint.enableAutoSizing = true;
+            hint.fontSizeMin = 16f;
+            hint.fontSizeMax = 26f;
+
+            var bar = NewUiObject("Bar", card.transform);
+            PlaceTopLeft(bar.GetComponent<RectTransform>(), new Vector2(165f, -128f), new Vector2(600f, 18f));
+            var barImage = bar.AddComponent<Image>();
+            barImage.sprite = rounded;
+            barImage.type = Image.Type.Sliced;
+            barImage.color = new Color(1f, 1f, 1f, 0.15f);
+            barImage.raycastTarget = false;
+
+            // Filled needs a sprite — a spriteless Image ignores fillAmount and draws full.
+            var fill = NewUiObject("Fill", bar.transform);
+            StretchToParent(fill.GetComponent<RectTransform>());
+            var fillImage = fill.AddComponent<Image>();
+            fillImage.sprite = rounded;
+            fillImage.type = Image.Type.Filled;
+            fillImage.fillMethod = Image.FillMethod.Horizontal;
+            fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fillImage.fillAmount = 0.1f;
+            fillImage.color = new Color(0.45f, 0.85f, 1f);
+            fillImage.raycastTarget = false;
+
+            SetPrivateField(component, "m_Card", cardRect);
+            SetPrivateField(component, "m_TitleLabel", title);
+            SetPrivateField(component, "m_HintLabel", hint);
+            SetPrivateField(component, "m_Icon", icon);
+            SetPrivateField(component, "m_BarFill", fillImage);
+            SetPrivateField(component, "m_ShineBand", bandRect);
+
+            toast.SetActive(false);
+            return component;
+        }
+
+        private static void PlaceTopLeft(RectTransform rect, Vector2 position, Vector2 size)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
         }
 
         private static void BuildPresenterPrefab()

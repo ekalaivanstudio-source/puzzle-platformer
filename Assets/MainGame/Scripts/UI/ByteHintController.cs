@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -16,6 +17,9 @@ using TMPro;
 ///   • <see cref="ByteHint.Undo"/> — Backspace / B to clear the last input. Said by
 ///     <see cref="TutorialSequenceGuide"/> when a tutorial player queues a step the solution
 ///     does not have.
+///   • <see cref="ByteHint.MissedShard"/> — the level was won with its memory shard still
+///     lying in it. Said from the win routine in <see cref="PlayerController"/> through
+///     <see cref="MissedShardRoutine"/>, every time, so a replay that finally grabs it goes quiet.
 ///
 /// Lives in Managers next to Dr.Glitch, so every level carries it without wiring.
 /// </summary>
@@ -24,7 +28,8 @@ public class ByteHintController : MonoBehaviour
     public enum ByteHint
     {
         Rewind,
-        Undo
+        Undo,
+        MissedShard
     }
 
     [System.Serializable]
@@ -64,7 +69,24 @@ public class ByteHintController : MonoBehaviour
         xboxText = "Press B to clear the last input"
     };
 
+    [SerializeField] private HintLine m_MissedShardHint = new HintLine
+    {
+        pcText = "You missed a memory shard! Shards unlock your lost memories.",
+        xboxText = "You missed a memory shard! Shards unlock your lost memories."
+    };
+
+    [Tooltip("Seconds the missed-shard bubble stays up. Longer than the control hints, since " +
+             "it is a sentence to read rather than a key to spot.")]
+    [SerializeField, Min(0f)] private float m_MissedShardStayDuration = 3f;
+
+    // Left inset of the text inside the bubble. With a key icon (Tab / Backspace) it has to clear
+    // the icon, which ends at x 148, and the font draws ~26px left of its rect. Without one, a
+    // longer line gets the whole bubble.
+    private const float TextLeftWithIcon = 190f;
+    private const float TextLeftWithoutIcon = 66.25f;
+
     private int m_Frame;
+    private float m_DefaultStayDuration;
     private float m_FrameTimer;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
@@ -80,6 +102,8 @@ public class ByteHintController : MonoBehaviour
 
         if (m_UIFloatEffect == null)
             Debug.LogWarning($"[{nameof(ByteHintController)}] {nameof(m_UIFloatEffect)} is not assigned.", this);
+        else
+            m_DefaultStayDuration = m_UIFloatEffect.StayDuration;
         if (m_Text == null)
             Debug.LogWarning($"[{nameof(ByteHintController)}] {nameof(m_Text)} is not assigned.", this);
     }
@@ -126,17 +150,30 @@ public class ByteHintController : MonoBehaviour
     /// <summary>Pops Byte up with the given hint, restarting the pop if one is already up.</summary>
     public void Say(ByteHint hint)
     {
-        HintLine line = hint == ByteHint.Rewind ? m_RewindHint : m_UndoHint;
+        HintLine line = hint switch
+        {
+            ByteHint.Rewind => m_RewindHint,
+            ByteHint.MissedShard => m_MissedShardHint,
+            _ => m_UndoHint
+        };
         bool xbox = IsXbox();
 
         if (m_Text != null)
             m_Text.text = xbox ? line.xboxText : line.pcText;
 
+        Sprite icon = xbox ? line.xboxIcon : line.pcIcon;
         if (m_Icon != null)
         {
-            Sprite icon = xbox ? line.xboxIcon : line.pcIcon;
             m_Icon.sprite = icon;
             m_Icon.gameObject.SetActive(icon != null);
+        }
+
+        if (m_Text != null)
+        {
+            RectTransform textRect = m_Text.rectTransform;
+            bool hasIcon = m_Icon != null && icon != null;
+            textRect.offsetMin = new Vector2(hasIcon ? TextLeftWithIcon : TextLeftWithoutIcon,
+                                             textRect.offsetMin.y);
         }
 
         m_Frame = 0;
@@ -144,8 +181,43 @@ public class ByteHintController : MonoBehaviour
         if (m_Portrait != null && m_IdleFrames != null && m_IdleFrames.Length > 0)
             m_Portrait.sprite = m_IdleFrames[0];
 
-        if (m_UIFloatEffect != null) m_UIFloatEffect.Play();
+        if (m_UIFloatEffect != null)
+        {
+            m_UIFloatEffect.SetStayDuration(
+                hint == ByteHint.MissedShard ? m_MissedShardStayDuration : m_DefaultStayDuration);
+            m_UIFloatEffect.Play();
+        }
     }
+
+    /// <summary>
+    /// Has Byte point out a memory shard left behind in the level just won, and returns once
+    /// the pop has gone back down. Safe to yield on unconditionally from the win routine: it
+    /// completes in a single frame when there is no Byte in the scene, the level hides no
+    /// shard, or the shard was picked up.
+    /// </summary>
+    public static IEnumerator MissedShardRoutine()
+    {
+        if (Instance == null || !IsShardMissedInThisLevel()) yield break;
+
+        Instance.Say(ByteHint.MissedShard);
+
+        UIFloatEffect pop = Instance.m_UIFloatEffect;
+        while (pop != null && pop.IsPlaying) yield return null;
+    }
+
+    // Same source of truth MemoryShardPickup uses to decide whether it is in the level at all.
+    private static bool IsShardMissedInThisLevel()
+    {
+        LevelContext context = LevelContext.Instance;
+        LevelConfig config = context != null ? context.Config : null;
+        if (config == null || config.memoryShard == null || !config.memoryShard.placeShard) return false;
+
+        int level = context.CurrentLevel;
+        return level > 0 && !Collectables.MemoryShardService.IsCollected(level);
+    }
+
+    [ContextMenu("Say Missed Shard")]
+    private void SayMissedShard() => Say(ByteHint.MissedShard);
 
     [ContextMenu("Say Rewind")]
     private void SayRewind() => Say(ByteHint.Rewind);
