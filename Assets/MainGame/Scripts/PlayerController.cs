@@ -2486,6 +2486,10 @@ public class PlayerController : MonoBehaviour
         if (EvilDoctorAnimationController.Instance != null)
             yield return EvilDoctorAnimationController.Instance.PlayLevelCompletedRoutine();
 
+        // Byte points out a memory shard left lying in the level, after the doctor so the two
+        // never talk over each other. Completes in a single frame when there was none to miss.
+        yield return ByteHintController.MissedShardRoutine();
+
         // Any memory-shard story the player has earned but not seen plays here — after the level
         // has finished taking itself apart, before the fade. Shards are picked up mid-level but
         // their cutscenes are queued to this point so a puzzle is never interrupted mid-solve.

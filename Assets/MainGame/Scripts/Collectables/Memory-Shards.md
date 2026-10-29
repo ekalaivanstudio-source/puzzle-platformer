@@ -60,8 +60,9 @@ Shards are picked up mid-puzzle, but a cutscene never plays there — being pull
 puzzle you are halfway through solving is exactly what this avoids.
 
 ```
-grab the 5th shard   →  unlock SAVED immediately
-                     →  HUD toast: "New memory unlocked — Memory I"
+grab any shard       →  progress card: "Memory Shards 4 / 9 — Collect 5 more to unlock memory clip"
+grab the 9th shard   →  unlock SAVED immediately
+                     →  card switches to "Memory Unlocked! — Memory I plays when you finish this level"
                      →  story queued
 
 finish the level     →  doctor reacts, level tears down
@@ -84,7 +85,8 @@ the level and the story is still waiting the next time any level is finished.
 | `MemoryShardSaveSystem.cs` | JSON save at `persistentDataPath/memoryshards.json`. Stores collected shards + played stories. Never stores unlocks. |
 | `MemoryShardService.cs` | **The single access point.** Counts, unlock evaluation, the pending queue, `OnShardCollected` / `OnProgressChanged` / `OnStoryUnlocked`, `ResetAll`. Static, so it works on the home screen too. |
 | `MemoryShardPickup.cs` | The pickup in the level. Trigger-collect, permanent, self-hides if already collected or if the level hides no shard. Spawns the collect burst. |
-| `MemoryShardCounterHUD.cs` | The in-level counter and the unlock toast. |
+| `MemoryShardCounterHUD.cs` | The in-level counter. Routes pickups and unlocks to the progress card. |
+| `MemoryShardProgressToast.cs` | The card after every pickup: pop-in, bar fill to the new total, shine sweep over card and title, then slides out and switches itself off. Wording and timing are inspector fields. |
 | `MemoryStoryPresenter.cs` | Full-screen video player that drains the pending queue at the end of a level. |
 | `Editor/MemoryShardSetup.cs` | `Tools ▸ Memory Shards` — builds the database and prefabs, wires every scene, bulk assignment helpers. |
 
@@ -179,8 +181,9 @@ before changing them.
 
 - **Which levels hide a shard** → each level's `LevelConfig ▸ Collectables`.
 - **Story thresholds, titles and clips** → `Resources/MemoryShardDatabase.asset`.
-- **Counter position, toast wording and duration** → the `MemoryShardHUD` prefab, or
-  `BuildHudPrefab` in `MemoryShardSetup.cs`, then re-run steps 2 and 3.
+- **Counter position, progress-card wording and timing** → the `MemoryShardHUD` prefab
+  (`ProgressToast` child), or `BuildHudPrefab` / `BuildProgressToast` in
+  `MemoryShardSetup.cs`, then re-run steps 2 and 3.
 - **Collect burst frames and speed** → `Sprites/Effects/item_collection_effect/` and the
   `MemoryShardCollectEffect` prefab.
 - **Shard art** → `Sprites/Collectibles/memory shards/MEMORY SHARD.png`, then `1. Build Database`.

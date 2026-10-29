@@ -34,8 +34,15 @@ namespace Collectables
                  "are still being decided and a denominator would be misleading.")]
         [SerializeField] private bool m_HideTarget;
 
-        [Header("Unlock Toast")]
-        [Tooltip("Optional. Switched on for a few seconds when a shard unlocks a story.")]
+        [Header("Progress Toast")]
+        [Tooltip("Optional. Pops up after every pickup with the count towards the next memory " +
+                 "clip, and with the unlock message when a pickup reaches one. When set, it " +
+                 "replaces the plain unlock toast below.")]
+        [SerializeField] private MemoryShardProgressToast m_ProgressToast;
+
+        [Header("Unlock Toast (fallback)")]
+        [Tooltip("Optional. Switched on for a few seconds when a shard unlocks a story. Only " +
+                 "used when no Progress Toast is assigned.")]
         [SerializeField] private GameObject m_ToastRoot;
 
         [Tooltip("Optional label inside the toast. Formatted with Toast Format below.")]
@@ -52,11 +59,13 @@ namespace Collectables
         private void Awake()
         {
             if (m_ToastRoot != null) m_ToastRoot.SetActive(false);
+            if (m_ProgressToast != null) m_ProgressToast.gameObject.SetActive(false);
         }
 
         private void OnEnable()
         {
             MemoryShardService.OnProgressChanged += Refresh;
+            MemoryShardService.OnShardCollected += HandleShardCollected;
             MemoryShardService.OnStoryUnlocked += HandleStoryUnlocked;
             Refresh();
         }
@@ -69,6 +78,7 @@ namespace Collectables
         private void OnDisable()
         {
             MemoryShardService.OnProgressChanged -= Refresh;
+            MemoryShardService.OnShardCollected -= HandleShardCollected;
             MemoryShardService.OnStoryUnlocked -= HandleStoryUnlocked;
         }
 
@@ -93,9 +103,26 @@ namespace Collectables
                 : string.Format(m_CountFormat, collected, target);
         }
 
+        private void HandleShardCollected(int total)
+        {
+            if (m_ProgressToast != null) m_ProgressToast.ShowProgress(total);
+        }
+
+        /// <summary>
+        /// Raised in the same frame as <see cref="HandleShardCollected"/> when the pickup crosses
+        /// a threshold, so the progress card is simply restarted with the unlock wording.
+        /// </summary>
         private void HandleStoryUnlocked(MemoryStoryEntry story)
         {
-            if (m_ToastRoot == null || story == null) return;
+            if (story == null) return;
+
+            if (m_ProgressToast != null)
+            {
+                m_ProgressToast.ShowUnlocked(story);
+                return;
+            }
+
+            if (m_ToastRoot == null) return;
 
             if (m_ToastLabel != null)
                 m_ToastLabel.text = string.Format(m_ToastFormat, story.title);
